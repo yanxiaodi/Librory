@@ -16,12 +16,27 @@ Reasons:
 
 Web frontend, with bilingual UI support.
 
-Recommended implementation options:
+Recommended stack:
 
-- Blazor Web App
-- React SPA
+- React
+- Vite
+- TypeScript
+- Tailwind CSS
+- Radix UI
+- shadcn/ui-style component composition
 
-The final choice should prioritize rapid iteration, mobile browser usability, and simple integration with the ASP.NET Core backend.
+Why this stack:
+
+- It matches the existing Koviva frontend stack closely, which reduces context switching and lets us reuse patterns.
+- It is well suited to a mobile-first web app that must work on iPhone without a native build pipeline.
+- It keeps UI primitives composable while still allowing a custom visual identity.
+- It fits well with a React Router based application and a lightweight API-driven architecture.
+
+Recommended UI approach:
+
+- Use shadcn/ui-style components as the default UI layer.
+- Build a small Librory design system on top of Tailwind and Radix primitives.
+- Keep the component set focused on book cards, scan panels, filters, language switching, and family-library views.
 
 ### Backend
 
@@ -231,7 +246,6 @@ Recommended baseline:
 
 The following should be finalized before implementation starts:
 
-- Frontend framework choice
 - Exact Azure hosting combination
 - Book metadata providers
 - Authentication provider

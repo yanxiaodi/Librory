@@ -2,10 +2,11 @@
 
 ## Step 1: Project Skeleton
 
-- Create the web app shell
+- Create a React + Vite + TypeScript web app shell
 - Create the ASP.NET Core API
 - Add shared models and DTOs
 - Add localization resource files
+- Add Tailwind, Radix, and a shadcn/ui-style component layer
 
 ## Step 2: Domain Model
 
