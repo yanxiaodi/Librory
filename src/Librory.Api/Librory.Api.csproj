@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <ItemGroup>
+    <ProjectReference Include="..\Librory.Application\Librory.Application.csproj" />
+    <ProjectReference Include="..\Librory.Infrastructure\Librory.Infrastructure.csproj" />
+    <ProjectReference Include="..\Librory.ServiceDefaults\Librory.ServiceDefaults.csproj" />
+  </ItemGroup>
+</Project>
