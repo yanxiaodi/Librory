@@ -13,7 +13,7 @@ The first release focuses on the shopping journey first:
 5. Let the user correct mistakes quickly.
 6. Let the user save purchased books into the family library.
 
-The app supports both single-user and family-account setups. Family membership matters mainly for ownership, duplicate checks, and invitation permissions.
+The app supports both individual-user and family-account setups. Family membership matters mainly for ownership, duplicate checks, and invitation permissions.
 
 ## 2. Scope Rules
 
@@ -26,7 +26,7 @@ The app supports both single-user and family-account setups. Family membership m
 - Manual correction of recognition results.
 - Re-scan flow for purchased books.
 - Fast intake with optional later completion.
-- Single-user accounts.
+- Individual-user accounts.
 - Family groups with invited members.
 - Bilingual UI support for English and Chinese.
 - Bilingual book metadata display where available.
@@ -50,6 +50,12 @@ The family admin creates the family group, invites other members, scans shelves,
 ### Family member
 
 A family member can have books assigned to them and can contribute to the family library through the same core flows.
+
+### Individual user
+
+An individual user does not create or join a family group.
+
+The same scan, recommendation, duplicate, intake, bilingual, and wishlist flows still apply.
 
 ## 4. Story Map
 
@@ -151,7 +157,7 @@ Acceptance criteria:
 
 ### Epic 7: Manage a Family Library
 
-Goal: support both single-user and family-account usage.
+Goal: support both individual-user and family-account usage.
 
 - As a user, I want to register as a single user.
 - As a family admin, I want to create a family group.
@@ -162,7 +168,7 @@ Goal: support both single-user and family-account usage.
 
 Acceptance criteria:
 
-- The app supports one-person and family setups.
+- The app supports individual users and family groups.
 - Family admins can invite other users.
 - Only admins can send invitations.
 - Admin rights can be granted to another family member.
