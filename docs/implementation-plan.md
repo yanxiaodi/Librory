@@ -24,9 +24,10 @@
 
 ## Step 4: AI Integration
 
-- Add Microsoft Agent Framework workflow for shelf scans
+- Add Microsoft Agent Framework workflows inside the API project
 - Add metadata enrichment pipeline
 - Add recommendation reasoning pipeline
+- Keep AI workflow code modular inside the API instead of splitting it into a separate service
 
 ## Step 5: Azure Readiness
 

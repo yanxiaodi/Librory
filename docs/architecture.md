@@ -54,7 +54,7 @@ The API will own:
 
 ### AI Layer
 
-Microsoft Agent Framework will be used for AI orchestration.
+Microsoft Agent Framework will be used for AI orchestration inside the main API project.
 
 Primary responsibilities:
 
@@ -62,6 +62,8 @@ Primary responsibilities:
 - Call external tools and data sources
 - Keep the AI logic separate from business rules
 - Support workflow-style composition for scan and recommendation flows
+
+This means the first version does not need a separate AI service project. The API hosts the AI orchestration layer directly, while still keeping the workflow code isolated in internal folders or modules.
 
 ### Azure Hosting
 
