@@ -6,7 +6,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 builder.Services.AddLibroryApplication();
-builder.Services.AddLibroryInfrastructure();
+
+var connectionString = builder.Configuration.GetConnectionString("Postgres")
+    ?? throw new InvalidOperationException("Connection string 'Postgres' not found.");
+
+builder.Services.AddLibroryInfrastructure(connectionString);
 
 var app = builder.Build();
 

@@ -6,4 +6,5 @@ public sealed class ScanSession
     public Guid FamilyId { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset ExpiresAt { get; set; } = DateTimeOffset.UtcNow.AddDays(7);
+    public Family Family { get; set; } = null!;
 }

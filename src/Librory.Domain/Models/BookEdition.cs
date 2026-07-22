@@ -7,4 +7,6 @@ public sealed class BookEdition
     public string? Isbn { get; set; }
     public string? Format { get; set; }
     public int? PublicationYear { get; set; }
+    public BookWork? BookWork { get; set; }
+    public List<BookCopy> Copies { get; } = [];
 }
