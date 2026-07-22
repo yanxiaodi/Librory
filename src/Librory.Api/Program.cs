@@ -1,5 +1,6 @@
 using Librory.Application;
 using Librory.Infrastructure;
+using Librory.Infrastructure.Persistence;
 using Librory.ServiceDefaults;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,6 +14,8 @@ var connectionString = builder.Configuration.GetConnectionString("Postgres")
 builder.Services.AddLibroryInfrastructure(connectionString);
 
 var app = builder.Build();
+
+await app.Services.InitializeDatabaseAsync();
 
 app.MapGet("/", () => Results.Ok(new
 {
