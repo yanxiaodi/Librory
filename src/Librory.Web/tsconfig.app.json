@@ -10,6 +10,7 @@
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "ignoreDeprecations": "6.0",
+    "tsBuildInfoFile": "./node_modules/.cache/tsconfig.app.tsbuildinfo",
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "resolveJsonModule": true,

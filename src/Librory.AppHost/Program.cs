@@ -5,7 +5,7 @@ var api = builder.AddProject("api", "../Librory.Api/Librory.Api.csproj")
 
 builder.AddNpmApp("web", "../Librory.Web")
     .WithReference(api)
-    .WithHttpEndpoint(port: 5173, env: "VITE_PORT")
+    .WithHttpEndpoint(port: 5174, env: "VITE_PORT")
     .WithExternalHttpEndpoints()
     .WaitFor(api);
 
