@@ -13,7 +13,7 @@ The first release focuses on the shopping journey first:
 5. Let the user correct mistakes quickly.
 6. Let the user save purchased books into the family library.
 
-The app supports both single-user and family-account setups. Family membership matters mainly for ownership and duplicate checks.
+The app supports both single-user and family-account setups. Family membership matters mainly for ownership, duplicate checks, and invitation permissions.
 
 ## 2. Scope Rules
 
@@ -43,9 +43,9 @@ The app supports both single-user and family-account setups. Family membership m
 
 ## 3. Personas
 
-### Parent
+### Family admin
 
-The parent buys books for the family, scans shelves, checks duplicates, and assigns ownership.
+The family admin creates the family group, invites other members, scans shelves, checks duplicates, and assigns ownership.
 
 ### Family member
 
@@ -57,11 +57,11 @@ A family member can have books assigned to them and can contribute to the family
 
 Goal: help the user decide what is worth buying while browsing a second-hand shop.
 
-- As a parent, I want to take a photo of a shelf and see a list of detected books.
-- As a parent, I want each detected book to show title, author, and recommendation strength.
-- As a parent, I want the list to prioritize the most promising books first.
-- As a parent, I want low-confidence matches to be visible so I know which results are uncertain.
-- As a parent, I want the app to keep working even when some books are not recognized perfectly.
+- As a family member, I want to take a photo of a shelf and see a list of detected books.
+- As a family member, I want each detected book to show title, author, and recommendation strength.
+- As a family member, I want the list to prioritize the most promising books first.
+- As a family member, I want low-confidence matches to be visible so I know which results are uncertain.
+- As a family member, I want the app to keep working even when some books are not recognized perfectly.
 
 Acceptance criteria:
 
@@ -74,10 +74,10 @@ Acceptance criteria:
 
 Goal: let the user fix the few mistakes that matter without restarting the whole flow.
 
-- As a parent, I want to re-scan a single book if the shelf scan was wrong.
-- As a parent, I want to manually enter a title if the system cannot recognize a book.
-- As a parent, I want the corrected result to fetch book metadata again.
-- As a parent, I want the corrected result to refresh recommendation and duplicate status.
+- As a family member, I want to re-scan a single book if the shelf scan was wrong.
+- As a family member, I want to manually enter a title if the system cannot recognize a book.
+- As a family member, I want the corrected result to fetch book metadata again.
+- As a family member, I want the corrected result to refresh recommendation and duplicate status.
 
 Acceptance criteria:
 
@@ -89,11 +89,11 @@ Acceptance criteria:
 
 Goal: show whether a book matches the user or the family’s reading preferences.
 
-- As a parent, I want recommendations based on age range.
-- As a parent, I want recommendations based on themes, style, and genre.
-- As a parent, I want recommendations based on similar books.
-- As a parent, I want recommendations based on similar authors.
-- As a parent, I want an explanation for why a book was recommended.
+- As a family member, I want recommendations based on age range.
+- As a family member, I want recommendations based on themes, style, and genre.
+- As a family member, I want recommendations based on similar books.
+- As a family member, I want recommendations based on similar authors.
+- As a family member, I want an explanation for why a book was recommended.
 
 Acceptance criteria:
 
@@ -106,11 +106,11 @@ Acceptance criteria:
 
 Goal: prevent accidental repeat purchases.
 
-- As a parent, I want the app to check whether the family already owns a book.
-- As a parent, I want the app to check across the whole family library, not just my own books.
-- As a parent, I want duplicate warnings to appear during shelf scanning.
-- As a parent, I want duplicate warnings to still allow purchase if the new copy is a better edition or better condition.
-- As a parent, I want version differences to be visible when they are detected.
+- As a family member, I want the app to check whether the family already owns a book.
+- As a family member, I want the app to check across the whole family library, not just my own books.
+- As a family member, I want duplicate warnings to appear during shelf scanning.
+- As a family member, I want duplicate warnings to still allow purchase if the new copy is a better edition or better condition.
+- As a family member, I want version differences to be visible when they are detected.
 
 Acceptance criteria:
 
@@ -123,9 +123,9 @@ Acceptance criteria:
 
 Goal: support the reality that shelf photos can be messy.
 
-- As a parent, I want to re-run recognition on one book after correcting it.
-- As a parent, I want to keep moving through the shelf when most books are fine.
-- As a parent, I want corrected items to re-enter the same result list.
+- As a family member, I want to re-run recognition on one book after correcting it.
+- As a family member, I want to keep moving through the shelf when most books are fine.
+- As a family member, I want corrected items to re-enter the same result list.
 
 Acceptance criteria:
 
@@ -137,11 +137,11 @@ Acceptance criteria:
 
 Goal: record books after purchase with low friction.
 
-- As a parent, I want to save a purchased book into the family library.
-- As a parent, I want to start with only the minimum fields.
-- As a parent, I want optional fields to be filled in later.
-- As a parent, I want to assign the book to a family member.
-- As a parent, I want to store a cover photo and book details.
+- As a family admin or member, I want to save a purchased book into the family library.
+- As a family admin or member, I want to start with only the minimum fields.
+- As a family admin or member, I want optional fields to be filled in later.
+- As a family admin or member, I want to assign the book to a family member.
+- As a family admin or member, I want to store a cover photo and book details.
 
 Acceptance criteria:
 
@@ -154,14 +154,18 @@ Acceptance criteria:
 Goal: support both single-user and family-account usage.
 
 - As a user, I want to register as a single user.
-- As a parent, I want to create a family group.
-- As a parent, I want to invite other users to the family group.
-- As a parent, I want to assign a book to any family member.
-- As a parent, I want duplicate checks to use the whole family library.
+- As a family admin, I want to create a family group.
+- As a family admin, I want to invite other users to the family group.
+- As a family admin, I want to grant admin permission to another family member.
+- As a family member, I want to use the shared family library when I have access.
+- As a family member, I want duplicate checks to use the whole family library.
 
 Acceptance criteria:
 
 - The app supports one-person and family setups.
+- Family admins can invite other users.
+- Only admins can send invitations.
+- Admin rights can be granted to another family member.
 - Family members can share the same library scope.
 - Ownership is a first-class field on each saved copy.
 
@@ -184,9 +188,9 @@ Acceptance criteria:
 
 Goal: keep track of books the user wants to buy later.
 
-- As a parent, I want to add a book to a wishlist.
-- As a parent, I want to add wishlist items from search results or scanning.
-- As a parent, I want the wishlist to stay separate from owned books.
+- As a user, I want to add a book to a wishlist.
+- As a user, I want to add wishlist items from search results or scanning.
+- As a user, I want the wishlist to stay separate from owned books.
 
 Acceptance criteria:
 
@@ -224,7 +228,6 @@ Acceptance criteria:
 
 The first release should be good at one thing:
 
-helping a parent stand in front of a second-hand shelf and avoid bad purchases.
+helping a family member stand in front of a second-hand shelf and avoid bad purchases.
 
 Everything else should support that flow, not distract from it.
-
