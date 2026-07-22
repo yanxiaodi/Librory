@@ -6,4 +6,5 @@ public sealed class Member
     public Guid FamilyId { get; set; }
     public string DisplayName { get; set; } = string.Empty;
     public PreferredLanguage PreferredLanguage { get; set; } = PreferredLanguage.English;
+    public Family Family { get; set; } = null!;
 }

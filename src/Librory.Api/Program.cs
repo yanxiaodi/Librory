@@ -4,6 +4,7 @@ using Librory.ServiceDefaults;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.AddServiceDefaults();
 builder.Services.AddLibroryApplication();
 builder.Services.AddLibroryInfrastructure();
 

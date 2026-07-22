@@ -6,6 +6,9 @@ obj/
 *.cache
 *.log
 *.tsbuildinfo
+.env.local
+.env.*.local
+.claude/
 
 node_modules/
 dist/
