@@ -31,6 +31,7 @@ The app supports both individual-user and family-account setups. Family membersh
 - Bilingual UI support for English and Chinese.
 - Bilingual book metadata display where available.
 - Wishlist support.
+- Platform admin support for system-level operations.
 
 ### Out of scope for MVP
 
@@ -56,6 +57,12 @@ A family member can have books assigned to them and can contribute to the family
 An individual user does not create or join a family group.
 
 The same scan, recommendation, duplicate, intake, bilingual, and wishlist flows still apply.
+
+### Platform admin
+
+A platform admin manages Librory at the system level.
+
+This role is separate from family membership and is not used for normal shopping or library flows.
 
 ## 4. Story Map
 

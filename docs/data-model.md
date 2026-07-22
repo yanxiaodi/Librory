@@ -18,6 +18,12 @@ Represents a person in the family.
 
 Each member can have a role such as `admin` or `member`.
 
+### PlatformAdmin
+
+Represents a system-level administrator for Librory.
+
+This role is separate from family membership and supports platform operations rather than shopping flows.
+
 ### BookWork
 
 The abstract literary work, such as a title and author combination.
@@ -80,6 +86,7 @@ Localized display text for a field such as title, summary, or genre labels.
 - A `ScanSession` stores temporary scan results and expires after a short retention window.
 - A localized book field may store English and Chinese variants side by side.
 - A `Member` role controls invitation permissions and admin transfer.
+- A `PlatformAdmin` role is separate from family membership and controls system-level operations.
 
 ## Localization Notes
 
