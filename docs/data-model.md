@@ -10,9 +10,19 @@ Use a `Work -> Edition -> Copy` model.
 
 Represents a household or shared library group.
 
+In individual-user mode, a family can act as a singleton library owned by one user.
+
 ### Member
 
 Represents a person in the family.
+
+Each member can have a role such as `admin` or `member`.
+
+### PlatformAdmin
+
+Represents a system-level administrator for Librory.
+
+This role is separate from family membership and supports platform operations rather than shopping flows.
 
 ### BookWork
 
@@ -66,6 +76,7 @@ Localized display text for a field such as title, summary, or genre labels.
 
 - A `Family` has many `Member` records.
 - A `Family` owns many `BookCopy` records.
+- A `Family` can also represent an individual-user singleton library.
 - A `BookWork` can have many `BookEdition` records.
 - A `BookEdition` can have many `BookCopy` records.
 - A `BookCopy` belongs to one `Family` and one owning `Member`.
@@ -74,6 +85,8 @@ Localized display text for a field such as title, summary, or genre labels.
 - A `WishlistItem` can reference a `BookWork`, `BookEdition`, or fuzzy search result.
 - A `ScanSession` stores temporary scan results and expires after a short retention window.
 - A localized book field may store English and Chinese variants side by side.
+- A `Member` role controls invitation permissions and admin transfer.
+- A `PlatformAdmin` role is separate from family membership and controls system-level operations.
 
 ## Localization Notes
 
