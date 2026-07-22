@@ -76,20 +76,23 @@ Acceptance criteria:
 - The list can continue when some items are incomplete.
 - The UI clearly marks uncertain matches.
 
-### Epic 2: Correct Recognition Errors
+### Epic 2: Correct and Refine Recognition
 
-Goal: let the user fix the few mistakes that matter without restarting the whole flow.
+Goal: let the user fix the few mistakes that matter without restarting the whole shelf flow.
 
 - As a family member, I want to re-scan a single book if the shelf scan was wrong.
 - As a family member, I want to manually enter a title if the system cannot recognize a book.
 - As a family member, I want the corrected result to fetch book metadata again.
 - As a family member, I want the corrected result to refresh recommendation and duplicate status.
+- As a family member, I want corrected items to stay inside the current shelf session.
 
 Acceptance criteria:
 
 - The user can correct an item from the scan result list.
 - The user can either re-scan or type a title manually.
 - After correction, the system re-runs metadata lookup and scoring.
+- One bad match does not cancel the whole shelf scan.
+- The corrected item stays part of the current shelf session.
 
 ### Epic 3: Recommend Books
 
@@ -107,6 +110,7 @@ Acceptance criteria:
 - The first version does not require automatic learning.
 - The user can configure common preference ranges.
 - Recommendation and duplicate warnings are separate signals.
+- Requires a `RecommendationProfile` entity or equivalent persisted preference model.
 
 ### Epic 4: Detect Duplicates
 
@@ -125,21 +129,7 @@ Acceptance criteria:
 - The user can continue buying after seeing a warning.
 - Edition differences are shown when available.
 
-### Epic 5: Fix or Recheck Before Buying
-
-Goal: support the reality that shelf photos can be messy.
-
-- As a family member, I want to re-run recognition on one book after correcting it.
-- As a family member, I want to keep moving through the shelf when most books are fine.
-- As a family member, I want corrected items to re-enter the same result list.
-
-Acceptance criteria:
-
-- One bad match does not cancel the whole shelf scan.
-- The user can edit only the incorrect items.
-- The corrected item stays part of the current shelf session.
-
-### Epic 6: Save Purchased Books
+### Epic 5: Save Purchased Books
 
 Goal: record books after purchase with low friction.
 
@@ -155,7 +145,7 @@ Acceptance criteria:
 - Optional fields are visible but not required.
 - The saved book belongs to the family library.
 
-### Epic 7: Manage a Family Library
+### Epic 6: Manage a Family Library
 
 Goal: support both individual-user and family-account usage.
 
@@ -165,17 +155,20 @@ Goal: support both individual-user and family-account usage.
 - As a family admin, I want to grant admin permission to another family member.
 - As a family member, I want to use the shared family library when I have access.
 - As a family member, I want duplicate checks to use the whole family library.
+- As an individual user, I want the app to work without manually joining a family group.
 
 Acceptance criteria:
 
 - The app supports individual users and family groups.
+- The data model must support either a singleton family created for individual users or nullable family references for owned records.
 - Family admins can invite other users.
 - Only admins can send invitations.
 - Admin rights can be granted to another family member.
 - Family members can share the same library scope.
 - Ownership is a first-class field on each saved copy.
+- Requires a `Member` role field or equivalent admin flag plus admin transfer logic.
 
-### Epic 8: Support Bilingual UI and Book Data
+### Epic 7: Support Bilingual UI and Book Data
 
 Goal: make the app usable in English and Chinese.
 
@@ -190,7 +183,7 @@ Acceptance criteria:
 - The app supports English and Chinese.
 - Book display can mix both languages when data exists in both.
 
-### Epic 9: Wishlist
+### Epic 8: Wishlist
 
 Goal: keep track of books the user wants to buy later.
 
@@ -203,6 +196,7 @@ Acceptance criteria:
 - The wishlist is persistent.
 - The same book can appear in the wishlist before purchase.
 - Wishlist items can be converted into owned books later.
+- Requires a `WishlistItem` entity or equivalent persisted model.
 
 ## 5. Priority Order
 
