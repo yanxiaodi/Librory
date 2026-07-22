@@ -10,4 +10,8 @@ public sealed class BookCopy
     public string? PurchaseStore { get; set; }
     public decimal? PurchasePrice { get; set; }
     public string? ShelfLocation { get; set; }
+    public DateTimeOffset? PurchasedAt { get; set; }
+    public Family Family { get; set; } = null!;
+    public Member Member { get; set; } = null!;
+    public BookEdition BookEdition { get; set; } = null!;
 }
