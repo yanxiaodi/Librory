@@ -20,6 +20,16 @@ public sealed class Family
         };
     }
 
+    public static Family CreateSharedFamily(
+        string name,
+        string adminDisplayName,
+        PreferredLanguage preferredLanguage = PreferredLanguage.English)
+    {
+        var family = Create(name);
+        family.AddMember(adminDisplayName, MemberRole.Admin, preferredLanguage);
+        return family;
+    }
+
     public Member AddMember(
         string displayName,
         MemberRole role = MemberRole.Member,
