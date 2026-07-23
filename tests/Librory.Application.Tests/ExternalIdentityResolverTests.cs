@@ -7,6 +7,41 @@ namespace Librory.Application.Tests;
 public class ExternalIdentityResolverTests
 {
     [Fact]
+    public void Resolve_returns_null_when_no_match()
+    {
+        var members = new[] { new Member() };
+
+        var result = ExternalIdentityResolver.Resolve(
+            members,
+            ExternalIdentityProvider.Google,
+            "not-found");
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void Resolve_throws_when_members_is_null()
+    {
+        Assert.Throws<ArgumentNullException>(() =>
+            ExternalIdentityResolver.Resolve(
+                null!,
+                ExternalIdentityProvider.Google,
+                "google-subject-123"));
+    }
+
+    [Fact]
+    public void Resolve_throws_when_provider_subject_is_blank()
+    {
+        var members = new[] { new Member() };
+
+        Assert.Throws<ArgumentException>(() =>
+            ExternalIdentityResolver.Resolve(
+                members,
+                ExternalIdentityProvider.Google,
+                ""));
+    }
+
+    [Fact]
     public void Resolve_uses_provider_subject_and_ignores_email()
     {
         var member = new Member();
