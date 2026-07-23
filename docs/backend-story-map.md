@@ -46,6 +46,64 @@ The first release should keep authentication simple and support the login provid
 - Google login
 - Microsoft login
 
+### Sub-Stories
+
+#### story-01a: External Identity Resolution
+
+Resolve Google or Microsoft sign-in into a stable external identity record.
+
+Acceptance criteria:
+
+- The backend can identify a user by provider plus provider subject.
+- The backend can store more than one external provider for the same account.
+- The backend does not treat email as the primary identity key.
+- The backend can reuse the same account when the user signs in with a previously linked provider.
+
+#### story-01b: Family and Member Persistence
+
+Persist the domain objects that represent a family, its members, and the member role.
+
+Acceptance criteria:
+
+- The backend can create and persist a `Family`.
+- The backend can create and persist a `Member`.
+- A member belongs to exactly one family.
+- A member has a role of at least `admin` or `member`.
+- A member has a `preferredLanguage` value.
+
+#### story-01c: First-Login Family Bootstrap
+
+Create the default family and member records when a user signs in for the first time.
+
+Acceptance criteria:
+
+- The backend can create a singleton family for an individual user.
+- The backend can create an initial admin member when no family exists yet.
+- The bootstrap flow is atomic enough that partial records are not left behind when creation fails.
+- The resulting identity is ready for downstream family-scoped requests.
+
+#### story-01d: Shared Family Creation
+
+Create a family group that can later accept invited members.
+
+Acceptance criteria:
+
+- The backend can create a family group distinct from a singleton family.
+- The initial creator becomes the family admin.
+- The family has a stable identifier that later endpoints can reference.
+- The model leaves room for invitation and membership management in later stories.
+
+#### story-01e: Current Family Context
+
+Resolve the authenticated user to the current family and member for every family-scoped request.
+
+Acceptance criteria:
+
+- The backend can derive the active family from the signed-in identity.
+- The backend can derive the current member from the active family.
+- Family-scoped business operations can require that context without re-deriving it in each handler.
+- Authorization failures are returned when the identity does not map to a valid family member.
+
 ### Scope
 
 In scope:
@@ -90,6 +148,7 @@ Out of scope:
 - This story should align with the existing Koviva login pattern rather than inventing a new auth flow.
 - If the implementation uses Azure-backed identity, the story should still expose the same Google and Microsoft sign-in outcome at the API boundary.
 - Family invitation and admin transfer can be introduced later as separate stories if they are not required for the first usable login path.
+- The sub-stories above are intentionally ordered so identity comes before family bootstrap, and family bootstrap comes before request-scoped resolution.
 
 ## Story-02: Core Book Domain Model
 
