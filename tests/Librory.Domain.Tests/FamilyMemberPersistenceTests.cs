@@ -6,6 +6,12 @@ namespace Librory.Domain.Tests;
 public class FamilyMemberPersistenceTests
 {
     [Fact]
+    public void Family_create_throws_when_name_is_blank()
+    {
+        Assert.Throws<ArgumentException>(() => Family.Create(" "));
+    }
+
+    [Fact]
     public void Family_create_trims_name_and_starts_empty()
     {
         var family = Family.Create("  The Yans  ");
@@ -26,6 +32,45 @@ public class FamilyMemberPersistenceTests
         Assert.Equal(PreferredLanguage.English, member.PreferredLanguage);
         Assert.Equal(family.Id, member.FamilyId);
         Assert.Same(family, member.Family);
+        Assert.Single(family.Members);
+        Assert.Same(member, family.Members[0]);
+    }
+
+    [Fact]
+    public void Family_add_member_accepts_custom_role_and_language()
+    {
+        var family = Family.Create("The Yans");
+
+        var admin = family.AddMember("Alice", MemberRole.Admin, PreferredLanguage.Chinese);
+
+        Assert.Equal(MemberRole.Admin, admin.Role);
+        Assert.Equal(PreferredLanguage.Chinese, admin.PreferredLanguage);
+    }
+
+    [Fact]
+    public void Family_add_member_throws_when_display_name_is_blank()
+    {
+        var family = Family.Create("The Yans");
+
+        Assert.Throws<ArgumentException>(() => family.AddMember(" "));
+    }
+
+    [Fact]
+    public void AssignToFamily_throws_when_family_is_null()
+    {
+        var member = new Member();
+
+        Assert.Throws<ArgumentNullException>(() => member.AssignToFamily(null!));
+    }
+
+    [Fact]
+    public void AssignToFamily_is_idempotent_for_same_family()
+    {
+        var family = Family.Create("The Yans");
+        var member = family.AddMember("Alice");
+
+        member.AssignToFamily(family);
+
         Assert.Single(family.Members);
         Assert.Same(member, family.Members[0]);
     }
