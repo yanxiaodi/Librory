@@ -16,6 +16,8 @@ public static class FirstLoginFamilyBootstrapper
 
         var family = Family.Create(familyName);
         var member = family.AddMember(displayName, MemberRole.Admin, preferredLanguage);
+        // First-login bootstrap expects a brand-new identity; duplicate detection belongs in the
+        // external identity lookup layer, not in this local composition helper.
         member.TryLinkExternalIdentity(externalIdentity);
 
         return new FamilyBootstrapResult(family, member);

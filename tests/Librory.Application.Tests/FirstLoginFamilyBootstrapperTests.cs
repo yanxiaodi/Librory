@@ -31,6 +31,19 @@ public class FirstLoginFamilyBootstrapperTests
     }
 
     [Fact]
+    public void Bootstrap_uses_default_preferred_language_when_not_specified()
+    {
+        var result = FirstLoginFamilyBootstrapper.Bootstrap(
+            "The Yans",
+            "Alice",
+            new ExternalIdentity(
+                ExternalIdentityProvider.Google,
+                "google-subject-123"));
+
+        Assert.Equal(PreferredLanguage.English, result.InitialMember.PreferredLanguage);
+    }
+
+    [Fact]
     public void Bootstrap_throws_when_family_name_is_blank()
     {
         Assert.Throws<ArgumentException>(() => FirstLoginFamilyBootstrapper.Bootstrap(
