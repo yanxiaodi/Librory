@@ -33,4 +33,18 @@ public sealed class Member
             identity.Provider == provider &&
             string.Equals(identity.ProviderSubject, providerSubject, StringComparison.Ordinal));
     }
+
+    public void AssignToFamily(Family family)
+    {
+        ArgumentNullException.ThrowIfNull(family);
+
+        if (FamilyId != Guid.Empty && FamilyId != family.Id)
+        {
+            throw new InvalidOperationException("Member already belongs to a different family.");
+        }
+
+        FamilyId = family.Id;
+        Family = family;
+        family.RegisterMember(this);
+    }
 }
