@@ -17,7 +17,7 @@
 
 ## Step 3: Core Flows
 
-- Manual book intake
+- Manual book intake from a resolved edition into the current family/member context
 - Family library browse and search
 - Temporary scan session storage
 - Duplicate detection stub
