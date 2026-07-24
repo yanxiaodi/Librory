@@ -136,6 +136,39 @@ public sealed class Family
         return session;
     }
 
+    public RecommendationProfile GetOrCreateRecommendationProfile(
+        Member member,
+        int? minimumAge = null,
+        int? maximumAge = null,
+        IEnumerable<string>? favoriteAuthors = null,
+        IEnumerable<string>? favoriteGenres = null,
+        IEnumerable<string>? favoriteStyles = null)
+    {
+        ArgumentNullException.ThrowIfNull(member);
+
+        if (member.FamilyId != Id)
+        {
+            throw new InvalidOperationException("Member must belong to the same family as the recommendation profile.");
+        }
+
+        var profile = RecommendationProfiles.SingleOrDefault(existing => existing.MemberId == member.Id);
+        if (profile is null)
+        {
+            profile = RecommendationProfile.Create(
+                member,
+                minimumAge,
+                maximumAge,
+                favoriteAuthors,
+                favoriteGenres,
+                favoriteStyles);
+            RecommendationProfiles.Add(profile);
+            return profile;
+        }
+
+        profile.UpdatePreferences(minimumAge, maximumAge, favoriteAuthors, favoriteGenres, favoriteStyles);
+        return profile;
+    }
+
     internal void RegisterMember(Member member)
     {
         ArgumentNullException.ThrowIfNull(member);

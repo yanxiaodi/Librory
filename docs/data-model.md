@@ -66,7 +66,7 @@ A temporary shelf scan result.
 
 ### RecommendationProfile
 
-Rules and preferences for a child or family member.
+Rules and preferences for a child or family member, stored per member with age range and curated reading preferences.
 
 ### LocalizedText
 
