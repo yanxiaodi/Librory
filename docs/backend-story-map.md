@@ -182,6 +182,10 @@ Acceptance criteria:
 - A copy must belong to exactly one owning member.
 - The model can represent the family library as owned physical copies.
 
+### Modeling Note
+
+`BookCopy` is the family-owned entity. It represents the physical book that was purchased, stored, and assigned to a member. A copy should not exist without a work-through-edition chain, because ownership and duplicate detection both depend on knowing which edition was actually acquired.
+
 #### story-02c: Book Metadata and Inference Fields
 
 Store the metadata that later search, intake, and recommendation flows will need.
