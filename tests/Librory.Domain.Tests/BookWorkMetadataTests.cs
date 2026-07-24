@@ -26,4 +26,14 @@ public class BookWorkMetadataTests
         Assert.Same(provenance, work.SummaryProvenance);
         Assert.Same(provenance, work.CanonicalAuthorProvenance);
     }
+
+    [Fact]
+    public void Book_work_allows_optional_metadata_to_remain_null()
+    {
+        var work = BookWork.Create("Charlotte's Web");
+
+        Assert.Null(work.Summary);
+        Assert.Null(work.SummaryProvenance);
+        Assert.Null(work.CanonicalAuthorProvenance);
+    }
 }
