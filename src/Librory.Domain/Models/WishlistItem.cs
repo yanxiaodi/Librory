@@ -3,15 +3,15 @@ namespace Librory.Domain.Models;
 public sealed class WishlistItem
 {
     public Guid Id { get; init; } = Guid.NewGuid();
-    public Guid FamilyId { get; set; }
-    public Guid? BookWorkId { get; set; }
-    public Guid? BookEditionId { get; set; }
-    public string Title { get; set; } = string.Empty;
-    public string? Author { get; set; }
+    public Guid FamilyId { get; private set; }
+    public Guid? BookWorkId { get; private set; }
+    public Guid? BookEditionId { get; private set; }
+    public string Title { get; private set; } = string.Empty;
+    public string? Author { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; } = DateTimeOffset.UtcNow;
-    public Family Family { get; set; } = null!;
-    public BookWork? BookWork { get; set; }
-    public BookEdition? BookEdition { get; set; }
+    public Family Family { get; private set; } = null!;
+    public BookWork? BookWork { get; private set; }
+    public BookEdition? BookEdition { get; private set; }
 
     public static WishlistItem Create(
         Family family,
@@ -23,17 +23,17 @@ public sealed class WishlistItem
         ArgumentNullException.ThrowIfNull(family);
         ArgumentException.ThrowIfNullOrWhiteSpace(title);
 
+        var resolvedBookWork = bookWork ?? bookEdition?.BookWork;
+
         if (bookEdition is not null && !bookEdition.IsAttachedToWork)
         {
             throw new InvalidOperationException("Edition must belong to a work before it can be added to the wishlist.");
         }
 
-        if (bookEdition is not null && bookWork is not null && bookEdition.BookWorkId != Guid.Empty && bookEdition.BookWorkId != bookWork.Id)
+        if (bookEdition is not null && resolvedBookWork is not null && bookEdition.BookWorkId != resolvedBookWork.Id)
         {
             throw new InvalidOperationException("Edition must belong to the same work as the wishlist item.");
         }
-
-        var resolvedBookWork = bookWork ?? bookEdition?.BookWork;
 
         var item = new WishlistItem
         {
@@ -47,7 +47,6 @@ public sealed class WishlistItem
             FamilyId = family.Id,
         };
 
-        family.RegisterWishlistItem(item);
         return item;
     }
 

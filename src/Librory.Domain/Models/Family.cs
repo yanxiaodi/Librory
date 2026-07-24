@@ -66,7 +66,9 @@ public sealed class Family
         BookWork? bookWork = null,
         BookEdition? bookEdition = null)
     {
-        return WishlistItem.Create(this, title, author, bookWork, bookEdition);
+        var item = WishlistItem.Create(this, title, author, bookWork, bookEdition);
+        RegisterWishlistItem(item);
+        return item;
     }
 
     public DuplicateDetectionResult DetectPotentialDuplicate(string title)
