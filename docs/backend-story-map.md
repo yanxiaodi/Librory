@@ -344,6 +344,9 @@ Store manual reading preferences and return recommendation inputs that the UI an
 
 Let users save books they want to buy later without marking them as owned.
 
+This implementation slice covers the domain and application layers only.
+API endpoints and persistence wiring will be added in a later story slice.
+
 ### User Stories
 
 - As a user, I want to add a book to a wishlist so I can find it later.
@@ -351,9 +354,10 @@ Let users save books they want to buy later without marking them as owned.
 
 ### Acceptance Criteria
 
-- The API persists wishlist items separately from owned copies.
+- The domain can create wishlist items separately from owned copies.
 - A wishlist item can reference a work, edition, or fuzzy match result.
-- A wishlist item can later be converted into an owned copy.
+- The application layer can add and map wishlist items for a family context.
+- Converting wishlist items into owned copies remains available for a later API/persistence slice.
 
 ## Story-08: Localization-Aware Shaping
 
