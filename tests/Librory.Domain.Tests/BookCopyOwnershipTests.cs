@@ -35,6 +35,8 @@ public class BookCopyOwnershipTests
         Assert.Equal(12.5m, copy.PurchasePrice);
         Assert.Equal("Kids shelf", copy.ShelfLocation);
         Assert.Equal(new DateTimeOffset(2026, 7, 24, 12, 0, 0, TimeSpan.Zero), copy.PurchasedAt);
+        Assert.Equal(BookCopyDuplicateStatus.Unchecked, copy.DuplicateStatus);
+        Assert.Null(copy.IntakeNotes);
     }
 
     [Fact]
@@ -51,6 +53,8 @@ public class BookCopyOwnershipTests
         Assert.Null(copy.PurchasePrice);
         Assert.Null(copy.ShelfLocation);
         Assert.Null(copy.PurchasedAt);
+        Assert.Equal(BookCopyDuplicateStatus.Unchecked, copy.DuplicateStatus);
+        Assert.Null(copy.IntakeNotes);
     }
 
     [Fact]
@@ -70,6 +74,38 @@ public class BookCopyOwnershipTests
         Assert.Null(copy.Condition);
         Assert.Null(copy.PurchaseStore);
         Assert.Null(copy.ShelfLocation);
+        Assert.Null(copy.IntakeNotes);
+    }
+
+    [Fact]
+    public void Family_add_book_copy_accepts_duplicate_status_and_notes()
+    {
+        var family = Family.Create("The Yans");
+        var member = family.AddMember("Alice");
+        var edition = BookWork.Create("Charlotte's Web").AddEdition(isbn: "978-0-06-112495-2");
+
+        var copy = family.AddBookCopy(
+            edition,
+            member,
+            duplicateStatus: BookCopyDuplicateStatus.ConfirmedUnique,
+            intakeNotes: "  First copy after review  ");
+
+        Assert.Equal(BookCopyDuplicateStatus.ConfirmedUnique, copy.DuplicateStatus);
+        Assert.Equal("First copy after review", copy.IntakeNotes);
+    }
+
+    [Fact]
+    public void BookCopy_confirm_duplicate_status_updates_status_and_rejects_reset()
+    {
+        var family = Family.Create("The Yans");
+        var member = family.AddMember("Alice");
+        var edition = BookWork.Create("Charlotte's Web").AddEdition(isbn: "978-0-06-112495-2");
+        var copy = family.AddBookCopy(edition, member);
+
+        copy.ConfirmDuplicateStatus(BookCopyDuplicateStatus.ConfirmedDuplicate);
+
+        Assert.Equal(BookCopyDuplicateStatus.ConfirmedDuplicate, copy.DuplicateStatus);
+        Assert.Throws<InvalidOperationException>(() => copy.ConfirmDuplicateStatus(BookCopyDuplicateStatus.Unchecked));
     }
 
     [Fact]

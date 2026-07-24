@@ -234,11 +234,15 @@ Let a user save a purchased book into the family library with the minimum viable
 - As a family admin or member, I want to start with only the minimum required fields so intake stays fast.
 - As a family admin or member, I want to complete optional fields later so I do not lose momentum at the shelf or at home.
 
+### Modeling Note
+
+`story-03` only creates `BookCopy` records. It assumes the book has already been resolved to a `BookEdition` by a separate catalog or recognition flow. If the edition is not known yet, the user must resolve that first rather than creating a provisional copy.
+
 ### Acceptance Criteria
 
 - The API can create a persisted copy for a purchased book.
-- The minimum intake path records title, owning member, and duplicate confirmation state.
-- Optional fields such as price, store, shelf location, purchase date, and notes can be added later.
+- The minimum intake path records edition, owning member, and duplicate confirmation state.
+- Optional fields such as condition, price, store, shelf location, purchase date, and notes can be added later.
 - The saved record belongs to the current family scope.
 
 ## Story-04: Shelf Scan Sessions
