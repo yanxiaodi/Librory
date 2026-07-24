@@ -6,7 +6,8 @@ public sealed class BookWork
     public string CanonicalTitle { get; set; } = string.Empty;
     public string? CanonicalAuthor { get; set; }
     public LocalizedText? Summary { get; set; }
-    public List<BookEdition> Editions { get; } = [];
+    private readonly List<BookEdition> _editions = [];
+    public IReadOnlyList<BookEdition> Editions => _editions;
 
     public static BookWork Create(string canonicalTitle, string? canonicalAuthor = null)
     {
@@ -39,9 +40,9 @@ public sealed class BookWork
     {
         ArgumentNullException.ThrowIfNull(edition);
 
-        if (Editions.All(existing => existing.Id != edition.Id))
+        if (_editions.All(existing => existing.Id != edition.Id))
         {
-            Editions.Add(edition);
+            _editions.Add(edition);
         }
     }
 }

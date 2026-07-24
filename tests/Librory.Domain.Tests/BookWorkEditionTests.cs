@@ -41,6 +41,22 @@ public class BookWorkEditionTests
     }
 
     [Fact]
+    public void BookWork_add_two_editions_registers_both_editions()
+    {
+        var work = BookWork.Create("Charlotte's Web", "E. B. White");
+
+        var firstEdition = work.AddEdition(isbn: "978-0-06-112495-2", format: "Hardcover", publicationYear: 2006);
+        var secondEdition = work.AddEdition(isbn: "978-1-234-56789-0", format: "Paperback", publicationYear: 2011);
+
+        Assert.Equal(2, work.Editions.Count);
+        Assert.Contains(firstEdition, work.Editions);
+        Assert.Contains(secondEdition, work.Editions);
+        Assert.NotEqual(firstEdition.Id, secondEdition.Id);
+        Assert.Equal(work.Id, firstEdition.BookWorkId);
+        Assert.Equal(work.Id, secondEdition.BookWorkId);
+    }
+
+    [Fact]
     public void BookWork_add_edition_uses_null_for_blank_optional_fields()
     {
         var work = BookWork.Create("Charlotte's Web");
@@ -78,5 +94,13 @@ public class BookWorkEditionTests
 
         Assert.Single(work.Editions);
         Assert.Same(edition, work.Editions[0]);
+    }
+
+    [Fact]
+    public void BookEdition_has_a_non_empty_id_when_created()
+    {
+        var edition = new BookEdition();
+
+        Assert.NotEqual(Guid.Empty, edition.Id);
     }
 }
