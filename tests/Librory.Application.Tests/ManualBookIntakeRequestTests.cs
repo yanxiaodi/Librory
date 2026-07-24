@@ -16,12 +16,12 @@ public class ManualBookIntakeRequestTests
         var request = new ManualBookIntakeRequest(
             edition,
             member,
-            "Good",
-            "Thrift Shop",
-            12.5m,
-            "Kids shelf",
-            new DateTimeOffset(2026, 7, 24, 12, 0, 0, TimeSpan.Zero),
             BookCopyDuplicateStatus.ConfirmedUnique,
+            "  Good  ",
+            "  Thrift Shop  ",
+            12.5m,
+            "  Kids shelf  ",
+            new DateTimeOffset(2026, 7, 24, 12, 0, 0, TimeSpan.Zero),
             "  First copy after review  ");
 
         Assert.Same(edition, request.Edition);
@@ -32,17 +32,17 @@ public class ManualBookIntakeRequestTests
         Assert.Equal("Kids shelf", request.ShelfLocation);
         Assert.Equal(new DateTimeOffset(2026, 7, 24, 12, 0, 0, TimeSpan.Zero), request.PurchasedAt);
         Assert.Equal(BookCopyDuplicateStatus.ConfirmedUnique, request.DuplicateStatus);
-        Assert.Equal("  First copy after review  ", request.IntakeNotes);
+        Assert.Equal("First copy after review", request.IntakeNotes);
     }
 
     [Fact]
-    public void Request_defaults_duplicate_status_and_optional_metadata()
+    public void Request_requires_duplicate_status_and_defaults_optional_metadata()
     {
         var family = Family.Create("The Yans");
         var member = family.AddMember("Alice");
         var edition = BookWork.Create("Charlotte's Web").AddEdition(isbn: "978-0-06-112495-2");
 
-        var request = new ManualBookIntakeRequest(edition, member);
+        var request = new ManualBookIntakeRequest(edition, member, BookCopyDuplicateStatus.Unchecked);
 
         Assert.Equal(BookCopyDuplicateStatus.Unchecked, request.DuplicateStatus);
         Assert.Null(request.Condition);
@@ -59,7 +59,8 @@ public class ManualBookIntakeRequestTests
         var family = Family.Create("The Yans");
         var member = family.AddMember("Alice");
 
-        Assert.Throws<ArgumentNullException>(() => new ManualBookIntakeRequest(null!, member));
+        // null! exercises the runtime guard; the test is not about nullable flow analysis.
+        Assert.Throws<ArgumentNullException>(() => new ManualBookIntakeRequest(null!, member, BookCopyDuplicateStatus.Unchecked));
     }
 
     [Fact]
@@ -67,6 +68,6 @@ public class ManualBookIntakeRequestTests
     {
         var edition = BookWork.Create("Charlotte's Web").AddEdition(isbn: "978-0-06-112495-2");
 
-        Assert.Throws<ArgumentNullException>(() => new ManualBookIntakeRequest(edition, null!));
+        Assert.Throws<ArgumentNullException>(() => new ManualBookIntakeRequest(edition, null!, BookCopyDuplicateStatus.Unchecked));
     }
 }

@@ -4,4 +4,5 @@
 - Added a thin application-layer intake helper around existing `Family.AddBookCopy` domain behavior.
 - Added request and recorder tests for resolved edition, current family/member, optional metadata, and family mismatch validation.
 - Validation caught a C# constructor syntax issue in the first request model draft; switched to an explicit class constructor to keep the API simple and compile cleanly.
+- Applied review follow-up to normalize intake strings, require duplicate status explicitly, mark the implementation plan complete, and clarify the `null!` guard tests.
 - Verified with `dotnet test tests/Librory.Application.Tests/Librory.Application.Tests.csproj --filter ManualBookIntake` and `dotnet test tests/Librory.Domain.Tests/Librory.Domain.Tests.csproj --filter "BookCopyOwnershipTests|BookWorkEditionTests|BookWorkMetadataTests|BookEditionMetadataTests"`.

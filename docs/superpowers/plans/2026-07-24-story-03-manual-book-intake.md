@@ -16,8 +16,8 @@
 - Create: `src/Librory.Application/Intake/ManualBookIntakeRequest.cs`
 - Test: `tests/Librory.Application.Tests/ManualBookIntakeRequestTests.cs`
 
-- [ ] Define a request record for the intake flow that carries the resolved edition, owning member, and optional purchase details.
-- [ ] Verify the request trims or preserves values consistently with the domain model expectations.
+- [x] Define a request record for the intake flow that carries the resolved edition, owning member, and optional purchase details.
+- [x] Verify the request trims or preserves values consistently with the domain model expectations.
 
 ### Task 2: Add an application helper for manual intake
 
@@ -25,9 +25,9 @@
 - Create: `src/Librory.Application/Intake/ManualBookIntakeRecorder.cs`
 - Test: `tests/Librory.Application.Tests/ManualBookIntakeRecorderTests.cs`
 
-- [ ] Add a small helper that takes the current `Family`, current `Member`, and resolved `BookEdition`, then calls `Family.AddBookCopy(...)`.
-- [ ] Ensure the helper forwards duplicate status and optional intake metadata without mutating unrelated domain state.
-- [ ] Ensure the helper rejects mismatched family/member combinations via the existing domain validation.
+- [x] Add a small helper that takes the current `Family`, current `Member`, and resolved `BookEdition`, then calls `Family.AddBookCopy(...)`.
+- [x] Ensure the helper forwards duplicate status and optional intake metadata without mutating unrelated domain state.
+- [x] Ensure the helper rejects mismatched family/member combinations via the existing domain validation.
 
 ### Task 3: Keep docs aligned with the intake boundary
 
@@ -36,7 +36,6 @@
 - Update: `docs/prd.md`
 - Update: `docs/implementation-plan.md`
 
-- [ ] Keep `story-03` scoped to copy creation rather than work/edition resolution.
-- [ ] Keep the PRD minimum intake requirements aligned with the resolved-edition model.
-- [ ] Keep the implementation plan explicit that intake is family-scoped and edition-resolved.
-
+- [x] Keep `story-03` scoped to copy creation rather than work/edition resolution.
+- [x] Keep the PRD minimum intake requirements aligned with the resolved-edition model.
+- [x] Keep the implementation plan explicit that intake is family-scoped and edition-resolved.

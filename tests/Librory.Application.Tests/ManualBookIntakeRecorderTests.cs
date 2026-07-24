@@ -16,12 +16,12 @@ public class ManualBookIntakeRecorderTests
         var request = new ManualBookIntakeRequest(
             edition,
             member,
+            BookCopyDuplicateStatus.ConfirmedUnique,
             "Good",
             "Thrift Shop",
             12.5m,
             "Kids shelf",
             new DateTimeOffset(2026, 7, 24, 12, 0, 0, TimeSpan.Zero),
-            BookCopyDuplicateStatus.ConfirmedUnique,
             "First copy after review");
 
         var copy = ManualBookIntakeRecorder.Record(family, request);
@@ -50,7 +50,7 @@ public class ManualBookIntakeRecorderTests
         var secondFamily = Family.Create("Second");
         var member = firstFamily.AddMember("Alice");
         var edition = BookWork.Create("Charlotte's Web").AddEdition(isbn: "978-0-06-112495-2");
-        var request = new ManualBookIntakeRequest(edition, member);
+        var request = new ManualBookIntakeRequest(edition, member, BookCopyDuplicateStatus.Unchecked);
 
         var exception = Assert.Throws<InvalidOperationException>(() =>
             ManualBookIntakeRecorder.Record(secondFamily, request));
@@ -65,8 +65,9 @@ public class ManualBookIntakeRecorderTests
         var family = Family.Create("The Yans");
         var member = family.AddMember("Alice");
         var edition = BookWork.Create("Charlotte's Web").AddEdition(isbn: "978-0-06-112495-2");
-        var request = new ManualBookIntakeRequest(edition, member);
+        var request = new ManualBookIntakeRequest(edition, member, BookCopyDuplicateStatus.Unchecked);
 
+        // null! exercises the runtime guard; the test is not about nullable flow analysis.
         Assert.Throws<ArgumentNullException>(() => ManualBookIntakeRecorder.Record(null!, request));
     }
 

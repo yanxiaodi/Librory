@@ -7,12 +7,12 @@ public sealed class ManualBookIntakeRequest
     public ManualBookIntakeRequest(
         BookEdition edition,
         Member owningMember,
+        BookCopyDuplicateStatus duplicateStatus,
         string? condition = null,
         string? purchaseStore = null,
         decimal? purchasePrice = null,
         string? shelfLocation = null,
         DateTimeOffset? purchasedAt = null,
-        BookCopyDuplicateStatus duplicateStatus = BookCopyDuplicateStatus.Unchecked,
         string? intakeNotes = null)
     {
         ArgumentNullException.ThrowIfNull(edition);
@@ -20,13 +20,13 @@ public sealed class ManualBookIntakeRequest
 
         Edition = edition;
         OwningMember = owningMember;
-        Condition = condition;
-        PurchaseStore = purchaseStore;
+        Condition = Normalize(condition);
+        PurchaseStore = Normalize(purchaseStore);
         PurchasePrice = purchasePrice;
-        ShelfLocation = shelfLocation;
+        ShelfLocation = Normalize(shelfLocation);
         PurchasedAt = purchasedAt;
         DuplicateStatus = duplicateStatus;
-        IntakeNotes = intakeNotes;
+        IntakeNotes = Normalize(intakeNotes);
     }
 
     public BookEdition Edition { get; }
@@ -46,4 +46,9 @@ public sealed class ManualBookIntakeRequest
     public BookCopyDuplicateStatus DuplicateStatus { get; }
 
     public string? IntakeNotes { get; }
+
+    private static string? Normalize(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
 }
