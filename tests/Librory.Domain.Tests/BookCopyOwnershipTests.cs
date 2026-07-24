@@ -105,7 +105,7 @@ public class BookCopyOwnershipTests
         copy.ConfirmDuplicateStatus(BookCopyDuplicateStatus.ConfirmedDuplicate);
 
         Assert.Equal(BookCopyDuplicateStatus.ConfirmedDuplicate, copy.DuplicateStatus);
-        Assert.Throws<ArgumentException>(() => copy.ConfirmDuplicateStatus(BookCopyDuplicateStatus.Unchecked));
+        Assert.Throws<InvalidOperationException>(() => copy.ConfirmDuplicateStatus(BookCopyDuplicateStatus.Unchecked));
     }
 
     [Fact]

@@ -62,7 +62,7 @@ public sealed class BookCopy
     {
         if (duplicateStatus == BookCopyDuplicateStatus.Unchecked)
         {
-            throw new ArgumentException("Duplicate status cannot be reset to unchecked.", nameof(duplicateStatus));
+            throw new InvalidOperationException("Duplicate status cannot be reset to unchecked.");
         }
 
         DuplicateStatus = duplicateStatus;
