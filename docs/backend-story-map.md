@@ -156,12 +156,59 @@ Out of scope:
 
 Persist the core book entities so the app can distinguish between a work, an edition, and a physical copy.
 
+### Sub-Stories
+
+#### story-02a: Work and Edition Identity
+
+Create the core relationship between a book work and one or more editions.
+
+Acceptance criteria:
+
+- The backend can create a `BookWork`.
+- The backend can create a `BookEdition`.
+- A work can own many editions.
+- An edition must belong to exactly one work.
+- The model can distinguish a work from one of its editions.
+
+#### story-02b: Copy Ownership and Family Inventory
+
+Attach a physical copy to a family and one owning member.
+
+Acceptance criteria:
+
+- The backend can create a `BookCopy`.
+- A copy must belong to exactly one edition.
+- A copy must belong to exactly one family.
+- A copy must belong to exactly one owning member.
+- The model can represent the family library as owned physical copies.
+
+#### story-02c: Book Metadata and Inference Fields
+
+Store the metadata that later search, intake, and recommendation flows will need.
+
+Acceptance criteria:
+
+- The model can store author and title data on the work or edition where appropriate.
+- The model can store source metadata and confidence values for inferred data.
+- The model can carry book data that may later be localized or enriched.
+- The metadata model does not force a persistence schema yet.
+
 ### User Stories
 
 - As the system, I want to store a work so that multiple editions can point to the same title.
 - As the system, I want to store an edition so that hardcover, paperback, and special editions remain distinct.
 - As the system, I want to store a copy so that a family-owned physical book can be tracked independently of the edition.
 - As the system, I want to store source metadata and confidence values where book data is inferred.
+
+### Modeling Note
+
+The `Work -> Edition -> Copy` split is not just for storage. It also defines the unit of analysis for future features:
+
+- `BookWork` for cross-family popularity, search, and recommendation aggregation
+- `BookEdition` for version-specific comparison, popularity, and collector value
+- `BookCopy` for family-owned inventory, ownership, and purchase records
+
+Any future ranking, report, or dashboard must declare which level it counts at before implementation starts.
 
 ### Acceptance Criteria
 
