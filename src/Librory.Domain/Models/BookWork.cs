@@ -6,6 +6,8 @@ public sealed class BookWork
     public string CanonicalTitle { get; set; } = string.Empty;
     public string? CanonicalAuthor { get; set; }
     public LocalizedText? Summary { get; set; }
+    public MetadataProvenance? SummaryProvenance { get; set; }
+    public MetadataProvenance? CanonicalAuthorProvenance { get; set; }
     private readonly List<BookEdition> _editions = [];
     public IReadOnlyList<BookEdition> Editions => _editions;
 

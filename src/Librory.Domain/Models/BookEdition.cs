@@ -6,7 +6,10 @@ public sealed class BookEdition
     public Guid BookWorkId { get; private set; }
     public string? Isbn { get; set; }
     public string? Format { get; set; }
+    public LocalizedText? Subtitle { get; set; }
     public int? PublicationYear { get; set; }
+    public MetadataProvenance? SubtitleProvenance { get; set; }
+    public MetadataProvenance? PublicationYearProvenance { get; set; }
     public BookWork BookWork { get; private set; } = null!;
     public bool IsAttachedToWork => BookWorkId != Guid.Empty;
 
