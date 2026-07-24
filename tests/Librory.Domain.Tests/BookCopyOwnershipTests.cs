@@ -54,6 +54,25 @@ public class BookCopyOwnershipTests
     }
 
     [Fact]
+    public void Family_add_book_copy_normalizes_whitespace_fields_to_null()
+    {
+        var family = Family.Create("The Yans");
+        var member = family.AddMember("Alice");
+        var edition = BookWork.Create("Charlotte's Web").AddEdition(isbn: "978-0-06-112495-2");
+
+        var copy = family.AddBookCopy(
+            edition,
+            member,
+            condition: "   ",
+            purchaseStore: "\t",
+            shelfLocation: "  ");
+
+        Assert.Null(copy.Condition);
+        Assert.Null(copy.PurchaseStore);
+        Assert.Null(copy.ShelfLocation);
+    }
+
+    [Fact]
     public void Family_add_book_copy_throws_when_member_is_from_another_family()
     {
         var firstFamily = Family.Create("First");
@@ -77,5 +96,13 @@ public class BookCopyOwnershipTests
         var exception = Assert.Throws<InvalidOperationException>(() => BookCopy.Create(edition, family, member));
 
         Assert.Equal("Edition must belong to a work before a copy can be created.", exception.Message);
+    }
+
+    [Fact]
+    public void BookCopy_create_throws_when_edition_is_not_attached_to_a_work_directly()
+    {
+        Assert.Throws<ArgumentNullException>(() => BookCopy.Create(null!, Family.Create("The Yans"), new Member()));
+        Assert.Throws<ArgumentNullException>(() => BookCopy.Create(new BookEdition(), null!, new Member()));
+        Assert.Throws<ArgumentNullException>(() => BookCopy.Create(new BookEdition(), Family.Create("The Yans"), null!));
     }
 }

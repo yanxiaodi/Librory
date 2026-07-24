@@ -41,10 +41,10 @@ public sealed class BookCopy
 
         var copy = new BookCopy
         {
-            Condition = condition?.Trim(),
-            PurchaseStore = purchaseStore?.Trim(),
+            Condition = string.IsNullOrWhiteSpace(condition) ? null : condition.Trim(),
+            PurchaseStore = string.IsNullOrWhiteSpace(purchaseStore) ? null : purchaseStore.Trim(),
             PurchasePrice = purchasePrice,
-            ShelfLocation = shelfLocation?.Trim(),
+            ShelfLocation = string.IsNullOrWhiteSpace(shelfLocation) ? null : shelfLocation.Trim(),
             PurchasedAt = purchasedAt,
         };
 

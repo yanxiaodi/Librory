@@ -8,6 +8,7 @@ public sealed class BookEdition
     public string? Format { get; set; }
     public int? PublicationYear { get; set; }
     public BookWork BookWork { get; private set; } = null!;
+    public bool IsAttachedToWork => BookWorkId != Guid.Empty;
 
     public BookEdition()
     {
@@ -18,7 +19,7 @@ public sealed class BookEdition
     {
         ArgumentNullException.ThrowIfNull(work);
 
-        if (BookWorkId != Guid.Empty && BookWorkId != work.Id)
+        if (IsAttachedToWork && BookWorkId != work.Id)
         {
             throw new InvalidOperationException("Edition already belongs to a different work.");
         }
