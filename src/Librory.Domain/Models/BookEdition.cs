@@ -6,7 +6,7 @@ public sealed class BookEdition
     public Guid BookWorkId { get; private set; }
     public string? Isbn { get; set; }
     public string? Format { get; set; }
-    public string? Subtitle { get; set; }
+    public LocalizedText? Subtitle { get; set; }
     public int? PublicationYear { get; set; }
     public MetadataProvenance? SubtitleProvenance { get; set; }
     public MetadataProvenance? PublicationYearProvenance { get; set; }

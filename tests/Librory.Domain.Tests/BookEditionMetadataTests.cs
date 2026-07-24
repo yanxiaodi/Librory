@@ -18,12 +18,13 @@ public class BookEditionMetadataTests
 
         var edition = new BookEdition
         {
-            Subtitle = "A Special Edition",
+            Subtitle = new LocalizedText("A Special Edition", "收藏版"),
             SubtitleProvenance = provenance,
             PublicationYearProvenance = provenance,
         };
 
-        Assert.Equal("A Special Edition", edition.Subtitle);
+        Assert.Equal("A Special Edition", edition.Subtitle!.English);
+        Assert.Equal("收藏版", edition.Subtitle!.Chinese);
         Assert.Same(provenance, edition.SubtitleProvenance);
         Assert.Same(provenance, edition.PublicationYearProvenance);
     }
@@ -36,5 +37,12 @@ public class BookEditionMetadataTests
         Assert.Null(edition.Subtitle);
         Assert.Null(edition.SubtitleProvenance);
         Assert.Null(edition.PublicationYearProvenance);
+    }
+
+    [Fact]
+    public void Metadata_provenance_requires_confidence_to_stay_in_range()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new MetadataProvenance(confidence: -0.01m));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new MetadataProvenance(confidence: 1.01m));
     }
 }
