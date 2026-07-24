@@ -1,4 +1,5 @@
 using Librory.Domain.Models;
+using System.Reflection;
 using Xunit;
 
 namespace Librory.Domain.Tests;
@@ -71,5 +72,16 @@ public class FamilyDuplicateDetectionTests
         var exception = Assert.Throws<InvalidOperationException>(() => family.DetectPotentialDuplicate(edition));
 
         Assert.Equal("Edition must belong to a work before duplicate detection can run.", exception.Message);
+    }
+
+    [Fact]
+    public void Book_work_normalized_title_falls_back_when_derived_cache_is_missing()
+    {
+        var work = new BookWork();
+        typeof(BookWork).GetField("_canonicalTitle", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .SetValue(work, "  Charlotte's Web  ");
+
+        Assert.Equal("Charlotte's Web", work.CanonicalTitle);
+        Assert.Equal("CHARLOTTESWEB", work.NormalizedCanonicalTitle);
     }
 }

@@ -7,10 +7,12 @@ public sealed class BookWork
     private string _normalizedCanonicalTitle = string.Empty;
     public string CanonicalTitle
     {
-        get => _canonicalTitle;
+        get => _canonicalTitle.Trim();
         set => SetCanonicalTitle(value);
     }
-    public string NormalizedCanonicalTitle => _normalizedCanonicalTitle;
+    public string NormalizedCanonicalTitle => string.IsNullOrEmpty(_normalizedCanonicalTitle)
+        ? DuplicateDetectionResult.NormalizeTitle(CanonicalTitle)
+        : _normalizedCanonicalTitle;
     public string? CanonicalAuthor { get; set; }
     public LocalizedText? Summary { get; set; }
     public MetadataProvenance? SummaryProvenance { get; set; }
