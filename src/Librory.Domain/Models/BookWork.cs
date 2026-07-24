@@ -3,7 +3,16 @@ namespace Librory.Domain.Models;
 public sealed class BookWork
 {
     public Guid Id { get; init; } = Guid.NewGuid();
-    public string CanonicalTitle { get; set; } = string.Empty;
+    private string _canonicalTitle = string.Empty;
+    private string _normalizedCanonicalTitle = string.Empty;
+    public string CanonicalTitle
+    {
+        get => _canonicalTitle.Trim();
+        set => SetCanonicalTitle(value);
+    }
+    public string NormalizedCanonicalTitle => string.IsNullOrEmpty(_normalizedCanonicalTitle)
+        ? DuplicateDetectionResult.NormalizeTitle(CanonicalTitle)
+        : _normalizedCanonicalTitle;
     public string? CanonicalAuthor { get; set; }
     public LocalizedText? Summary { get; set; }
     public MetadataProvenance? SummaryProvenance { get; set; }
@@ -13,11 +22,9 @@ public sealed class BookWork
 
     public static BookWork Create(string canonicalTitle, string? canonicalAuthor = null)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(canonicalTitle);
-
         return new BookWork
         {
-            CanonicalTitle = canonicalTitle.Trim(),
+            CanonicalTitle = canonicalTitle,
             CanonicalAuthor = canonicalAuthor?.Trim(),
         };
     }
@@ -46,5 +53,13 @@ public sealed class BookWork
         {
             _editions.Add(edition);
         }
+    }
+
+    private void SetCanonicalTitle(string value)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(value);
+
+        _canonicalTitle = value.Trim();
+        _normalizedCanonicalTitle = DuplicateDetectionResult.NormalizeTitle(_canonicalTitle);
     }
 }

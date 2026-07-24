@@ -60,6 +60,57 @@ public sealed class Family
         return copy;
     }
 
+    public DuplicateDetectionResult DetectPotentialDuplicate(string title)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(title);
+
+        var normalizedTitle = DuplicateDetectionResult.NormalizeTitle(title);
+        var matches = new List<DuplicateMatch>();
+
+        foreach (var copy in BookCopies)
+        {
+            var bookWork = RequireBookWork(copy);
+            if (bookWork.NormalizedCanonicalTitle == normalizedTitle)
+            {
+                matches.Add(new DuplicateMatch(
+                    copy.Id,
+                    copy.BookEditionId,
+                    copy.BookEdition.BookWorkId,
+                    bookWork.CanonicalTitle,
+                    copy.BookEdition.Isbn,
+                    copy.BookEdition.Format,
+                    copy.BookEdition.PublicationYear));
+            }
+        }
+
+        return new DuplicateDetectionResult(title.Trim(), normalizedTitle, matches);
+    }
+
+    public DuplicateDetectionResult DetectPotentialDuplicate(BookEdition edition)
+    {
+        ArgumentNullException.ThrowIfNull(edition);
+
+        if (edition.BookWorkId == Guid.Empty)
+        {
+            throw new InvalidOperationException("Edition must belong to a work before duplicate detection can run.");
+        }
+
+        return DetectPotentialDuplicate(edition.BookWork.CanonicalTitle);
+    }
+
+    private static BookWork RequireBookWork(BookCopy copy)
+    {
+        ArgumentNullException.ThrowIfNull(copy);
+        ArgumentNullException.ThrowIfNull(copy.BookEdition);
+
+        if (copy.BookEdition.BookWorkId == Guid.Empty || copy.BookEdition.BookWork is null)
+        {
+            throw new InvalidOperationException("Every copy must point to an edition that belongs to a work before duplicate detection can run.");
+        }
+
+        return copy.BookEdition.BookWork;
+    }
+
     public Member AddMember(
         string displayName,
         MemberRole role = MemberRole.Member,

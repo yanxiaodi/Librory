@@ -303,13 +303,17 @@ Check the family library for already-owned books and surface warnings during sca
 - As a family member, I want duplicate checks to run against the whole family library.
 - As a family member, I want duplicate warnings to appear during shelf scanning so I can decide quickly.
 - As a family member, I want a better edition or better condition to still be visible as a potential reason to buy again.
+- As a family member, I want the system to treat the same title as a suspected duplicate even when spacing, punctuation, or capitalization differs.
+- As a family member, I want the warning to suggest capturing ISBN or barcode information when title matching is not enough.
 
 ### Acceptance Criteria
 
 - Duplicate detection can search across the family scope, not just the current member's books.
+- Duplicate detection treats normalized title matches as suspected duplicates, ignoring capitalization, whitespace, and punctuation.
 - Duplicate detection returns a warning rather than a hard block.
-- Duplicate output can include edition differences when the system has enough information.
+- Duplicate output can include edition hints such as ISBN or edition details when the system has enough information.
 - The same duplicate logic can be reused during shelf review and home intake.
+- The warning can point the user toward ISBN or barcode capture for better confirmation.
 
 ## Story-06: Recommendation Profiles
 
