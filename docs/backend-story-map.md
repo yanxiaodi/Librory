@@ -365,11 +365,14 @@ Return book data in a language-aware shape so the frontend can prefer English or
 
 - As a user, I want the system to return localized book fields so the UI can show the best available language.
 - As a user, I want the API to preserve both languages where available so data is not lost.
+- As a user, I want the domain to tell later layers which localized value to show so the application does not duplicate language rules.
 
 ### Acceptance Criteria
 
+- The domain can choose the preferred value from localized text using the user's selected language and a fallback to English.
+- The domain preserves English as the canonical source where no localized value exists.
+- Later application and API layers can reuse the domain helper for localized book fields, recommendation text, and duplicate warning text.
 - The API can return localized variants for title, subtitle, summary, genre labels, recommendation text, and duplicate warning text.
-- The API can prefer the user's selected language and fall back to the alternate language when needed.
 - The API keeps English as the canonical source where no localized value exists.
 
 ## Story-09: AI Orchestration

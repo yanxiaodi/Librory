@@ -36,4 +36,22 @@ public class BookWorkMetadataTests
         Assert.Null(work.SummaryProvenance);
         Assert.Null(work.CanonicalAuthorProvenance);
     }
+
+    [Fact]
+    public void Localized_text_prefers_chinese_when_requested_and_available()
+    {
+        var value = new LocalizedText("Charlotte's Web", "夏洛的网");
+
+        Assert.Equal("夏洛的网", value.GetValue(PreferredLanguage.Chinese));
+        Assert.Equal("Charlotte's Web", value.GetValue(PreferredLanguage.English));
+    }
+
+    [Fact]
+    public void Localized_text_falls_back_to_english_when_chinese_is_missing()
+    {
+        var value = new LocalizedText("Charlotte's Web");
+
+        Assert.Equal("Charlotte's Web", value.GetValue(PreferredLanguage.Chinese));
+        Assert.Equal("Charlotte's Web", value.GetValue(PreferredLanguage.English));
+    }
 }

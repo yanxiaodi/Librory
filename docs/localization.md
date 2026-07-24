@@ -17,6 +17,7 @@ The app UI must be localized, and UI language resources should be extracted into
 - Book intake should support both English and Chinese metadata.
 - Book content is primarily English, but a `preferredLanguage` field should guide display for users who are less comfortable with English.
 - Where localized values exist, the UI should prefer the selected language and fall back to the other language.
+- The domain should expose a reusable helper that returns the localized value for later application and API shaping.
 
 ## Suggested Data Fields
 
@@ -33,3 +34,4 @@ For book records, the following should be language-aware where applicable:
 
 - English remains the canonical source for most books in the initial version.
 - Chinese fields are not a separate product line; they are a supported presentation layer and metadata layer.
+- Application and API shaping remain a follow-up concern and should reuse the domain helper instead of duplicating language rules.

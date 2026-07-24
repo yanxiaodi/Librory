@@ -30,6 +30,7 @@ The app supports both individual-user and family-account setups. Family membersh
 - Family groups with invited members.
 - Bilingual UI support for English and Chinese.
 - Bilingual book metadata display where available.
+- Shared domain helpers that choose the right localized value for later UI and API shaping.
 - Wishlist support.
 
 ### Out of scope for MVP
