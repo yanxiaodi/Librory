@@ -84,6 +84,7 @@ Localized display text for a field such as title, summary, or genre labels.
 - A `BookCopy` can have one or more `PurchaseRecord` entries over time if needed for corrections.
 - A `WishlistItem` can reference a `BookWork`, `BookEdition`, or fuzzy search result.
 - A `ScanSession` stores temporary scan results and expires after a short retention window.
+- A `ScanCandidate` can be corrected in place inside its session so manual review does not need to rebuild the whole session.
 - A localized book field may store English and Chinese variants side by side.
 - A `Member` role controls invitation permissions and admin transfer.
 - A `PlatformAdmin` role is separate from family membership and controls system-level operations.

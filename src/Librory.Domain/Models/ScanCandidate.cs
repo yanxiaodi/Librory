@@ -32,11 +32,43 @@ public sealed class ScanCandidate
         return new ScanCandidate
         {
             DisplayTitle = displayTitle.Trim(),
-            Author = string.IsNullOrWhiteSpace(author) ? null : author.Trim(),
+            Author = Normalize(author),
             RecommendationScore = recommendationScore,
             IsAlreadyOwned = isAlreadyOwned,
-            DuplicateMessage = string.IsNullOrWhiteSpace(duplicateMessage) ? null : duplicateMessage.Trim(),
+            DuplicateMessage = Normalize(duplicateMessage),
             ConfidenceLabel = confidenceLabel.Trim(),
         };
+    }
+
+    public void ApplyCorrection(
+        string displayTitle,
+        string confidenceLabel,
+        string? author = null,
+        decimal recommendationScore = 0m,
+        bool isAlreadyOwned = false,
+        string? duplicateMessage = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(displayTitle);
+        ArgumentException.ThrowIfNullOrWhiteSpace(confidenceLabel);
+
+        if (recommendationScore is < 0m or > 1m)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(recommendationScore),
+                recommendationScore,
+                "Recommendation score must be between 0 and 1.");
+        }
+
+        DisplayTitle = displayTitle.Trim();
+        Author = Normalize(author);
+        RecommendationScore = recommendationScore;
+        IsAlreadyOwned = isAlreadyOwned;
+        DuplicateMessage = Normalize(duplicateMessage);
+        ConfidenceLabel = confidenceLabel.Trim();
+    }
+
+    private static string? Normalize(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 }

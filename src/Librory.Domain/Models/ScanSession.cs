@@ -40,8 +40,40 @@ public sealed class ScanSession
         _candidates.Add(candidate);
     }
 
+    public ScanCandidate CorrectCandidate(
+        Guid candidateId,
+        string displayTitle,
+        string confidenceLabel,
+        string? author = null,
+        decimal recommendationScore = 0m,
+        bool isAlreadyOwned = false,
+        string? duplicateMessage = null)
+    {
+        var candidate = GetCandidate(candidateId);
+        candidate.ApplyCorrection(
+            displayTitle,
+            confidenceLabel,
+            author,
+            recommendationScore,
+            isAlreadyOwned,
+            duplicateMessage);
+
+        return candidate;
+    }
+
     public bool IsExpired(DateTimeOffset? asOf = null)
     {
         return (asOf ?? DateTimeOffset.UtcNow) >= ExpiresAt;
+    }
+
+    private ScanCandidate GetCandidate(Guid candidateId)
+    {
+        var candidate = _candidates.SingleOrDefault(existing => existing.Id == candidateId);
+        if (candidate is null)
+        {
+            throw new InvalidOperationException("Candidate not found in this scan session.");
+        }
+
+        return candidate;
     }
 }

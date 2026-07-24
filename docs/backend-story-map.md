@@ -275,6 +275,10 @@ Acceptance criteria:
 
 Let a user correct a single scan candidate without restarting the whole shelf session.
 
+### Modeling Note
+
+The correction flow updates one candidate in place and leaves the rest of the session untouched. Any downstream duplicate or recommendation refresh is handled by the application layer after the domain candidate has been corrected.
+
 Acceptance criteria:
 
 - The backend can update one candidate from a scan session.

@@ -51,6 +51,63 @@ public class ScanSessionTests
     }
 
     [Fact]
+    public void Scan_session_correct_candidate_updates_only_the_target_candidate()
+    {
+        var family = Family.Create("The Yans");
+        var session = family.StartScanSession();
+        var firstCandidate = ScanCandidate.Create(
+            "Charlotte's Web",
+            confidenceLabel: "High",
+            author: "E. B. White",
+            recommendationScore: 0.92m,
+            isAlreadyOwned: true,
+            duplicateMessage: "Already owned by the family");
+        var secondCandidate = ScanCandidate.Create(
+            "Matilda",
+            confidenceLabel: "Medium",
+            author: "Roald Dahl",
+            recommendationScore: 0.78m,
+            duplicateMessage: "Different edition available");
+
+        session.AddCandidate(firstCandidate);
+        session.AddCandidate(secondCandidate);
+
+        var corrected = session.CorrectCandidate(
+            firstCandidate.Id,
+            "  The Spider and the Pig  ",
+            confidenceLabel: "  Medium  ",
+            author: "  E. B. White  ",
+            recommendationScore: 0.87m,
+            isAlreadyOwned: false,
+            duplicateMessage: "  Recheck duplicate after correction  ");
+
+        Assert.Same(firstCandidate, corrected);
+        Assert.Equal("The Spider and the Pig", firstCandidate.DisplayTitle);
+        Assert.Equal("E. B. White", firstCandidate.Author);
+        Assert.Equal(0.87m, firstCandidate.RecommendationScore);
+        Assert.False(firstCandidate.IsAlreadyOwned);
+        Assert.Equal("Recheck duplicate after correction", firstCandidate.DuplicateMessage);
+        Assert.Equal("Medium", firstCandidate.ConfidenceLabel);
+        Assert.Equal("Matilda", secondCandidate.DisplayTitle);
+        Assert.Equal("Medium", secondCandidate.ConfidenceLabel);
+        Assert.Equal(2, session.Candidates.Count);
+        Assert.Same(firstCandidate, session.Candidates[0]);
+        Assert.Same(secondCandidate, session.Candidates[1]);
+    }
+
+    [Fact]
+    public void Scan_session_correct_candidate_throws_when_candidate_is_missing()
+    {
+        var family = Family.Create("The Yans");
+        var session = family.StartScanSession();
+
+        Assert.Throws<InvalidOperationException>(() => session.CorrectCandidate(
+            Guid.NewGuid(),
+            "Charlotte's Web",
+            confidenceLabel: "High"));
+    }
+
+    [Fact]
     public void Scan_session_add_candidate_throws_when_candidate_is_null()
     {
         var family = Family.Create("The Yans");
