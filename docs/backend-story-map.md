@@ -257,6 +257,29 @@ Create temporary shelf scan sessions so users can review results without immedia
 - As a family member, I want scan results to persist temporarily so I can return to them soon after scanning.
 - As a family member, I want low-confidence or incomplete results to remain visible so uncertain matches are not hidden.
 
+### Sub-Stories
+
+#### story-04a: Scan Session Skeleton
+
+Create the temporary scan session record and store the initial batch of candidates for later review.
+
+Acceptance criteria:
+
+- The backend can create a scan session.
+- The backend can persist multiple recognized candidates under one session.
+- The backend can retain a session for a short, configurable retention window.
+- The backend can return the stored candidates for a recent session.
+
+#### story-04b: Candidate Correction
+
+Let a user correct a single scan candidate without restarting the whole shelf session.
+
+Acceptance criteria:
+
+- The backend can update one candidate from a scan session.
+- The backend can preserve the rest of the session when one candidate changes.
+- The backend can refresh duplicate and recommendation data for the corrected candidate.
+
 ### Acceptance Criteria
 
 - The API can create a scan session.

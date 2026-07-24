@@ -1,7 +1,7 @@
 namespace Librory.Application.Scanning;
 
 public sealed record ScanCandidateDto(
-    Guid CandidateId,
+    Guid Id,
     string DisplayTitle,
     string? Author,
     decimal RecommendationScore,

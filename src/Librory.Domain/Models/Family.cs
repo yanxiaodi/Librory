@@ -78,6 +78,13 @@ public sealed class Family
         return member;
     }
 
+    public ScanSession StartScanSession(TimeSpan? retentionWindow = null)
+    {
+        var session = ScanSession.Create(this, retentionWindow);
+        ScanSessions.Add(session);
+        return session;
+    }
+
     internal void RegisterMember(Member member)
     {
         ArgumentNullException.ThrowIfNull(member);
