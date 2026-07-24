@@ -193,7 +193,7 @@ Purpose:
 3. Agent Framework workflow extracts candidate titles from the image.
 4. Metadata is resolved from book data sources.
 5. Recommendation logic scores each candidate.
-6. Duplicate detection checks the family library.
+6. Duplicate detection checks the family library by normalized title and surfaces a warning when the same title appears, even if spacing, punctuation, or capitalization differs.
 7. API returns a structured result list.
 
 ### Home Intake Flow
@@ -201,7 +201,7 @@ Purpose:
 1. User rescans the purchased book.
 2. System resolves the best edition match.
 3. User confirms or corrects the result.
-4. API persists the copy and purchase record.
+4. Duplicate detection can warn on the normalized title before the API persists the copy and purchase record.
 
 ### Recommendation Flow
 

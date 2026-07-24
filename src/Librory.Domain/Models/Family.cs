@@ -60,6 +60,39 @@ public sealed class Family
         return copy;
     }
 
+    public DuplicateDetectionResult DetectPotentialDuplicate(string title)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(title);
+
+        var normalizedTitle = DuplicateDetectionResult.NormalizeTitle(title);
+        var matches = BookCopies
+            .Where(copy => copy.BookEdition.BookWorkId != Guid.Empty)
+            .Where(copy => DuplicateDetectionResult.NormalizeTitle(copy.BookEdition.BookWork.CanonicalTitle) == normalizedTitle)
+            .Select(copy => new DuplicateMatch(
+                copy.Id,
+                copy.BookEditionId,
+                copy.BookEdition.BookWorkId,
+                copy.BookEdition.BookWork.CanonicalTitle,
+                copy.BookEdition.Isbn,
+                copy.BookEdition.Format,
+                copy.BookEdition.PublicationYear))
+            .ToList();
+
+        return new DuplicateDetectionResult(title.Trim(), normalizedTitle, matches);
+    }
+
+    public DuplicateDetectionResult DetectPotentialDuplicate(BookEdition edition)
+    {
+        ArgumentNullException.ThrowIfNull(edition);
+
+        if (edition.BookWorkId == Guid.Empty)
+        {
+            throw new InvalidOperationException("Edition must belong to a work before duplicate detection can run.");
+        }
+
+        return DetectPotentialDuplicate(edition.BookWork.CanonicalTitle);
+    }
+
     public Member AddMember(
         string displayName,
         MemberRole role = MemberRole.Member,

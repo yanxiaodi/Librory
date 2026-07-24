@@ -44,6 +44,27 @@ public class ManualBookIntakeRecorderTests
     }
 
     [Fact]
+    public void RecordWithDuplicateDetection_returns_copy_and_duplicate_warning()
+    {
+        var family = Family.Create("The Yans");
+        var member = family.AddMember("Alice", MemberRole.Admin);
+        var existingEdition = BookWork.Create("Charlotte's Web", "E. B. White")
+            .AddEdition(isbn: "978-0-06-112495-2");
+        family.AddBookCopy(existingEdition, member);
+
+        var newEdition = BookWork.Create("charlotte s web", "E. B. White")
+            .AddEdition(isbn: "978-0-06-112495-2");
+        var request = new ManualBookIntakeRequest(newEdition, member, BookCopyDuplicateStatus.Unchecked);
+
+        var result = ManualBookIntakeRecorder.RecordWithDuplicateDetection(family, request);
+
+        Assert.Same(result.Copy, family.BookCopies[1]);
+        Assert.True(result.HasPotentialDuplicate);
+        Assert.Equal("Capture ISBN or barcode information to confirm the edition.", result.DuplicateWarning);
+        Assert.Single(result.DuplicateDetection.Matches);
+    }
+
+    [Fact]
     public void Record_uses_domain_validation_for_cross_family_members()
     {
         var firstFamily = Family.Create("First");

@@ -121,13 +121,16 @@ Goal: prevent accidental repeat purchases.
 - As a family member, I want duplicate warnings to appear during shelf scanning.
 - As a family member, I want duplicate warnings to still allow purchase if the new copy is a better edition or better condition.
 - As a family member, I want version differences to be visible when they are detected.
+- As a family member, I want the app to treat same-title matches as suspicious even when spacing, punctuation, or capitalization differs.
+- As a family member, I want the app to suggest ISBN or barcode capture when title matching is not enough.
 
 Acceptance criteria:
 
 - Duplicate detection runs during shelf review.
 - Duplicate detection treats already-owned as a warning, not a hard stop.
+- Duplicate detection treats normalized title matches as suspected duplicates.
 - The user can continue buying after seeing a warning.
-- Edition differences are shown when available.
+- Edition differences or ISBN hints are shown when available.
 
 ### Epic 5: Save Purchased Books
 

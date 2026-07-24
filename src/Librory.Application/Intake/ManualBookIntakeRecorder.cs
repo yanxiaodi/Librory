@@ -9,7 +9,16 @@ public static class ManualBookIntakeRecorder
         ArgumentNullException.ThrowIfNull(family);
         ArgumentNullException.ThrowIfNull(request);
 
-        return family.AddBookCopy(
+        return RecordWithDuplicateDetection(family, request).Copy;
+    }
+
+    public static ManualBookIntakeResult RecordWithDuplicateDetection(Family family, ManualBookIntakeRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(family);
+        ArgumentNullException.ThrowIfNull(request);
+
+        var duplicateDetection = family.DetectPotentialDuplicate(request.Edition);
+        var copy = family.AddBookCopy(
             request.Edition,
             request.OwningMember,
             request.Condition,
@@ -19,5 +28,7 @@ public static class ManualBookIntakeRecorder
             request.PurchasedAt,
             request.DuplicateStatus,
             request.IntakeNotes);
+
+        return new ManualBookIntakeResult(copy, duplicateDetection);
     }
 }
