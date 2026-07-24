@@ -234,15 +234,13 @@ Meaning:
 
 Minimum required at intake:
 
-- Title
-- Cover image
 - Owning member
 - Duplicate check confirmation
+- Resolved edition identity, with title and cover image coming from the selected work / edition record
 
 Fields that can be completed later:
 
 - Author
-- Edition
 - Price
 - Store
 - Shelf location
