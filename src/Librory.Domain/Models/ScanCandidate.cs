@@ -12,11 +12,11 @@ public sealed class ScanCandidate
 
     public static ScanCandidate Create(
         string displayTitle,
+        string confidenceLabel,
         string? author = null,
         decimal recommendationScore = 0m,
         bool isAlreadyOwned = false,
-        string? duplicateMessage = null,
-        string confidenceLabel = "")
+        string? duplicateMessage = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(displayTitle);
         ArgumentException.ThrowIfNullOrWhiteSpace(confidenceLabel);

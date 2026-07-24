@@ -21,14 +21,17 @@ public sealed class ScanSession
         }
 
         var now = DateTimeOffset.UtcNow;
+        var session = new ScanSession();
+        session.AttachTo(family, now, window);
+        return session;
+    }
 
-        return new ScanSession
-        {
-            FamilyId = family.Id,
-            Family = family,
-            CreatedAt = now,
-            ExpiresAt = now.Add(window),
-        };
+    private void AttachTo(Family family, DateTimeOffset createdAt, TimeSpan retentionWindow)
+    {
+        Family = family;
+        FamilyId = family.Id;
+        CreatedAt = createdAt;
+        ExpiresAt = createdAt.Add(retentionWindow);
     }
 
     public void AddCandidate(ScanCandidate candidate)
