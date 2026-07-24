@@ -36,7 +36,7 @@ public class BookCopyOwnershipTests
         Assert.Equal("Kids shelf", copy.ShelfLocation);
         Assert.Equal(new DateTimeOffset(2026, 7, 24, 12, 0, 0, TimeSpan.Zero), copy.PurchasedAt);
         Assert.Equal(BookCopyDuplicateStatus.Unchecked, copy.DuplicateStatus);
-        Assert.Null(copy.Notes);
+        Assert.Null(copy.IntakeNotes);
     }
 
     [Fact]
@@ -54,7 +54,7 @@ public class BookCopyOwnershipTests
         Assert.Null(copy.ShelfLocation);
         Assert.Null(copy.PurchasedAt);
         Assert.Equal(BookCopyDuplicateStatus.Unchecked, copy.DuplicateStatus);
-        Assert.Null(copy.Notes);
+        Assert.Null(copy.IntakeNotes);
     }
 
     [Fact]
@@ -74,7 +74,7 @@ public class BookCopyOwnershipTests
         Assert.Null(copy.Condition);
         Assert.Null(copy.PurchaseStore);
         Assert.Null(copy.ShelfLocation);
-        Assert.Null(copy.Notes);
+        Assert.Null(copy.IntakeNotes);
     }
 
     [Fact]
@@ -88,10 +88,24 @@ public class BookCopyOwnershipTests
             edition,
             member,
             duplicateStatus: BookCopyDuplicateStatus.ConfirmedUnique,
-            notes: "  First copy after review  ");
+            intakeNotes: "  First copy after review  ");
 
         Assert.Equal(BookCopyDuplicateStatus.ConfirmedUnique, copy.DuplicateStatus);
-        Assert.Equal("First copy after review", copy.Notes);
+        Assert.Equal("First copy after review", copy.IntakeNotes);
+    }
+
+    [Fact]
+    public void BookCopy_confirm_duplicate_status_updates_status_and_rejects_reset()
+    {
+        var family = Family.Create("The Yans");
+        var member = family.AddMember("Alice");
+        var edition = BookWork.Create("Charlotte's Web").AddEdition(isbn: "978-0-06-112495-2");
+        var copy = family.AddBookCopy(edition, member);
+
+        copy.ConfirmDuplicateStatus(BookCopyDuplicateStatus.ConfirmedDuplicate);
+
+        Assert.Equal(BookCopyDuplicateStatus.ConfirmedDuplicate, copy.DuplicateStatus);
+        Assert.Throws<ArgumentException>(() => copy.ConfirmDuplicateStatus(BookCopyDuplicateStatus.Unchecked));
     }
 
     [Fact]

@@ -39,7 +39,7 @@ public sealed class Family
         string? shelfLocation = null,
         DateTimeOffset? purchasedAt = null,
         BookCopyDuplicateStatus duplicateStatus = BookCopyDuplicateStatus.Unchecked,
-        string? notes = null)
+        string? intakeNotes = null)
     {
         ArgumentNullException.ThrowIfNull(edition);
         ArgumentNullException.ThrowIfNull(member);
@@ -54,7 +54,7 @@ public sealed class Family
             shelfLocation,
             purchasedAt,
             duplicateStatus,
-            notes);
+            intakeNotes);
 
         BookCopies.Add(copy);
         return copy;

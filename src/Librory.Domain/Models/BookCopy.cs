@@ -12,7 +12,7 @@ public sealed class BookCopy
     public decimal? PurchasePrice { get; set; }
     public string? ShelfLocation { get; set; }
     public DateTimeOffset? PurchasedAt { get; set; }
-    public string? Notes { get; set; }
+    public string? IntakeNotes { get; set; }
     public Family Family { get; private set; } = null!;
     public Member Member { get; private set; } = null!;
     public BookEdition BookEdition { get; private set; } = null!;
@@ -27,7 +27,7 @@ public sealed class BookCopy
         string? shelfLocation = null,
         DateTimeOffset? purchasedAt = null,
         BookCopyDuplicateStatus duplicateStatus = BookCopyDuplicateStatus.Unchecked,
-        string? notes = null)
+        string? intakeNotes = null)
     {
         ArgumentNullException.ThrowIfNull(bookEdition);
         ArgumentNullException.ThrowIfNull(family);
@@ -51,11 +51,21 @@ public sealed class BookCopy
             PurchasePrice = purchasePrice,
             ShelfLocation = string.IsNullOrWhiteSpace(shelfLocation) ? null : shelfLocation.Trim(),
             PurchasedAt = purchasedAt,
-            Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim(),
+            IntakeNotes = string.IsNullOrWhiteSpace(intakeNotes) ? null : intakeNotes.Trim(),
         };
 
         copy.AttachTo(bookEdition, family, member);
         return copy;
+    }
+
+    public void ConfirmDuplicateStatus(BookCopyDuplicateStatus duplicateStatus)
+    {
+        if (duplicateStatus == BookCopyDuplicateStatus.Unchecked)
+        {
+            throw new ArgumentException("Duplicate status cannot be reset to unchecked.", nameof(duplicateStatus));
+        }
+
+        DuplicateStatus = duplicateStatus;
     }
 
     private void AttachTo(BookEdition bookEdition, Family family, Member member)
