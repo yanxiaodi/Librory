@@ -60,6 +60,15 @@ public sealed class Family
         return copy;
     }
 
+    public WishlistItem AddWishlistItem(
+        string title,
+        string? author = null,
+        BookWork? bookWork = null,
+        BookEdition? bookEdition = null)
+    {
+        return WishlistItem.Create(this, title, author, bookWork, bookEdition);
+    }
+
     public DuplicateDetectionResult DetectPotentialDuplicate(string title)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(title);
@@ -187,6 +196,16 @@ public sealed class Family
         if (Members.All(existing => existing.Id != member.Id))
         {
             Members.Add(member);
+        }
+    }
+
+    internal void RegisterWishlistItem(WishlistItem wishlistItem)
+    {
+        ArgumentNullException.ThrowIfNull(wishlistItem);
+
+        if (WishlistItems.All(existing => existing.Id != wishlistItem.Id))
+        {
+            WishlistItems.Add(wishlistItem);
         }
     }
 }

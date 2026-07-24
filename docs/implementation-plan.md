@@ -21,6 +21,7 @@
 - Family library browse and search
 - Temporary scan session storage
 - Duplicate detection stub
+- Wishlist domain and application flow before API and persistence wiring
 
 ## Step 4: AI Integration
 
