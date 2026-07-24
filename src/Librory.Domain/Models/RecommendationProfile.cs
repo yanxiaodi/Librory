@@ -3,13 +3,13 @@ namespace Librory.Domain.Models;
 public sealed class RecommendationProfile
 {
     public Guid Id { get; init; } = Guid.NewGuid();
-    public Guid MemberId { get; set; }
+    public Guid MemberId { get; private set; }
     public int? MinimumAge { get; private set; }
     public int? MaximumAge { get; private set; }
     public List<string> FavoriteAuthors { get; } = [];
     public List<string> FavoriteGenres { get; } = [];
     public List<string> FavoriteStyles { get; } = [];
-    public Member Member { get; set; } = null!;
+    public Member Member { get; private set; } = null!;
 
     public void UpdatePreferences(
         int? minimumAge = null,
@@ -18,14 +18,17 @@ public sealed class RecommendationProfile
         IEnumerable<string>? favoriteGenres = null,
         IEnumerable<string>? favoriteStyles = null)
     {
-        ValidateAgeRange(minimumAge, maximumAge);
+        var effectiveMinimumAge = minimumAge ?? MinimumAge;
+        var effectiveMaximumAge = maximumAge ?? MaximumAge;
 
-        MinimumAge = minimumAge;
-        MaximumAge = maximumAge;
+        ValidateAgeRange(effectiveMinimumAge, effectiveMaximumAge);
 
-        ReplaceValues(FavoriteAuthors, favoriteAuthors);
-        ReplaceValues(FavoriteGenres, favoriteGenres);
-        ReplaceValues(FavoriteStyles, favoriteStyles);
+        MinimumAge = effectiveMinimumAge;
+        MaximumAge = effectiveMaximumAge;
+
+        UpdateValues(FavoriteAuthors, favoriteAuthors);
+        UpdateValues(FavoriteGenres, favoriteGenres);
+        UpdateValues(FavoriteStyles, favoriteStyles);
     }
 
     public static RecommendationProfile Create(
@@ -66,18 +69,18 @@ public sealed class RecommendationProfile
         }
     }
 
-    private static void ReplaceValues(List<string> target, IEnumerable<string>? values)
+    private static void UpdateValues(List<string> target, IEnumerable<string>? values)
     {
-        target.Clear();
-
         if (values is null)
         {
             return;
         }
 
+        target.Clear();
+
         foreach (var value in NormalizeValues(values))
         {
-            if (!target.Contains(value, StringComparer.Ordinal))
+            if (!target.Contains(value, StringComparer.OrdinalIgnoreCase))
             {
                 target.Add(value);
             }

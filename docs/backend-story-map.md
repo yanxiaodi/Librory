@@ -332,7 +332,8 @@ Store manual reading preferences and return recommendation inputs that the UI an
 - The model supports at least age range, favorite authors, favorite genres, and favorite styles.
 - The profile is stored per member, not per family-wide shared bucket.
 - The profile rejects impossible age ranges and accepts partially filled ranges.
-- The profile trims preference values and ignores blank entries.
+- The profile trims preference values, ignores blank entries, and deduplicates preference values case-insensitively.
+- The profile preserves existing preferences when an update only supplies a subset of fields.
 - The domain exposes a small curated set of default genres and styles for quick selection.
 - The API can produce recommendation inputs that combine rules with AI-assisted reasoning later.
 - Recommendation output remains separate from duplicate warnings.

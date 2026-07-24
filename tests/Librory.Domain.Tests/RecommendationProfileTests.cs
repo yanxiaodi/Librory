@@ -16,8 +16,8 @@ public class RecommendationProfileTests
             minimumAge: 8,
             maximumAge: 12,
             favoriteAuthors: ["Roald Dahl", "  Roald Dahl  ", " "],
-            favoriteGenres: RecommendationCategoryCatalog.DefaultGenres.Take(2),
-            favoriteStyles: RecommendationCategoryCatalog.DefaultStyles.Take(2));
+            favoriteGenres: ["Fantasy", "fantasy", "  fantasy  "],
+            favoriteStyles: ["Reflective", "reflective"]);
 
         Assert.Single(family.RecommendationProfiles);
         Assert.Same(profile, family.RecommendationProfiles[0]);
@@ -25,8 +25,8 @@ public class RecommendationProfileTests
         Assert.Equal(8, profile.MinimumAge);
         Assert.Equal(12, profile.MaximumAge);
         Assert.Equal(["Roald Dahl"], profile.FavoriteAuthors);
-        Assert.Equal(RecommendationCategoryCatalog.DefaultGenres.Take(2), profile.FavoriteGenres);
-        Assert.Equal(RecommendationCategoryCatalog.DefaultStyles.Take(2), profile.FavoriteStyles);
+        Assert.Equal(["Fantasy"], profile.FavoriteGenres);
+        Assert.Equal(["Reflective"], profile.FavoriteStyles);
     }
 
     [Fact]
@@ -54,6 +54,30 @@ public class RecommendationProfileTests
     }
 
     [Fact]
+    public void Family_get_or_create_recommendation_profile_keeps_existing_preferences_when_only_age_changes()
+    {
+        var family = Family.Create("The Yans");
+        var member = family.AddMember("Alice");
+
+        var profile = family.GetOrCreateRecommendationProfile(
+            member,
+            minimumAge: 8,
+            maximumAge: 12,
+            favoriteAuthors: ["Roald Dahl"],
+            favoriteGenres: ["Fantasy"],
+            favoriteStyles: ["Reflective"]);
+
+        var updated = family.GetOrCreateRecommendationProfile(member, minimumAge: 5);
+
+        Assert.Same(profile, updated);
+        Assert.Equal(5, updated.MinimumAge);
+        Assert.Equal(12, updated.MaximumAge);
+        Assert.Equal(["Roald Dahl"], updated.FavoriteAuthors);
+        Assert.Equal(["Fantasy"], updated.FavoriteGenres);
+        Assert.Equal(["Reflective"], updated.FavoriteStyles);
+    }
+
+    [Fact]
     public void Family_get_or_create_recommendation_profile_rejects_member_from_other_family()
     {
         var firstFamily = Family.Create("First");
@@ -78,6 +102,33 @@ public class RecommendationProfileTests
             family.GetOrCreateRecommendationProfile(member, minimumAge: -1));
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             family.GetOrCreateRecommendationProfile(member, maximumAge: -1));
+    }
+
+    [Fact]
+    public void Family_get_or_create_recommendation_profile_rejects_null_member()
+    {
+        var family = Family.Create("The Yans");
+
+        Assert.Throws<ArgumentNullException>(() => family.GetOrCreateRecommendationProfile(null!));
+    }
+
+    [Fact]
+    public void Recommendation_profile_create_rejects_null_member()
+    {
+        Assert.Throws<ArgumentNullException>(() => RecommendationProfile.Create(null!));
+    }
+
+    [Fact]
+    public void Family_get_or_create_recommendation_profile_rejects_duplicate_profiles_for_the_same_member()
+    {
+        var family = Family.Create("The Yans");
+        var member = family.AddMember("Alice");
+        family.RecommendationProfiles.Add(RecommendationProfile.Create(member));
+        family.RecommendationProfiles.Add(RecommendationProfile.Create(member));
+
+        var exception = Assert.Throws<InvalidOperationException>(() => family.GetOrCreateRecommendationProfile(member));
+
+        Assert.Equal("Family contains multiple recommendation profiles for the same member.", exception.Message);
     }
 
     [Fact]

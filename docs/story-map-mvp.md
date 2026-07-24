@@ -111,6 +111,7 @@ Acceptance criteria:
 - The user can configure common preference ranges.
 - Recommendation profiles are stored per member.
 - Recommendation profiles accept curated default genre and style choices.
+- Partial edits to a recommendation profile preserve the other saved preferences.
 - Recommendation and duplicate warnings are separate signals.
 - Requires a `RecommendationProfile` entity or equivalent persisted preference model.
 

@@ -151,7 +151,7 @@ public sealed class Family
             throw new InvalidOperationException("Member must belong to the same family as the recommendation profile.");
         }
 
-        var profile = RecommendationProfiles.SingleOrDefault(existing => existing.MemberId == member.Id);
+        var profile = FindRecommendationProfile(member.Id);
         if (profile is null)
         {
             profile = RecommendationProfile.Create(
@@ -167,6 +167,17 @@ public sealed class Family
 
         profile.UpdatePreferences(minimumAge, maximumAge, favoriteAuthors, favoriteGenres, favoriteStyles);
         return profile;
+    }
+
+    private RecommendationProfile? FindRecommendationProfile(Guid memberId)
+    {
+        var matches = RecommendationProfiles.Where(existing => existing.MemberId == memberId).ToList();
+        if (matches.Count > 1)
+        {
+            throw new InvalidOperationException("Family contains multiple recommendation profiles for the same member.");
+        }
+
+        return matches.SingleOrDefault();
     }
 
     internal void RegisterMember(Member member)
