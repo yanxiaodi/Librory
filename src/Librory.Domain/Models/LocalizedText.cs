@@ -8,7 +8,8 @@ public sealed record LocalizedText(
     {
         return preferredLanguage switch
         {
-            PreferredLanguage.Chinese when !string.IsNullOrWhiteSpace(Chinese) => Chinese!,
+            PreferredLanguage.Chinese when !string.IsNullOrWhiteSpace(Chinese) => Chinese,
+            PreferredLanguage.English => English,
             _ => English,
         };
     }

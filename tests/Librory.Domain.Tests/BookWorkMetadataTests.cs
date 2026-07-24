@@ -54,4 +54,12 @@ public class BookWorkMetadataTests
         Assert.Equal("Charlotte's Web", value.GetValue(PreferredLanguage.Chinese));
         Assert.Equal("Charlotte's Web", value.GetValue(PreferredLanguage.English));
     }
+
+    [Fact]
+    public void Localized_text_falls_back_to_english_when_chinese_is_whitespace()
+    {
+        var value = new LocalizedText("Charlotte's Web", "   ");
+
+        Assert.Equal("Charlotte's Web", value.GetValue(PreferredLanguage.Chinese));
+    }
 }
