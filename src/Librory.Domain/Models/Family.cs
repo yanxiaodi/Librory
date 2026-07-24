@@ -30,6 +30,32 @@ public sealed class Family
         return family;
     }
 
+    public BookCopy AddBookCopy(
+        BookEdition edition,
+        Member member,
+        string? condition = null,
+        string? purchaseStore = null,
+        decimal? purchasePrice = null,
+        string? shelfLocation = null,
+        DateTimeOffset? purchasedAt = null)
+    {
+        ArgumentNullException.ThrowIfNull(edition);
+        ArgumentNullException.ThrowIfNull(member);
+
+        var copy = BookCopy.Create(
+            edition,
+            this,
+            member,
+            condition,
+            purchaseStore,
+            purchasePrice,
+            shelfLocation,
+            purchasedAt);
+
+        BookCopies.Add(copy);
+        return copy;
+    }
+
     public Member AddMember(
         string displayName,
         MemberRole role = MemberRole.Member,
