@@ -1,4 +1,5 @@
 using Librory.Application;
+using Librory.Application.Families;
 using Librory.Infrastructure;
 using Librory.ServiceDefaults;
 
@@ -9,6 +10,8 @@ builder.Services.AddLibroryApplication();
 builder.Services.AddLibroryInfrastructure();
 
 var app = builder.Build();
+
+app.UseMiddleware<CurrentFamilyContextMiddleware>();
 
 app.MapGet("/", () => Results.Ok(new
 {
