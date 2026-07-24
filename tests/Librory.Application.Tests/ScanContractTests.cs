@@ -34,6 +34,7 @@ public class ScanContractTests
 
         Assert.Single(dto.Candidates);
         Assert.Same(candidate, dto.Candidates[0]);
+        Assert.Equal(candidate.Id, dto.Candidates[0].Id);
         Assert.Equal("Charlotte's Web", dto.Candidates[0].DisplayTitle);
     }
 }

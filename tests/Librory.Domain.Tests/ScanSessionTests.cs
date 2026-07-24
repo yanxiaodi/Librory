@@ -27,15 +27,13 @@ public class ScanSessionTests
         var family = Family.Create("The Yans");
 
         var session = family.StartScanSession(TimeSpan.FromDays(3));
-        var candidate = new ScanCandidate
-        {
-            DisplayTitle = "Charlotte's Web",
-            Author = "E. B. White",
-            RecommendationScore = 0.92m,
-            IsAlreadyOwned = true,
-            DuplicateMessage = "Already owned by the family",
-            ConfidenceLabel = "High",
-        };
+        var candidate = ScanCandidate.Create(
+            "Charlotte's Web",
+            author: "E. B. White",
+            recommendationScore: 0.92m,
+            isAlreadyOwned: true,
+            duplicateMessage: "Already owned by the family",
+            confidenceLabel: "High");
 
         session.AddCandidate(candidate);
 
@@ -48,6 +46,8 @@ public class ScanSessionTests
         Assert.True(session.Candidates[0].IsAlreadyOwned);
         Assert.Equal("Already owned by the family", session.Candidates[0].DuplicateMessage);
         Assert.Equal("High", session.Candidates[0].ConfidenceLabel);
+        Assert.Equal(family.Id, session.FamilyId);
+        Assert.Same(family, session.Family);
     }
 
     [Fact]

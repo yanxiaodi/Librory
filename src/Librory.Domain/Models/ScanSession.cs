@@ -4,6 +4,7 @@ public sealed class ScanSession
 {
     public Guid Id { get; init; } = Guid.NewGuid();
     public Guid FamilyId { get; private set; }
+    public Family Family { get; private set; } = null!;
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset ExpiresAt { get; private set; }
     private readonly List<ScanCandidate> _candidates = [];
@@ -24,6 +25,7 @@ public sealed class ScanSession
         return new ScanSession
         {
             FamilyId = family.Id,
+            Family = family,
             CreatedAt = now,
             ExpiresAt = now.Add(window),
         };
