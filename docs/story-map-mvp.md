@@ -102,13 +102,16 @@ Goal: show whether a book matches the user or the family’s reading preferences
 - As a family member, I want recommendations based on themes, style, and genre.
 - As a family member, I want recommendations based on similar books.
 - As a family member, I want recommendations based on similar authors.
-- As a family member, I want an explanation for why a book was recommended.
+- As a family member, I want recommendation preferences to stay attached to my own profile.
 
 Acceptance criteria:
 
 - Recommendation uses both rule-based signals and AI-assisted reasoning.
 - The first version does not require automatic learning.
 - The user can configure common preference ranges.
+- Recommendation profiles are stored per member.
+- Recommendation profiles accept curated default genre and style choices.
+- Partial edits to a recommendation profile preserve the other saved preferences.
 - Recommendation and duplicate warnings are separate signals.
 - Requires a `RecommendationProfile` entity or equivalent persisted preference model.
 

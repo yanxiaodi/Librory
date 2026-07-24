@@ -66,7 +66,9 @@ A temporary shelf scan result.
 
 ### RecommendationProfile
 
-Rules and preferences for a child or family member.
+Rules and preferences for a child or family member, stored per member with age range and curated reading preferences.
+
+Updates preserve existing values unless a new value is supplied, so partial edits do not wipe unrelated preferences.
 
 ### LocalizedText
 
