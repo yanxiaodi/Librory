@@ -8,6 +8,13 @@ namespace Librory.Application.Tests;
 public class CurrentFamilyContextResolverTests
 {
     [Fact]
+    public void TryResolve_throws_when_principal_is_null()
+    {
+        Assert.Throws<ArgumentNullException>(() =>
+            CurrentFamilyContextResolver.TryResolve(null!, out _));
+    }
+
+    [Fact]
     public void TryResolve_returns_context_when_claims_are_valid()
     {
         var familyId = Guid.NewGuid();
@@ -35,6 +42,20 @@ public class CurrentFamilyContextResolverTests
         var principal = new ClaimsPrincipal(new ClaimsIdentity());
 
         var resolved = CurrentFamilyContextResolver.TryResolve(principal, out var context);
+
+        Assert.False(resolved);
+        Assert.Null(context);
+    }
+
+    [Fact]
+    public void TryResolve_returns_false_when_partial_claims_present()
+    {
+        var identity = new ClaimsIdentity(new[]
+        {
+            new Claim(CurrentFamilyContextClaimTypes.FamilyId, Guid.NewGuid().ToString()),
+        }, authenticationType: "test");
+
+        var resolved = CurrentFamilyContextResolver.TryResolve(new ClaimsPrincipal(identity), out var context);
 
         Assert.False(resolved);
         Assert.Null(context);
