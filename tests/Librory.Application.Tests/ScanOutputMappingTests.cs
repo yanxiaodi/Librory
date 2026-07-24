@@ -51,4 +51,19 @@ public class ScanOutputMappingTests
         Assert.True(dto.IsAlreadyOwned);
         Assert.Equal("Manual review already noted this one.", dto.DuplicateMessage);
     }
+
+    [Fact]
+    public void Scan_candidate_dto_factory_leaves_duplicate_flags_clear_when_no_match_exists()
+    {
+        var family = Family.Create("The Yans");
+        var candidate = ScanCandidate.Create(
+            "Some Other Book",
+            confidenceLabel: "Low",
+            recommendationScore: 0.22m);
+
+        var dto = ScanCandidateDtoFactory.Create(family, candidate);
+
+        Assert.False(dto.IsAlreadyOwned);
+        Assert.Null(dto.DuplicateMessage);
+    }
 }

@@ -61,4 +61,15 @@ public class FamilyDuplicateDetectionTests
         Assert.Equal("Matilda", result.Matches[0].Title);
         Assert.Equal("978-0-14-241037-0", result.Matches[0].Isbn);
     }
+
+    [Fact]
+    public void Family_detect_potential_duplicate_rejects_an_edition_that_is_not_attached_to_a_work()
+    {
+        var family = Family.Create("The Yans");
+        var edition = new BookEdition();
+
+        var exception = Assert.Throws<InvalidOperationException>(() => family.DetectPotentialDuplicate(edition));
+
+        Assert.Equal("Edition must belong to a work before duplicate detection can run.", exception.Message);
+    }
 }
