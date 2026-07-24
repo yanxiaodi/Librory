@@ -18,16 +18,7 @@ public sealed class ScanCandidate
         bool isAlreadyOwned = false,
         string? duplicateMessage = null)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(displayTitle);
-        ArgumentException.ThrowIfNullOrWhiteSpace(confidenceLabel);
-
-        if (recommendationScore is < 0m or > 1m)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(recommendationScore),
-                recommendationScore,
-                "Recommendation score must be between 0 and 1.");
-        }
+        Validate(displayTitle, confidenceLabel, recommendationScore);
 
         return new ScanCandidate
         {
@@ -40,6 +31,9 @@ public sealed class ScanCandidate
         };
     }
 
+    /// <summary>
+    /// Mutates this candidate in place with corrected recognition or review data.
+    /// </summary>
     public void ApplyCorrection(
         string displayTitle,
         string confidenceLabel,
@@ -48,16 +42,7 @@ public sealed class ScanCandidate
         bool isAlreadyOwned = false,
         string? duplicateMessage = null)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(displayTitle);
-        ArgumentException.ThrowIfNullOrWhiteSpace(confidenceLabel);
-
-        if (recommendationScore is < 0m or > 1m)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(recommendationScore),
-                recommendationScore,
-                "Recommendation score must be between 0 and 1.");
-        }
+        Validate(displayTitle, confidenceLabel, recommendationScore);
 
         DisplayTitle = displayTitle.Trim();
         Author = Normalize(author);
@@ -70,5 +55,19 @@ public sealed class ScanCandidate
     private static string? Normalize(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private static void Validate(string displayTitle, string confidenceLabel, decimal recommendationScore)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(displayTitle);
+        ArgumentException.ThrowIfNullOrWhiteSpace(confidenceLabel);
+
+        if (recommendationScore is < 0m or > 1m)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(recommendationScore),
+                recommendationScore,
+                "Recommendation score must be between 0 and 1.");
+        }
     }
 }

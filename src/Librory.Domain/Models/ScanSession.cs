@@ -40,7 +40,7 @@ public sealed class ScanSession
         _candidates.Add(candidate);
     }
 
-    public ScanCandidate CorrectCandidate(
+    public void CorrectCandidate(
         Guid candidateId,
         string displayTitle,
         string confidenceLabel,
@@ -49,7 +49,7 @@ public sealed class ScanSession
         bool isAlreadyOwned = false,
         string? duplicateMessage = null)
     {
-        var candidate = GetCandidate(candidateId);
+        var candidate = GetCandidateById(candidateId);
         candidate.ApplyCorrection(
             displayTitle,
             confidenceLabel,
@@ -57,8 +57,6 @@ public sealed class ScanSession
             recommendationScore,
             isAlreadyOwned,
             duplicateMessage);
-
-        return candidate;
     }
 
     public bool IsExpired(DateTimeOffset? asOf = null)
@@ -66,7 +64,7 @@ public sealed class ScanSession
         return (asOf ?? DateTimeOffset.UtcNow) >= ExpiresAt;
     }
 
-    private ScanCandidate GetCandidate(Guid candidateId)
+    private ScanCandidate GetCandidateById(Guid candidateId)
     {
         var candidate = _candidates.SingleOrDefault(existing => existing.Id == candidateId);
         if (candidate is null)

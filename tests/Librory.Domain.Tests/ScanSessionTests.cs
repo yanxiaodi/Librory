@@ -72,7 +72,7 @@ public class ScanSessionTests
         session.AddCandidate(firstCandidate);
         session.AddCandidate(secondCandidate);
 
-        var corrected = session.CorrectCandidate(
+        session.CorrectCandidate(
             firstCandidate.Id,
             "  The Spider and the Pig  ",
             confidenceLabel: "  Medium  ",
@@ -81,7 +81,6 @@ public class ScanSessionTests
             isAlreadyOwned: false,
             duplicateMessage: "  Recheck duplicate after correction  ");
 
-        Assert.Same(firstCandidate, corrected);
         Assert.Equal("The Spider and the Pig", firstCandidate.DisplayTitle);
         Assert.Equal("E. B. White", firstCandidate.Author);
         Assert.Equal(0.87m, firstCandidate.RecommendationScore);
