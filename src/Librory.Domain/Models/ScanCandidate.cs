@@ -18,6 +18,47 @@ public sealed class ScanCandidate
         bool isAlreadyOwned = false,
         string? duplicateMessage = null)
     {
+        Validate(displayTitle, confidenceLabel, recommendationScore);
+
+        return new ScanCandidate
+        {
+            DisplayTitle = displayTitle.Trim(),
+            Author = Normalize(author),
+            RecommendationScore = recommendationScore,
+            IsAlreadyOwned = isAlreadyOwned,
+            DuplicateMessage = Normalize(duplicateMessage),
+            ConfidenceLabel = confidenceLabel.Trim(),
+        };
+    }
+
+    /// <summary>
+    /// Mutates this candidate in place with corrected recognition or review data.
+    /// </summary>
+    public void ApplyCorrection(
+        string displayTitle,
+        string confidenceLabel,
+        string? author = null,
+        decimal recommendationScore = 0m,
+        bool isAlreadyOwned = false,
+        string? duplicateMessage = null)
+    {
+        Validate(displayTitle, confidenceLabel, recommendationScore);
+
+        DisplayTitle = displayTitle.Trim();
+        Author = Normalize(author);
+        RecommendationScore = recommendationScore;
+        IsAlreadyOwned = isAlreadyOwned;
+        DuplicateMessage = Normalize(duplicateMessage);
+        ConfidenceLabel = confidenceLabel.Trim();
+    }
+
+    private static string? Normalize(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private static void Validate(string displayTitle, string confidenceLabel, decimal recommendationScore)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(displayTitle);
         ArgumentException.ThrowIfNullOrWhiteSpace(confidenceLabel);
 
@@ -28,15 +69,5 @@ public sealed class ScanCandidate
                 recommendationScore,
                 "Recommendation score must be between 0 and 1.");
         }
-
-        return new ScanCandidate
-        {
-            DisplayTitle = displayTitle.Trim(),
-            Author = string.IsNullOrWhiteSpace(author) ? null : author.Trim(),
-            RecommendationScore = recommendationScore,
-            IsAlreadyOwned = isAlreadyOwned,
-            DuplicateMessage = string.IsNullOrWhiteSpace(duplicateMessage) ? null : duplicateMessage.Trim(),
-            ConfidenceLabel = confidenceLabel.Trim(),
-        };
     }
 }
