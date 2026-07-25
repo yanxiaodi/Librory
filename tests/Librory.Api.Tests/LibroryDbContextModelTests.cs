@@ -24,4 +24,26 @@ public sealed class LibroryDbContextModelTests
         Assert.Equal("book_copies", db.Model.FindEntityType(typeof(BookCopy))!.GetTableName());
         Assert.Equal("wishlist_items", db.Model.FindEntityType(typeof(WishlistItem))!.GetTableName());
     }
+
+    [Fact]
+    public void Model_enforces_family_and_member_uniqueness()
+    {
+        var options = new DbContextOptionsBuilder<LibroryDbContext>()
+            .UseInMemoryDatabase(nameof(Model_enforces_family_and_member_uniqueness))
+            .Options;
+
+        using var db = new LibroryDbContext(options);
+
+        var familyType = db.Model.FindEntityType(typeof(Family));
+        var memberType = db.Model.FindEntityType(typeof(Member));
+
+        Assert.NotNull(familyType);
+        Assert.NotNull(memberType);
+
+        Assert.Contains(familyType!.GetIndexes(), index =>
+            index.IsUnique && index.Properties.Select(property => property.Name).SequenceEqual(["Name"]));
+
+        Assert.Contains(memberType!.GetIndexes(), index =>
+            index.IsUnique && index.Properties.Select(property => property.Name).SequenceEqual(["FamilyId", "DisplayName"]));
+    }
 }

@@ -14,6 +14,7 @@ internal sealed class FamilyConfiguration : IEntityTypeConfiguration<Family>
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).ValueGeneratedNever();
         builder.Property(x => x.Name).HasMaxLength(200).IsRequired();
+        builder.HasIndex(x => x.Name).IsUnique();
 
         builder.Ignore(x => x.RecommendationProfiles);
         builder.Ignore(x => x.ScanSessions);

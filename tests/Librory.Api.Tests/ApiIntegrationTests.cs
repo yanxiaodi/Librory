@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Text.Json;
 using Librory.Api.Contracts;
 using Librory.Domain.Models;
 using Librory.Infrastructure.Persistence;
@@ -160,6 +161,33 @@ public sealed class ApiIntegrationTests
         Assert.Equal(2, payload.PageSize);
         Assert.Equal(3, payload.TotalCount);
         Assert.Single(payload.Items);
+    }
+
+    [Fact]
+    public async Task Wishlist_page_validation_omits_empty_error_keys()
+    {
+        using var factory = new ApiFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var bootstrapResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        await AssertSuccessAsync(bootstrapResponse);
+
+        var response = await client.GetAsync("/api/family/current/wishlist?page=0&pageSize=0");
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+
+        using var payload = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        var errors = payload.RootElement.GetProperty("errors");
+
+        Assert.True(errors.TryGetProperty("page", out var pageErrors));
+        Assert.True(errors.TryGetProperty("pageSize", out var pageSizeErrors));
+        Assert.Equal(JsonValueKind.Array, pageErrors.ValueKind);
+        Assert.Equal(JsonValueKind.Array, pageSizeErrors.ValueKind);
+        Assert.True(pageErrors.GetArrayLength() > 0);
+        Assert.True(pageSizeErrors.GetArrayLength() > 0);
     }
 
     [Fact]

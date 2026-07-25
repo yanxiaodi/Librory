@@ -53,11 +53,19 @@ internal static class WishlistEndpoints
 
         if (page < 1 || pageSize < 1 || pageSize > 100)
         {
-            return Results.ValidationProblem(new Dictionary<string, string[]>
+            var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
+
+            if (page < 1)
             {
-                ["page"] = page < 1 ? ["Page must be at least 1."] : [],
-                ["pageSize"] = pageSize < 1 || pageSize > 100 ? ["Page size must be between 1 and 100."] : [],
-            });
+                errors["page"] = ["Page must be at least 1."];
+            }
+
+            if (pageSize < 1 || pageSize > 100)
+            {
+                errors["pageSize"] = ["Page size must be between 1 and 100."];
+            }
+
+            return Results.ValidationProblem(errors);
         }
 
         var query = db.WishlistItems

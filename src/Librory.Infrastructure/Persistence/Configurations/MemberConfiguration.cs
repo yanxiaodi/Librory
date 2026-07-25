@@ -16,6 +16,7 @@ internal sealed class MemberConfiguration : IEntityTypeConfiguration<Member>
         builder.Property(x => x.DisplayName).HasMaxLength(200).IsRequired();
         builder.Property(x => x.Role).HasConversion<string>().HasMaxLength(32);
         builder.Property(x => x.PreferredLanguage).HasConversion<string>().HasMaxLength(32);
+        builder.HasIndex(x => new { x.FamilyId, x.DisplayName }).IsUnique();
 
         builder.Ignore(x => x.ExternalIdentities);
 
