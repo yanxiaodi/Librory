@@ -107,6 +107,7 @@ internal sealed class PostgresTestDatabase : IAsyncDisposable
 
     private static async Task<string> RunDockerAsync(params string[] args)
     {
+        var timeout = GetDockerCommandTimeout();
         var processStartInfo = new ProcessStartInfo
         {
             FileName = "docker",
@@ -122,7 +123,7 @@ internal sealed class PostgresTestDatabase : IAsyncDisposable
         }
 
         using var process = StartDockerProcess(processStartInfo);
-        using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var timeoutCts = new CancellationTokenSource(timeout);
 
         var standardOutputTask = process.StandardOutput.ReadToEndAsync();
         var standardErrorTask = process.StandardError.ReadToEndAsync();
@@ -135,7 +136,7 @@ internal sealed class PostgresTestDatabase : IAsyncDisposable
         catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
         {
             TryKillProcess(process);
-            throw new TimeoutException($"docker {string.Join(" ", args)} timed out after 30 seconds.");
+            throw new TimeoutException($"docker {string.Join(" ", args)} timed out after {timeout.TotalSeconds} seconds.");
         }
 
         var standardOutput = await standardOutputTask;
@@ -148,6 +149,26 @@ internal sealed class PostgresTestDatabase : IAsyncDisposable
         }
 
         return standardOutput.Trim();
+    }
+
+    private static TimeSpan GetDockerCommandTimeout()
+    {
+        const int defaultTimeoutSeconds = 120;
+        const string timeoutVariable = "LIBRORY_DOCKER_TIMEOUT_SECONDS";
+
+        var rawTimeout = Environment.GetEnvironmentVariable(timeoutVariable);
+        if (string.IsNullOrWhiteSpace(rawTimeout))
+        {
+            return TimeSpan.FromSeconds(defaultTimeoutSeconds);
+        }
+
+        if (!int.TryParse(rawTimeout, out var timeoutSeconds) || timeoutSeconds <= 0)
+        {
+            throw new InvalidOperationException(
+                $"Environment variable {timeoutVariable} must be a positive integer number of seconds.");
+        }
+
+        return TimeSpan.FromSeconds(timeoutSeconds);
     }
 
     private static void TryKillProcess(Process process)
