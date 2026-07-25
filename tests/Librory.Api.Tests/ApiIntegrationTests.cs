@@ -293,14 +293,18 @@ public sealed class ApiIntegrationTests
         Assert.NotNull(corrected);
         Assert.Equal(created.ScanSessionId, corrected!.ScanSessionId);
         Assert.Equal(2, corrected.Candidates.Count);
-        Assert.Equal("The Spider and the Pig", corrected.Candidates[0].DisplayTitle);
-        Assert.Equal("Medium", corrected.Candidates[0].ConfidenceLabel);
-        Assert.Equal("E. B. White", corrected.Candidates[0].Author);
-        Assert.Equal(0.87m, corrected.Candidates[0].RecommendationScore);
-        Assert.False(corrected.Candidates[0].IsAlreadyOwned);
-        Assert.Equal("Recheck duplicate after correction", corrected.Candidates[0].DuplicateMessage);
-        Assert.Equal("Matilda", corrected.Candidates[1].DisplayTitle);
-        Assert.Equal("Medium", corrected.Candidates[1].ConfidenceLabel);
+
+        var correctedCandidate = corrected.Candidates.Single(candidate => candidate.Id == candidateId);
+        Assert.Equal("The Spider and the Pig", correctedCandidate.DisplayTitle);
+        Assert.Equal("Medium", correctedCandidate.ConfidenceLabel);
+        Assert.Equal("E. B. White", correctedCandidate.Author);
+        Assert.Equal(0.87m, correctedCandidate.RecommendationScore);
+        Assert.False(correctedCandidate.IsAlreadyOwned);
+        Assert.Equal("Recheck duplicate after correction", correctedCandidate.DuplicateMessage);
+
+        var untouchedCandidate = corrected.Candidates.Single(candidate => candidate.Id != candidateId);
+        Assert.Equal("Matilda", untouchedCandidate.DisplayTitle);
+        Assert.Equal("Medium", untouchedCandidate.ConfidenceLabel);
     }
 
     [Fact]

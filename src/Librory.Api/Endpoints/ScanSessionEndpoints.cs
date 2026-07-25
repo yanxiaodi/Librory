@@ -117,14 +117,14 @@ internal static class ScanSessionEndpoints
         }
         catch (Exception exception) when (exception is UnauthorizedAccessException or KeyNotFoundException or InvalidOperationException or ArgumentOutOfRangeException or ArgumentException)
         {
-            return Results.Problem(
-                detail: exception.Message,
-                statusCode: exception switch
-                {
-                    UnauthorizedAccessException => StatusCodes.Status401Unauthorized,
-                    KeyNotFoundException => StatusCodes.Status404NotFound,
-                    _ => StatusCodes.Status400BadRequest,
-                });
+            return exception switch
+            {
+                UnauthorizedAccessException => Results.Unauthorized(),
+                KeyNotFoundException => Results.NotFound(),
+                _ => Results.Problem(
+                    detail: exception.Message,
+                    statusCode: StatusCodes.Status400BadRequest),
+            };
         }
     }
 

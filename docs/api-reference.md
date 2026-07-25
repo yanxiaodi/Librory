@@ -149,6 +149,22 @@ Returns:
 - `201 Created` with the persisted session payload.
 - `400 Bad Request` when required fields are missing or invalid.
 - `401 Unauthorized` when the caller is not signed in.
+- `404 Not Found` when the current family no longer exists.
+
+### `GET /api/family/current/scan-sessions/{scanSessionId}`
+
+Returns a temporary scan session for the current family.
+
+Behavior:
+
+- Returns the stored scan session and its candidates.
+- Treats expired sessions as not found.
+
+Returns:
+
+- `200 OK` with the persisted session payload.
+- `401 Unauthorized` when the caller is not signed in.
+- `404 Not Found` when the session does not exist, belongs to another family, or has expired.
 
 ### `PUT /api/family/current/scan-sessions/{scanSessionId}/candidates/{candidateId}`
 
