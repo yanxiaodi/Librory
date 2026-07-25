@@ -189,7 +189,7 @@ Promotes a scan candidate into canonical book catalog data.
 
 Behavior:
 
-- Creates a canonical `BookWork` from the candidate data, or enriches an existing work when a target work id is supplied.
+- Creates a canonical `BookWork` from the candidate data.
 - Creates the first edition when edition details are supplied.
 - Removes the candidate from the temporary scan session after successful promotion.
 

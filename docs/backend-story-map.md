@@ -296,13 +296,12 @@ Promote a scan candidate into a reusable book catalog record when the system has
 
 ### Modeling Note
 
-This slice turns a temporary scan candidate into canonical catalog data. The resolved candidate may create a new `BookWork` and optional first `BookEdition`, or enrich an existing canonical work/edition when the user already knows the target record.
+This slice turns a temporary scan candidate into canonical catalog data by creating a new `BookWork` and optional first `BookEdition`.
 Unresolved candidates stay in the temporary scan session until they are promoted or discarded.
 
 Acceptance criteria:
 
 - The backend can promote a scan candidate into a canonical work and optional edition.
-- The backend can enrich an existing canonical work or edition with the resolved candidate data when a target record already exists.
 - The backend can remove a promoted candidate from the temporary scan session.
 - The backend can discard an unwanted scan candidate from the temporary scan session without promoting it.
 - The backend can keep unresolved scan candidates temporary until they are promoted or discarded.

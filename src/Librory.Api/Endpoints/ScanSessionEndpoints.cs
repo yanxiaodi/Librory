@@ -43,7 +43,6 @@ internal static class ScanSessionEndpoints
             .WithSummary("Promote a scan candidate.")
             .WithDescription("Promotes a scan candidate into canonical catalog data and removes it from the temporary session.")
             .Produces<BookWorkResponse>(StatusCodes.Status201Created)
-            .Produces<BookWorkResponse>(StatusCodes.Status200OK)
             .ProducesValidationProblem()
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status404NotFound);
@@ -239,7 +238,7 @@ internal static class ScanSessionEndpoints
         Guid scanSessionId,
         Guid candidateId,
         ResolveScanCandidateRequest request,
-        LibroryDbContext db,
+        IScanSessionService scanSessionService,
         ICurrentFamilyContextAccessor accessor,
         CancellationToken cancellationToken)
     {
@@ -260,27 +259,17 @@ internal static class ScanSessionEndpoints
 
         try
         {
-            var session = await LoadScanSessionAsync(db, current.FamilyId, scanSessionId, cancellationToken);
-            if (session is null || session.IsExpired())
-            {
-                return Results.NotFound();
-            }
+            var work = await scanSessionService.ResolveCandidateAsync(
+                scanSessionId,
+                candidateId,
+                request.Title,
+                request.Author,
+                request.Isbn,
+                request.Format,
+                request.PublicationYear,
+                cancellationToken);
 
-            var candidate = session.Candidates.SingleOrDefault(existing => existing.Id == candidateId);
-            if (candidate is null)
-            {
-                return Results.NotFound();
-            }
-
-            var work = await ResolveBookWorkAsync(db, request, cancellationToken);
-            session.RemoveCandidate(candidateId);
-
-            await db.SaveChangesAsync(cancellationToken);
-
-            var response = BookWorkResponseFactory.Create(work);
-            return request.BookWorkId is null
-                ? Results.Created($"/api/book-works/{work.Id}", response)
-                : Results.Ok(response);
+            return Results.Created($"/api/book-works/{work.Id}", BookWorkResponseFactory.Create(work));
         }
         catch (Exception exception) when (exception is KeyNotFoundException or InvalidOperationException or ArgumentOutOfRangeException or ArgumentException)
         {
@@ -297,7 +286,7 @@ internal static class ScanSessionEndpoints
     private static async Task<IResult> DiscardScanCandidateAsync(
         Guid scanSessionId,
         Guid candidateId,
-        LibroryDbContext db,
+        IScanSessionService scanSessionService,
         ICurrentFamilyContextAccessor accessor,
         CancellationToken cancellationToken)
     {
@@ -307,22 +296,15 @@ internal static class ScanSessionEndpoints
             return Results.Unauthorized();
         }
 
-        var session = await LoadScanSessionAsync(db, current.FamilyId, scanSessionId, cancellationToken);
-        if (session is null || session.IsExpired())
+        try
+        {
+            await scanSessionService.DiscardCandidateAsync(scanSessionId, candidateId, cancellationToken);
+            return Results.NoContent();
+        }
+        catch (KeyNotFoundException)
         {
             return Results.NotFound();
         }
-
-        var candidate = session.Candidates.SingleOrDefault(existing => existing.Id == candidateId);
-        if (candidate is null)
-        {
-            return Results.NotFound();
-        }
-
-        session.RemoveCandidate(candidateId);
-        await db.SaveChangesAsync(cancellationToken);
-
-        return Results.NoContent();
     }
 
     private static Task<ScanSession?> LoadScanSessionAsync(
@@ -346,87 +328,6 @@ internal static class ScanSessionEndpoints
                 .ThenInclude(x => x.BookEdition)
                     .ThenInclude(x => x.BookWork)
             .SingleOrDefaultAsync(x => x.Id == familyId, cancellationToken);
-    }
-
-    private static async Task<BookWork> ResolveBookWorkAsync(
-        LibroryDbContext db,
-        ResolveScanCandidateRequest request,
-        CancellationToken cancellationToken)
-    {
-        if (request.BookWorkId is Guid bookWorkId)
-        {
-            var work = await db.BookWorks
-                .Include(x => x.Editions)
-                .SingleOrDefaultAsync(x => x.Id == bookWorkId, cancellationToken);
-
-            if (work is null)
-            {
-                throw new KeyNotFoundException("Book work not found.");
-            }
-
-            work.CanonicalTitle = request.Title;
-            var normalizedAuthor = NormalizeOptional(request.Author);
-            if (normalizedAuthor is not null)
-            {
-                work.CanonicalAuthor = normalizedAuthor;
-            }
-
-            if (HasEditionDetails(request) && FindMatchingEdition(work, request) is null)
-            {
-                work.AddEdition(request.Isbn, request.Format, request.PublicationYear);
-            }
-
-            return work;
-        }
-
-        var created = BookWork.Create(request.Title, request.Author);
-        if (HasEditionDetails(request))
-        {
-            created.AddEdition(request.Isbn, request.Format, request.PublicationYear);
-        }
-
-        db.BookWorks.Add(created);
-        return created;
-    }
-
-    private static bool HasEditionDetails(ResolveScanCandidateRequest request)
-    {
-        return !string.IsNullOrWhiteSpace(request.Isbn)
-            || !string.IsNullOrWhiteSpace(request.Format)
-            || request.PublicationYear.HasValue;
-    }
-
-    private static BookEdition? FindMatchingEdition(BookWork work, ResolveScanCandidateRequest request)
-    {
-        if (!HasEditionDetails(request))
-        {
-            return null;
-        }
-
-        if (!string.IsNullOrWhiteSpace(request.Isbn))
-        {
-            var isbn = request.Isbn.Trim();
-            var matchingIsbn = work.Editions.FirstOrDefault(edition => string.Equals(edition.Isbn, isbn, StringComparison.OrdinalIgnoreCase));
-            if (matchingIsbn is not null)
-            {
-                return matchingIsbn;
-            }
-
-            if (string.IsNullOrWhiteSpace(request.Format) && !request.PublicationYear.HasValue)
-            {
-                return null;
-            }
-        }
-
-        var normalizedFormat = request.Format?.Trim();
-        return work.Editions.FirstOrDefault(edition =>
-            string.Equals(edition.Format, normalizedFormat, StringComparison.OrdinalIgnoreCase)
-            && edition.PublicationYear == request.PublicationYear);
-    }
-
-    private static string? NormalizeOptional(string? value)
-    {
-        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
     private static TimeSpan? TryCreateRetentionWindow(int? retentionWindowDays, out IResult? validationProblem)

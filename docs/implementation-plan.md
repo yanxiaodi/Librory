@@ -29,7 +29,7 @@
 - Family library browse and search
 - Temporary scan session storage with source photo tracking
 - Catalog resolution and candidate enrichment for scan results
-- Scan candidate promotion into canonical work and edition records
+- Scan candidate promotion into new canonical work and edition records
 - Scan candidate discard from temporary scan sessions
 - External metadata lookup and normalization for ISBN/title search
 - Promotion of confirmed external metadata into canonical catalog records
