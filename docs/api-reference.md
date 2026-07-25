@@ -183,6 +183,38 @@ Returns:
 - `401 Unauthorized` when the caller is not signed in.
 - `404 Not Found` when the session or candidate does not exist for the current family.
 
+### `POST /api/family/current/scan-sessions/{scanSessionId}/candidates/{candidateId}/resolve`
+
+Promotes a scan candidate into canonical book catalog data.
+
+Behavior:
+
+- Creates a canonical `BookWork` from the candidate data.
+- Creates the first edition when edition details are supplied.
+- Removes the candidate from the temporary scan session after successful promotion.
+
+Returns:
+
+- `201 Created` with the canonical book work payload.
+- `400 Bad Request` when the resolution data is invalid.
+- `401 Unauthorized` when the caller is not signed in.
+- `404 Not Found` when the session or candidate does not exist for the current family.
+
+### `DELETE /api/family/current/scan-sessions/{scanSessionId}/candidates/{candidateId}`
+
+Discards a scan candidate from the temporary session without promoting it.
+
+Behavior:
+
+- Removes the candidate from the scan session.
+- Leaves the canonical catalog untouched.
+
+Returns:
+
+- `204 No Content` on success.
+- `401 Unauthorized` when the caller is not signed in.
+- `404 Not Found` when the session or candidate does not exist for the current family.
+
 ## Wishlist
 
 ### `GET /api/family/current/wishlist`

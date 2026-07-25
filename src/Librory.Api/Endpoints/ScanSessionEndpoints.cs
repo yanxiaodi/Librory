@@ -38,6 +38,23 @@ internal static class ScanSessionEndpoints
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status404NotFound);
 
+        group.MapPost("{scanSessionId:guid}/candidates/{candidateId:guid}/resolve", ResolveScanCandidateAsync)
+            .WithName("ResolveScanCandidate")
+            .WithSummary("Promote a scan candidate.")
+            .WithDescription("Promotes a scan candidate into canonical catalog data and removes it from the temporary session.")
+            .Produces<BookWorkResponse>(StatusCodes.Status201Created)
+            .ProducesValidationProblem()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status404NotFound);
+
+        group.MapDelete("{scanSessionId:guid}/candidates/{candidateId:guid}", DiscardScanCandidateAsync)
+            .WithName("DiscardScanCandidate")
+            .WithSummary("Discard a scan candidate.")
+            .WithDescription("Removes an unwanted scan candidate from the temporary session without promoting it.")
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status404NotFound);
+
         group.MapGet("{scanSessionId:guid}", GetScanSessionAsync)
             .WithName("GetScanSession")
             .WithSummary("Get a scan session by id.")
@@ -217,16 +234,79 @@ internal static class ScanSessionEndpoints
         }
     }
 
-    private static Task<Family?> LoadFamilyForDuplicateDetectionAsync(
-        LibroryDbContext db,
-        Guid familyId,
+    private static async Task<IResult> ResolveScanCandidateAsync(
+        Guid scanSessionId,
+        Guid candidateId,
+        ResolveScanCandidateRequest request,
+        IScanSessionService scanSessionService,
+        ICurrentFamilyContextAccessor accessor,
         CancellationToken cancellationToken)
     {
-        return db.Families
-            .Include(x => x.BookCopies)
-                .ThenInclude(x => x.BookEdition)
-                    .ThenInclude(x => x.BookWork)
-            .SingleOrDefaultAsync(x => x.Id == familyId, cancellationToken);
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (ApiValidation.Required(
+                new ValidationField("title", request.Title, "Title is required."))
+            is IResult validationProblem)
+        {
+            return validationProblem;
+        }
+
+        var current = accessor.Current;
+        if (current is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        var title = request.Title.Trim();
+
+        try
+        {
+            var work = await scanSessionService.ResolveCandidateAsync(
+                scanSessionId,
+                candidateId,
+                title,
+                request.Author,
+                request.Isbn,
+                request.Format,
+                request.PublicationYear,
+                cancellationToken);
+
+            return Results.Created($"/api/book-works/{work.Id}", BookWorkResponseFactory.Create(work));
+        }
+        catch (Exception exception) when (exception is KeyNotFoundException or InvalidOperationException or ArgumentOutOfRangeException or ArgumentException)
+        {
+            return exception switch
+            {
+                KeyNotFoundException => Results.NotFound(),
+                _ => Results.Problem(
+                    detail: exception.Message,
+                    statusCode: StatusCodes.Status400BadRequest),
+            };
+        }
+    }
+
+    private static async Task<IResult> DiscardScanCandidateAsync(
+        Guid scanSessionId,
+        Guid candidateId,
+        IScanSessionService scanSessionService,
+        ICurrentFamilyContextAccessor accessor,
+        CancellationToken cancellationToken)
+    {
+        var current = accessor.Current;
+        if (current is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        try
+        {
+            await scanSessionService.DiscardCandidateAsync(scanSessionId, candidateId, cancellationToken);
+            return Results.NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return Results.NotFound();
+        }
     }
 
     private static Task<ScanSession?> LoadScanSessionAsync(
@@ -238,6 +318,18 @@ internal static class ScanSessionEndpoints
         return db.ScanSessions
             .Include(x => x.Candidates)
             .SingleOrDefaultAsync(x => x.FamilyId == familyId && x.Id == scanSessionId, cancellationToken);
+    }
+
+    private static Task<Family?> LoadFamilyForDuplicateDetectionAsync(
+        LibroryDbContext db,
+        Guid familyId,
+        CancellationToken cancellationToken)
+    {
+        return db.Families
+            .Include(x => x.BookCopies)
+                .ThenInclude(x => x.BookEdition)
+                    .ThenInclude(x => x.BookWork)
+            .SingleOrDefaultAsync(x => x.Id == familyId, cancellationToken);
     }
 
     private static TimeSpan? TryCreateRetentionWindow(int? retentionWindowDays, out IResult? validationProblem)

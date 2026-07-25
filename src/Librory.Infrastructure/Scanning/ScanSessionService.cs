@@ -3,6 +3,7 @@ using Librory.Application.Scanning;
 using Librory.Domain.Models;
 using Librory.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 
 namespace Librory.Infrastructure.Scanning;
 
@@ -84,6 +85,70 @@ public sealed class ScanSessionService : IScanSessionService
         return ScanSessionDtoFactory.Create(family, session);
     }
 
+    public async Task<BookWork> ResolveCandidateAsync(
+        Guid scanSessionId,
+        Guid candidateId,
+        string title,
+        string? author,
+        string? isbn,
+        string? format,
+        int? publicationYear,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(title);
+
+        var current = RequireCurrentContext();
+        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+
+        var session = await LoadScanSessionAsync(current.FamilyId, scanSessionId, cancellationToken);
+        if (session is null || session.IsExpired())
+        {
+            throw new KeyNotFoundException("Scan session not found.");
+        }
+
+        var candidate = session.Candidates.SingleOrDefault(existing => existing.Id == candidateId);
+        if (candidate is null)
+        {
+            throw new KeyNotFoundException("Scan candidate not found.");
+        }
+
+        var work = BookWork.Create(title, author);
+        if (HasEditionDetails(isbn, format, publicationYear))
+        {
+            work.AddEdition(isbn, format, publicationYear);
+        }
+
+        _db.BookWorks.Add(work);
+        session.RemoveCandidate(candidateId);
+
+        await _db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        return work;
+    }
+
+    public async Task DiscardCandidateAsync(Guid scanSessionId, Guid candidateId, CancellationToken cancellationToken)
+    {
+        var current = RequireCurrentContext();
+        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+
+        var session = await LoadScanSessionAsync(current.FamilyId, scanSessionId, cancellationToken);
+        if (session is null || session.IsExpired())
+        {
+            throw new KeyNotFoundException("Scan session not found.");
+        }
+
+        var candidate = session.Candidates.SingleOrDefault(existing => existing.Id == candidateId);
+        if (candidate is null)
+        {
+            throw new KeyNotFoundException("Scan candidate not found.");
+        }
+
+        session.RemoveCandidate(candidateId);
+        await _db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
     private CurrentFamilyContext RequireCurrentContext()
     {
         var current = _currentFamilyContextAccessor.Current;
@@ -114,5 +179,15 @@ public sealed class ScanSessionService : IScanSessionService
         return _db.ScanSessions
             .Include(x => x.Candidates)
             .SingleOrDefaultAsync(x => x.FamilyId == familyId && x.Id == scanSessionId, cancellationToken);
+    }
+
+    private static bool HasEditionDetails(
+        string? isbn,
+        string? format,
+        int? publicationYear)
+    {
+        return !string.IsNullOrWhiteSpace(isbn)
+            || !string.IsNullOrWhiteSpace(format)
+            || publicationYear.HasValue;
     }
 }

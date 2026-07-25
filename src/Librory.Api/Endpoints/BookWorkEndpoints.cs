@@ -58,7 +58,7 @@ internal static class BookWorkEndpoints
 
         return Results.Created(
             $"/api/book-works/{work.Id}",
-            ToResponse(work));
+            BookWorkResponseFactory.Create(work));
     }
 
     private static async Task<IResult> GetBookWorkAsync(
@@ -72,24 +72,7 @@ internal static class BookWorkEndpoints
 
         return work is null
             ? Results.NotFound()
-            : Results.Ok(ToResponse(work));
-    }
-
-    private static BookWorkResponse ToResponse(BookWork work)
-    {
-        var editions = work.Editions
-            .Select(edition => new BookEditionResponse(
-                edition.Id,
-                edition.Isbn,
-                edition.Format,
-                edition.PublicationYear))
-            .ToList();
-
-        return new BookWorkResponse(
-            work.Id,
-            work.CanonicalTitle,
-            work.CanonicalAuthor,
-            editions);
+            : Results.Ok(BookWorkResponseFactory.Create(work));
     }
 
     private static bool HasEditionDetails(CreateBookWorkRequest request)

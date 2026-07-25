@@ -335,6 +335,233 @@ public sealed class ApiIntegrationTests
     }
 
     [Fact]
+    public async Task Scan_session_candidate_can_be_promoted_into_a_new_book_work()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var bootstrapResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        await AssertSuccessAsync(bootstrapResponse);
+
+        var createResponse = await client.PostAsJsonAsync(
+            "/api/family/current/scan-sessions",
+            new CreateScanSessionRequest(
+                "shelf-photo.jpg",
+                3,
+                [
+                    new CreateScanCandidateRequest(
+                        "The Test Title",
+                        "High",
+                        "E. B. White",
+                        0.92m)]));
+
+        await AssertSuccessAsync(createResponse);
+
+        var created = await createResponse.Content.ReadFromJsonAsync<ScanSessionResponse>();
+        Assert.NotNull(created);
+
+        var candidateId = created!.Candidates.Single().Id;
+        var resolveResponse = await client.PostAsJsonAsync(
+            $"/api/family/current/scan-sessions/{created.ScanSessionId}/candidates/{candidateId}/resolve",
+            new ResolveScanCandidateRequest(
+                "The Test Title",
+                "E. B. White",
+                "978-0-06-112495-2",
+                "Hardcover",
+                2006));
+
+        await AssertSuccessAsync(resolveResponse);
+
+        var resolved = await resolveResponse.Content.ReadFromJsonAsync<BookWorkResponse>();
+        Assert.NotNull(resolved);
+        Assert.NotEqual(Guid.Empty, resolved!.BookWorkId);
+        Assert.Equal("The Test Title", resolved.Title);
+        Assert.Equal("E. B. White", resolved.Author);
+        Assert.Single(resolved.Editions);
+        Assert.Equal("978-0-06-112495-2", resolved.Editions[0].Isbn);
+        Assert.Equal("Hardcover", resolved.Editions[0].Format);
+        Assert.Equal(2006, resolved.Editions[0].PublicationYear);
+
+        var getResponse = await client.GetAsync($"/api/family/current/scan-sessions/{created.ScanSessionId}");
+        await AssertSuccessAsync(getResponse);
+
+        var fetched = await getResponse.Content.ReadFromJsonAsync<ScanSessionResponse>();
+        Assert.NotNull(fetched);
+        Assert.Empty(fetched!.Candidates);
+    }
+
+    [Fact]
+    public async Task Scan_session_candidate_resolve_returns_not_found_for_missing_candidate()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var bootstrapResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        await AssertSuccessAsync(bootstrapResponse);
+
+        var createResponse = await client.PostAsJsonAsync(
+            "/api/family/current/scan-sessions",
+            new CreateScanSessionRequest(
+                "shelf-photo.jpg",
+                3,
+                [
+                    new CreateScanCandidateRequest(
+                        "The Test Title",
+                        "High",
+                        "E. B. White",
+                        0.92m)]));
+
+        await AssertSuccessAsync(createResponse);
+
+        var created = await createResponse.Content.ReadFromJsonAsync<ScanSessionResponse>();
+        Assert.NotNull(created);
+
+        var resolveResponse = await client.PostAsJsonAsync(
+            $"/api/family/current/scan-sessions/{created!.ScanSessionId}/candidates/{Guid.NewGuid()}/resolve",
+            new ResolveScanCandidateRequest(
+                "The Test Title",
+                "E. B. White",
+                "978-0-06-112495-2",
+                "Hardcover",
+                2006));
+
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, resolveResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task Scan_session_candidate_resolve_returns_not_found_for_expired_session()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var bootstrapResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        await AssertSuccessAsync(bootstrapResponse);
+
+        var createResponse = await client.PostAsJsonAsync(
+            "/api/family/current/scan-sessions",
+            new CreateScanSessionRequest(
+                "shelf-photo.jpg",
+                3,
+                [
+                    new CreateScanCandidateRequest(
+                        "The Test Title",
+                        "High",
+                        "E. B. White",
+                        0.92m)]));
+
+        await AssertSuccessAsync(createResponse);
+
+        var created = await createResponse.Content.ReadFromJsonAsync<ScanSessionResponse>();
+        Assert.NotNull(created);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<LibroryDbContext>();
+            var session = await db.ScanSessions.SingleAsync(x => x.Id == created!.ScanSessionId);
+            db.Entry(session).Property(x => x.ExpiresAt).CurrentValue = DateTimeOffset.UtcNow.AddDays(-1);
+            await db.SaveChangesAsync();
+        }
+
+        var resolveResponse = await client.PostAsJsonAsync(
+            $"/api/family/current/scan-sessions/{created!.ScanSessionId}/candidates/{created.Candidates[0].Id}/resolve",
+            new ResolveScanCandidateRequest(
+                "The Test Title",
+                "E. B. White",
+                "978-0-06-112495-2",
+                "Hardcover",
+                2006));
+
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, resolveResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task Scan_session_candidate_can_be_discarded_from_the_session()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var bootstrapResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        await AssertSuccessAsync(bootstrapResponse);
+
+        var createResponse = await client.PostAsJsonAsync(
+            "/api/family/current/scan-sessions",
+            new CreateScanSessionRequest(
+                "shelf-photo.jpg",
+                3,
+                [
+                    new CreateScanCandidateRequest(
+                        "The Test Title",
+                        "High",
+                        "E. B. White",
+                        0.92m)]));
+
+        await AssertSuccessAsync(createResponse);
+
+        var created = await createResponse.Content.ReadFromJsonAsync<ScanSessionResponse>();
+        Assert.NotNull(created);
+
+        var candidateId = created!.Candidates.Single().Id;
+        var discardResponse = await client.DeleteAsync(
+            $"/api/family/current/scan-sessions/{created.ScanSessionId}/candidates/{candidateId}");
+
+        Assert.Equal(System.Net.HttpStatusCode.NoContent, discardResponse.StatusCode);
+
+        var getResponse = await client.GetAsync($"/api/family/current/scan-sessions/{created.ScanSessionId}");
+        await AssertSuccessAsync(getResponse);
+
+        var fetched = await getResponse.Content.ReadFromJsonAsync<ScanSessionResponse>();
+        Assert.NotNull(fetched);
+        Assert.Empty(fetched!.Candidates);
+    }
+
+    [Fact]
+    public async Task Scan_session_candidate_discard_returns_not_found_for_missing_candidate()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var bootstrapResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        await AssertSuccessAsync(bootstrapResponse);
+
+        var createResponse = await client.PostAsJsonAsync(
+            "/api/family/current/scan-sessions",
+            new CreateScanSessionRequest(
+                "shelf-photo.jpg",
+                3,
+                [
+                    new CreateScanCandidateRequest(
+                        "The Test Title",
+                        "High",
+                        "E. B. White",
+                        0.92m)]));
+
+        await AssertSuccessAsync(createResponse);
+
+        var created = await createResponse.Content.ReadFromJsonAsync<ScanSessionResponse>();
+        Assert.NotNull(created);
+
+        var discardResponse = await client.DeleteAsync(
+            $"/api/family/current/scan-sessions/{created!.ScanSessionId}/candidates/{Guid.NewGuid()}");
+
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, discardResponse.StatusCode);
+    }
+
+    [Fact]
     public async Task Create_book_work_without_edition_leaves_editions_empty()
     {
         await using var factory = await ApiFactory.CreateAsync();
