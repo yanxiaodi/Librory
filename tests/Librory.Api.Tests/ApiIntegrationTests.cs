@@ -466,10 +466,9 @@ public sealed class ApiIntegrationTests
         using (var scope = factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<LibroryDbContext>();
-            await db.Database.ExecuteSqlInterpolatedAsync(
-                $@"update librory.scan_sessions
-                   set ""ExpiresAt"" = now() - interval '1 day'
-                   where ""Id"" = {created!.ScanSessionId}");
+            var session = await db.ScanSessions.SingleAsync(x => x.Id == created!.ScanSessionId);
+            db.Entry(session).Property(x => x.ExpiresAt).CurrentValue = DateTimeOffset.UtcNow.AddDays(-1);
+            await db.SaveChangesAsync();
         }
 
         var resolveResponse = await client.PostAsJsonAsync(
@@ -525,6 +524,41 @@ public sealed class ApiIntegrationTests
         var fetched = await getResponse.Content.ReadFromJsonAsync<ScanSessionResponse>();
         Assert.NotNull(fetched);
         Assert.Empty(fetched!.Candidates);
+    }
+
+    [Fact]
+    public async Task Scan_session_candidate_discard_returns_not_found_for_missing_candidate()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var bootstrapResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        await AssertSuccessAsync(bootstrapResponse);
+
+        var createResponse = await client.PostAsJsonAsync(
+            "/api/family/current/scan-sessions",
+            new CreateScanSessionRequest(
+                "shelf-photo.jpg",
+                3,
+                [
+                    new CreateScanCandidateRequest(
+                        "The Test Title",
+                        "High",
+                        "E. B. White",
+                        0.92m)]));
+
+        await AssertSuccessAsync(createResponse);
+
+        var created = await createResponse.Content.ReadFromJsonAsync<ScanSessionResponse>();
+        Assert.NotNull(created);
+
+        var discardResponse = await client.DeleteAsync(
+            $"/api/family/current/scan-sessions/{created!.ScanSessionId}/candidates/{Guid.NewGuid()}");
+
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, discardResponse.StatusCode);
     }
 
     [Fact]

@@ -257,12 +257,14 @@ internal static class ScanSessionEndpoints
             return Results.Unauthorized();
         }
 
+        var title = request.Title.Trim();
+
         try
         {
             var work = await scanSessionService.ResolveCandidateAsync(
                 scanSessionId,
                 candidateId,
-                request.Title,
+                title,
                 request.Author,
                 request.Isbn,
                 request.Format,
