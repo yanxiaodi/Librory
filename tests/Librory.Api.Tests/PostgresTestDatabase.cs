@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Net;
-using System.Net.Sockets;
 using Npgsql;
 
 namespace Librory.Api.Tests;
@@ -42,7 +41,6 @@ internal sealed class PostgresTestDatabase : IAsyncDisposable
 
     private static async Task<PostgresTestHost> InitializeHostAsync()
     {
-        var port = GetFreeTcpPort();
         var containerName = $"librory-postgres-tests-{Environment.ProcessId}";
 
         await RunDockerAsync(
@@ -57,10 +55,11 @@ internal sealed class PostgresTestDatabase : IAsyncDisposable
             "-e",
             $"POSTGRES_DB={AdminDatabase}",
             "-p",
-            $"{port}:5432",
+            "127.0.0.1::5432",
             "-d",
             Image);
 
+        var port = await GetMappedPortAsync(containerName);
         var host = new PostgresTestHost(containerName, port);
         await host.WaitUntilReadyAsync();
         AppDomain.CurrentDomain.ProcessExit += (_, _) =>
@@ -78,11 +77,13 @@ internal sealed class PostgresTestDatabase : IAsyncDisposable
         return host;
     }
 
-    private static int GetFreeTcpPort()
+    private static async Task<int> GetMappedPortAsync(string containerName)
     {
-        using var listener = new TcpListener(System.Net.IPAddress.Loopback, 0);
-        listener.Start();
-        return ((IPEndPoint)listener.LocalEndpoint).Port;
+        var output = await RunDockerAsync("port", containerName, "5432/tcp");
+        var endpoint = output.Split(new[] { Environment.NewLine, "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries)
+            .Single();
+        var address = endpoint[(endpoint.LastIndexOf(':') + 1)..];
+        return int.Parse(address, System.Globalization.CultureInfo.InvariantCulture);
     }
 
     private static async Task<string> RunDockerAsync(params string[] args)
