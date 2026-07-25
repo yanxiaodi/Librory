@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Librory.Api.Tests;
 
-public sealed class ApiFactory : WebApplicationFactory<Program>
+public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncDisposable
 {
     private readonly PostgresTestDatabase _database;
     private readonly string _connectionString;
@@ -57,19 +57,10 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         });
     }
 
-    protected override void Dispose(bool disposing)
+    public override async ValueTask DisposeAsync()
     {
-        try
-        {
-            base.Dispose(disposing);
-        }
-        finally
-        {
-            if (disposing)
-            {
-                _database.DisposeAsync().AsTask().GetAwaiter().GetResult();
-            }
-        }
+        await base.DisposeAsync();
+        await _database.DisposeAsync();
     }
 
 }

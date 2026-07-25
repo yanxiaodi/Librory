@@ -122,10 +122,21 @@ internal sealed class PostgresTestDatabase : IAsyncDisposable
         }
 
         using var process = StartDockerProcess(processStartInfo);
+        using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
 
         var standardOutputTask = process.StandardOutput.ReadToEndAsync();
         var standardErrorTask = process.StandardError.ReadToEndAsync();
-        await process.WaitForExitAsync();
+        var waitForExitTask = process.WaitForExitAsync(timeoutCts.Token);
+
+        try
+        {
+            await waitForExitTask;
+        }
+        catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
+        {
+            TryKillProcess(process);
+            throw new TimeoutException($"docker {string.Join(" ", args)} timed out after 30 seconds.");
+        }
 
         var standardOutput = await standardOutputTask;
         var standardError = await standardErrorTask;
@@ -137,6 +148,21 @@ internal sealed class PostgresTestDatabase : IAsyncDisposable
         }
 
         return standardOutput.Trim();
+    }
+
+    private static void TryKillProcess(Process process)
+    {
+        try
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+            }
+        }
+        catch
+        {
+            // Best-effort cleanup only.
+        }
     }
 
     private static Process StartDockerProcess(ProcessStartInfo processStartInfo)

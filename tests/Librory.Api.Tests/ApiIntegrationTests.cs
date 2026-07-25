@@ -16,7 +16,7 @@ public sealed class ApiIntegrationTests
     [Fact]
     public async Task DevLogin_is_idempotent_for_same_family_and_member()
     {
-        using var factory = await ApiFactory.CreateAsync();
+        await using var factory = await ApiFactory.CreateAsync();
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             HandleCookies = true,
@@ -49,7 +49,7 @@ public sealed class ApiIntegrationTests
     [Fact]
     public async Task Current_family_endpoint_returns_counts_after_login()
     {
-        using var factory = await ApiFactory.CreateAsync();
+        await using var factory = await ApiFactory.CreateAsync();
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             HandleCookies = true,
@@ -74,7 +74,7 @@ public sealed class ApiIntegrationTests
     [Fact]
     public async Task Bootstrap_creates_a_demo_family_and_is_idempotent()
     {
-        using var factory = await ApiFactory.CreateAsync();
+        await using var factory = await ApiFactory.CreateAsync();
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             HandleCookies = true,
@@ -107,7 +107,7 @@ public sealed class ApiIntegrationTests
     [Fact]
     public async Task Logout_clears_the_authentication_cookie()
     {
-        using var factory = await ApiFactory.CreateAsync();
+        await using var factory = await ApiFactory.CreateAsync();
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             HandleCookies = true,
@@ -129,7 +129,7 @@ public sealed class ApiIntegrationTests
     [Fact]
     public async Task Api_me_route_is_not_mapped()
     {
-        using var factory = await ApiFactory.CreateAsync();
+        await using var factory = await ApiFactory.CreateAsync();
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync("/api/me");
@@ -140,7 +140,7 @@ public sealed class ApiIntegrationTests
     [Fact]
     public async Task Wishlist_is_paged()
     {
-        using var factory = await ApiFactory.CreateAsync();
+        await using var factory = await ApiFactory.CreateAsync();
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             HandleCookies = true,
@@ -167,7 +167,7 @@ public sealed class ApiIntegrationTests
     [Fact]
     public async Task Wishlist_item_created_location_can_be_fetched()
     {
-        using var factory = await ApiFactory.CreateAsync();
+        await using var factory = await ApiFactory.CreateAsync();
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             HandleCookies = true,
@@ -195,7 +195,7 @@ public sealed class ApiIntegrationTests
     [Fact]
     public async Task Wishlist_page_validation_omits_empty_error_keys()
     {
-        using var factory = await ApiFactory.CreateAsync();
+        await using var factory = await ApiFactory.CreateAsync();
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             HandleCookies = true,
@@ -222,7 +222,7 @@ public sealed class ApiIntegrationTests
     [Fact]
     public async Task Create_book_work_without_edition_leaves_editions_empty()
     {
-        using var factory = await ApiFactory.CreateAsync();
+        await using var factory = await ApiFactory.CreateAsync();
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             HandleCookies = true,
