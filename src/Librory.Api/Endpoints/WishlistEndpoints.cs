@@ -35,6 +35,14 @@ internal static class WishlistEndpoints
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status404NotFound);
 
+        group.MapGet("{wishlistItemId:guid}", GetWishlistItemAsync)
+            .WithName("GetWishlistItem")
+            .WithSummary("Get a wishlist item by id.")
+            .WithDescription("Returns a single wishlist item for the signed-in family.")
+            .Produces<WishlistItemDto>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status404NotFound);
+
         return app;
     }
 
@@ -169,5 +177,27 @@ internal static class WishlistEndpoints
         return Results.Created(
             $"/api/family/current/wishlist/{wishlistItem.Id}",
             WishlistItemDtoFactory.Create(wishlistItem));
+    }
+
+    private static async Task<IResult> GetWishlistItemAsync(
+        Guid wishlistItemId,
+        LibroryDbContext db,
+        ICurrentFamilyContextAccessor accessor,
+        CancellationToken cancellationToken)
+    {
+        var current = accessor.Current;
+        if (current is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        var wishlistItem = await db.WishlistItems
+            .SingleOrDefaultAsync(
+                x => x.Id == wishlistItemId && x.FamilyId == current.FamilyId,
+                cancellationToken);
+
+        return wishlistItem is null
+            ? Results.NotFound()
+            : Results.Ok(WishlistItemDtoFactory.Create(wishlistItem));
     }
 }

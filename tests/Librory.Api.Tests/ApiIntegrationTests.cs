@@ -3,6 +3,7 @@ using System.Text.Json;
 using Librory.Api.Contracts;
 using Librory.Domain.Models;
 using Librory.Infrastructure.Persistence;
+using Librory.Application.Wishlist;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -161,6 +162,34 @@ public sealed class ApiIntegrationTests
         Assert.Equal(2, payload.PageSize);
         Assert.Equal(3, payload.TotalCount);
         Assert.Single(payload.Items);
+    }
+
+    [Fact]
+    public async Task Wishlist_item_created_location_can_be_fetched()
+    {
+        using var factory = new ApiFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var bootstrapResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        await AssertSuccessAsync(bootstrapResponse);
+
+        var createResponse = await client.PostAsJsonAsync(
+            "/api/family/current/wishlist",
+            new CreateWishlistItemRequest("Item 1"));
+
+        await AssertSuccessAsync(createResponse);
+
+        Assert.NotNull(createResponse.Headers.Location);
+
+        var getResponse = await client.GetAsync(createResponse.Headers.Location);
+        await AssertSuccessAsync(getResponse);
+
+        var payload = await getResponse.Content.ReadFromJsonAsync<WishlistItemDto>();
+        Assert.NotNull(payload);
+        Assert.Equal("Item 1", payload!.Title);
     }
 
     [Fact]

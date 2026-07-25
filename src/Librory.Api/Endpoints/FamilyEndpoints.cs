@@ -53,7 +53,6 @@ internal static class FamilyEndpoints
             return Results.Unauthorized();
         }
 
-        var memberCount = await db.Members.CountAsync(x => x.FamilyId == current.FamilyId, cancellationToken);
         var bookCopyCount = await db.BookCopies.CountAsync(x => x.FamilyId == current.FamilyId, cancellationToken);
         var wishlistItemCount = await db.WishlistItems.CountAsync(x => x.FamilyId == current.FamilyId, cancellationToken);
 
@@ -64,7 +63,7 @@ internal static class FamilyEndpoints
             member.DisplayName,
             member.Role,
             member.PreferredLanguage,
-            memberCount,
+            family.Members.Count,
             bookCopyCount,
             wishlistItemCount));
     }
