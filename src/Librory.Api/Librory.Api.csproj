@@ -1,5 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.8" />
+    <PackageReference Include="Scalar.AspNetCore" Version="2.14.14" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Librory.Application\Librory.Application.csproj" />
     <ProjectReference Include="..\Librory.Infrastructure\Librory.Infrastructure.csproj" />
     <ProjectReference Include="..\Librory.ServiceDefaults\Librory.ServiceDefaults.csproj" />

@@ -1,0 +1,86 @@
+using Librory.Api.Contracts;
+using Librory.Domain.Models;
+using Librory.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+
+namespace Librory.Api.Endpoints;
+
+internal static class BookWorkEndpoints
+{
+    public static IEndpointRouteBuilder MapBookWorkEndpoints(this IEndpointRouteBuilder app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+
+        var group = app.MapGroup("/api/book-works")
+            .RequireAuthorization();
+
+        group.MapPost(string.Empty, CreateBookWorkAsync)
+            .WithName("CreateBookWork")
+            .Produces<BookWorkResponse>(StatusCodes.Status201Created)
+            .ProducesValidationProblem();
+
+        group.MapGet("{bookWorkId:guid}", GetBookWorkAsync)
+            .WithName("GetBookWork")
+            .Produces<BookWorkResponse>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status404NotFound);
+
+        return app;
+    }
+
+    private static async Task<IResult> CreateBookWorkAsync(
+        CreateBookWorkRequest request,
+        LibroryDbContext db,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (string.IsNullOrWhiteSpace(request.Title))
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["title"] = ["Title is required."],
+            });
+        }
+
+        var work = BookWork.Create(request.Title, request.Author);
+        work.AddEdition(request.Isbn, request.Format, request.PublicationYear);
+
+        db.BookWorks.Add(work);
+        await db.SaveChangesAsync(cancellationToken);
+
+        return Results.Created(
+            $"/api/book-works/{work.Id}",
+            ToResponse(work));
+    }
+
+    private static async Task<IResult> GetBookWorkAsync(
+        Guid bookWorkId,
+        LibroryDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var work = await db.BookWorks
+            .Include(x => x.Editions)
+            .SingleOrDefaultAsync(x => x.Id == bookWorkId, cancellationToken);
+
+        return work is null
+            ? Results.NotFound()
+            : Results.Ok(ToResponse(work));
+    }
+
+    private static BookWorkResponse ToResponse(BookWork work)
+    {
+        var editions = work.Editions
+            .Select(edition => new BookEditionResponse(
+                edition.Id,
+                edition.Isbn,
+                edition.Format,
+                edition.PublicationYear))
+            .ToList();
+
+        return new BookWorkResponse(
+            work.Id,
+            work.CanonicalTitle,
+            work.CanonicalAuthor,
+            editions);
+    }
+}

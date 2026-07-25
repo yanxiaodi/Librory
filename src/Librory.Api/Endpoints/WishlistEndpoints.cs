@@ -1,0 +1,137 @@
+using Librory.Api.Contracts;
+using Librory.Application.Families;
+using Librory.Application.Wishlist;
+using Librory.Domain.Models;
+using Librory.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+
+namespace Librory.Api.Endpoints;
+
+internal static class WishlistEndpoints
+{
+    public static IEndpointRouteBuilder MapWishlistEndpoints(this IEndpointRouteBuilder app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+
+        var group = app.MapGroup("/api/family/current/wishlist")
+            .RequireAuthorization();
+
+        group.MapGet(string.Empty, GetWishlistAsync)
+            .WithName("GetWishlist")
+            .Produces<IReadOnlyList<WishlistItemDto>>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized);
+
+        group.MapPost(string.Empty, CreateWishlistItemAsync)
+            .WithName("CreateWishlistItem")
+            .Produces<WishlistItemDto>(StatusCodes.Status201Created)
+            .ProducesValidationProblem()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status404NotFound);
+
+        return app;
+    }
+
+    private static async Task<IResult> GetWishlistAsync(
+        LibroryDbContext db,
+        ICurrentFamilyContextAccessor accessor,
+        CancellationToken cancellationToken)
+    {
+        var current = accessor.Current;
+        if (current is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        var items = await db.WishlistItems
+            .Where(x => x.FamilyId == current.FamilyId)
+            .OrderByDescending(x => x.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        return Results.Ok(items.Select(WishlistItemDtoFactory.Create).ToList());
+    }
+
+    private static async Task<IResult> CreateWishlistItemAsync(
+        CreateWishlistItemRequest request,
+        LibroryDbContext db,
+        ICurrentFamilyContextAccessor accessor,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var current = accessor.Current;
+        if (current is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Title))
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["title"] = ["Title is required."],
+            });
+        }
+
+        var family = await db.Families
+            .SingleOrDefaultAsync(x => x.Id == current.FamilyId, cancellationToken);
+        if (family is null)
+        {
+            return Results.NotFound();
+        }
+
+        var member = await db.Members
+            .SingleOrDefaultAsync(x => x.Id == current.MemberId, cancellationToken);
+        if (member is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        BookWork? bookWork = null;
+        if (request.BookWorkId.HasValue)
+        {
+            bookWork = await db.BookWorks
+                .SingleOrDefaultAsync(x => x.Id == request.BookWorkId.Value, cancellationToken);
+            if (bookWork is null)
+            {
+                return Results.NotFound();
+            }
+        }
+
+        BookEdition? bookEdition = null;
+        if (request.BookEditionId.HasValue)
+        {
+            bookEdition = await db.BookEditions
+                .Include(x => x.BookWork)
+                .SingleOrDefaultAsync(x => x.Id == request.BookEditionId.Value, cancellationToken);
+            if (bookEdition is null)
+            {
+                return Results.NotFound();
+            }
+        }
+
+        var recordRequest = new WishlistItemRequest(
+            request.Title,
+            request.Author,
+            bookWork,
+            bookEdition);
+
+        WishlistItem wishlistItem;
+        try
+        {
+            wishlistItem = WishlistRecorder.Record(family, recordRequest);
+        }
+        catch (InvalidOperationException exception)
+        {
+            return Results.Problem(
+                detail: exception.Message,
+                statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        db.WishlistItems.Add(wishlistItem);
+        await db.SaveChangesAsync(cancellationToken);
+
+        return Results.Created(
+            $"/api/family/current/wishlist/{wishlistItem.Id}",
+            WishlistItemDtoFactory.Create(wishlistItem));
+    }
+}
