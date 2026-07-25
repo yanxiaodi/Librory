@@ -93,7 +93,9 @@ internal sealed class PostgresTestDatabase : IAsyncDisposable
     {
         var output = await RunDockerAsync("port", containerName, "5432/tcp");
         var endpoint = output.Split(new[] { Environment.NewLine, "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries)
-            .Single();
+            .FirstOrDefault(line => line.StartsWith("127.0.0.1:", StringComparison.Ordinal))
+            ?? output.Split(new[] { Environment.NewLine, "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries)
+                .First();
         var address = endpoint[(endpoint.LastIndexOf(':') + 1)..];
         return int.Parse(address, System.Globalization.CultureInfo.InvariantCulture);
     }
