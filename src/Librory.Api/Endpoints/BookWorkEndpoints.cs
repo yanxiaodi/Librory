@@ -13,7 +13,8 @@ internal static class BookWorkEndpoints
         ArgumentNullException.ThrowIfNull(app);
 
         var group = app.MapGroup("/api/book-works")
-            .RequireAuthorization();
+            .RequireAuthorization()
+            .WithTags("Books");
 
         group.MapPost(string.Empty, CreateBookWorkAsync)
             .WithName("CreateBookWork")

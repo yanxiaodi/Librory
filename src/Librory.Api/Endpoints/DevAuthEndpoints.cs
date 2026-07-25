@@ -18,6 +18,7 @@ internal static class DevAuthEndpoints
 
         app.MapPost("/dev/auth/login", LoginAsync)
             .AllowAnonymous()
+            .WithTags("Development")
             .WithName("DevAuthLogin")
             .Produces<DevLoginResponse>(StatusCodes.Status200OK)
             .ProducesValidationProblem();
@@ -29,6 +30,7 @@ internal static class DevAuthEndpoints
             return Results.NoContent();
         })
             .AllowAnonymous()
+            .WithTags("Development")
             .WithName("DevAuthLogout");
 
         app.MapPost("/dev/bootstrap", async (
@@ -36,6 +38,7 @@ internal static class DevAuthEndpoints
             HttpContext httpContext,
             CancellationToken cancellationToken) => await BootstrapAsync(db, httpContext, cancellationToken))
             .AllowAnonymous()
+            .WithTags("Development")
             .WithName("DevBootstrap")
             .Produces<DevLoginResponse>(StatusCodes.Status200OK)
             .ProducesValidationProblem();

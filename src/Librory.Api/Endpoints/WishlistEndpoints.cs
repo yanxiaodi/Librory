@@ -15,7 +15,8 @@ internal static class WishlistEndpoints
         ArgumentNullException.ThrowIfNull(app);
 
         var group = app.MapGroup("/api/family/current/wishlist")
-            .RequireAuthorization();
+            .RequireAuthorization()
+            .WithTags("Wishlist");
 
         group.MapGet(string.Empty, GetWishlistAsync)
             .WithName("GetWishlist")

@@ -13,7 +13,8 @@ internal static class FamilyEndpoints
         ArgumentNullException.ThrowIfNull(app);
 
         var group = app.MapGroup("/api")
-            .RequireAuthorization();
+            .RequireAuthorization()
+            .WithTags("Family");
 
         group.MapGet("/family/current", GetCurrentFamilyAsync)
             .WithName("GetCurrentFamily")

@@ -2,6 +2,13 @@
 
 This page documents the current developer-facing API slice that is available in `story-10`.
 
+## Quick Map
+
+- Development: login, logout, and bootstrap
+- Family: current family summary
+- Books: book work create and read
+- Wishlist: paged list and create
+
 ## Docs And Auth
 
 - Scalar is enabled in development only.
@@ -9,7 +16,7 @@ This page documents the current developer-facing API slice that is available in 
 - Use `POST /dev/auth/login` or `POST /dev/bootstrap` in local development, then reuse the authenticated cookie in Scalar with persistent auth enabled.
 - `POST /dev/auth/logout` clears the development auth cookie.
 
-## Development Endpoints
+## Development
 
 ### `POST /dev/auth/login`
 
@@ -51,7 +58,7 @@ Behavior:
 - Returns `204 No Content` on success.
 - Makes subsequent protected requests unauthenticated until login runs again.
 
-## Family Endpoints
+## Family
 
 ### `GET /api/family/current`
 
@@ -79,7 +86,7 @@ Notes:
 - This route is the canonical current-family endpoint.
 - `memberRole` uses the current enum mapping: `0 = Member`, `1 = Admin`.
 
-## Book Work Endpoints
+## Books
 
 ### `POST /api/book-works`
 
@@ -94,7 +101,7 @@ Behavior:
 
 Returns a single work with its editions.
 
-## Wishlist Endpoints
+## Wishlist
 
 ### `GET /api/family/current/wishlist`
 
