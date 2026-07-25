@@ -9,6 +9,10 @@ public sealed class DesignTimeLibroryDbContextFactory : IDesignTimeDbContextFact
     public LibroryDbContext CreateDbContext(string[] args)
     {
         var configuration = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: true)
+            .AddJsonFile("appsettings.Development.json", optional: true)
+            .AddUserSecrets<DesignTimeLibroryDbContextFactory>(optional: true)
             .AddEnvironmentVariables()
             .Build();
 

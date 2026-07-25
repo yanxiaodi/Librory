@@ -90,23 +90,79 @@ internal static class DevAuthEndpoints
 
         if (family is null)
         {
-            family = Family.Create(normalizedFamilyName);
-            var createdMember = family.AddMember(normalizedMemberDisplayName, MemberRole.Admin, request.PreferredLanguage);
+            try
+            {
+                family = Family.Create(normalizedFamilyName);
+                var createdMember = family.AddMember(normalizedMemberDisplayName, MemberRole.Admin, request.PreferredLanguage);
 
-            db.Families.Add(family);
-            await db.SaveChangesAsync(cancellationToken);
+                db.Families.Add(family);
+                await db.SaveChangesAsync(cancellationToken);
 
-            return await SignInAsync(httpContext, family, createdMember);
+                return await SignInAsync(httpContext, family, createdMember);
+            }
+            catch (DbUpdateException)
+            {
+                var resolved = await ReloadFamilyMemberAsync(
+                    db,
+                    normalizedFamilyName,
+                    normalizedMemberDisplayName,
+                    cancellationToken);
+
+                if (resolved is not null)
+                {
+                    return await SignInAsync(httpContext, resolved.Value.family, resolved.Value.member);
+                }
+
+                throw;
+            }
         }
 
         var existingMember = family.Members.SingleOrDefault(x => x.DisplayName == normalizedMemberDisplayName);
         if (existingMember is null)
         {
-            existingMember = family.AddMember(normalizedMemberDisplayName, MemberRole.Admin, request.PreferredLanguage);
-            await db.SaveChangesAsync(cancellationToken);
+            try
+            {
+                existingMember = family.AddMember(normalizedMemberDisplayName, MemberRole.Admin, request.PreferredLanguage);
+                await db.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException)
+            {
+                var resolved = await ReloadFamilyMemberAsync(
+                    db,
+                    normalizedFamilyName,
+                    normalizedMemberDisplayName,
+                    cancellationToken);
+
+                if (resolved is not null)
+                {
+                    return await SignInAsync(httpContext, resolved.Value.family, resolved.Value.member);
+                }
+
+                throw;
+            }
         }
 
         return await SignInAsync(httpContext, family, existingMember);
+    }
+
+    private static async Task<(Family family, Member member)?> ReloadFamilyMemberAsync(
+        LibroryDbContext db,
+        string normalizedFamilyName,
+        string normalizedMemberDisplayName,
+        CancellationToken cancellationToken)
+    {
+        db.ChangeTracker.Clear();
+
+        var family = await db.Families
+            .Include(x => x.Members)
+            .SingleOrDefaultAsync(x => x.Name == normalizedFamilyName, cancellationToken);
+        if (family is null)
+        {
+            return null;
+        }
+
+        var member = family.Members.SingleOrDefault(x => x.DisplayName == normalizedMemberDisplayName);
+        return member is null ? null : (family, member);
     }
 
     private static async Task<IResult> SignInAsync(
