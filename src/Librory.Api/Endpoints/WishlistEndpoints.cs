@@ -114,7 +114,9 @@ internal static class WishlistEndpoints
         }
 
         var member = await db.Members
-            .SingleOrDefaultAsync(x => x.Id == current.MemberId, cancellationToken);
+            .SingleOrDefaultAsync(
+                x => x.Id == current.MemberId && x.FamilyId == current.FamilyId,
+                cancellationToken);
         if (member is null)
         {
             return Results.Unauthorized();

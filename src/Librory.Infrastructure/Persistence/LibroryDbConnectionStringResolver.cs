@@ -6,8 +6,6 @@ internal static class LibroryDbConnectionStringResolver
 {
     private const string ConnectionStringName = "LibroryDb";
     private const string EnvironmentVariableName = "LIBRORY_DATABASE_URL";
-    private const string LocalFallback =
-        "Host=localhost;Port=5432;Database=librory;Username=postgres;Password=postgres";
 
     public static string Resolve(IConfiguration configuration)
     {
@@ -25,6 +23,7 @@ internal static class LibroryDbConnectionStringResolver
             return environmentVariable;
         }
 
-        return LocalFallback;
+        throw new InvalidOperationException(
+            $"Missing database connection string. Configure 'ConnectionStrings:{ConnectionStringName}' or '{EnvironmentVariableName}'.");
     }
 }
