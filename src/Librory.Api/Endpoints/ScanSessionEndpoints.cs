@@ -260,12 +260,6 @@ internal static class ScanSessionEndpoints
 
         try
         {
-            var family = await LoadFamilyForDuplicateDetectionAsync(db, current.FamilyId, cancellationToken);
-            if (family is null)
-            {
-                return Results.NotFound();
-            }
-
             var session = await LoadScanSessionAsync(db, current.FamilyId, scanSessionId, cancellationToken);
             if (session is null || session.IsExpired())
             {
@@ -283,7 +277,7 @@ internal static class ScanSessionEndpoints
 
             await db.SaveChangesAsync(cancellationToken);
 
-            var response = ToResponse(work);
+            var response = BookWorkResponseFactory.Create(work);
             return request.BookWorkId is null
                 ? Results.Created($"/api/book-works/{work.Id}", response)
                 : Results.Ok(response);
@@ -331,6 +325,17 @@ internal static class ScanSessionEndpoints
         return Results.NoContent();
     }
 
+    private static Task<ScanSession?> LoadScanSessionAsync(
+        LibroryDbContext db,
+        Guid familyId,
+        Guid scanSessionId,
+        CancellationToken cancellationToken)
+    {
+        return db.ScanSessions
+            .Include(x => x.Candidates)
+            .SingleOrDefaultAsync(x => x.FamilyId == familyId && x.Id == scanSessionId, cancellationToken);
+    }
+
     private static Task<Family?> LoadFamilyForDuplicateDetectionAsync(
         LibroryDbContext db,
         Guid familyId,
@@ -341,17 +346,6 @@ internal static class ScanSessionEndpoints
                 .ThenInclude(x => x.BookEdition)
                     .ThenInclude(x => x.BookWork)
             .SingleOrDefaultAsync(x => x.Id == familyId, cancellationToken);
-    }
-
-    private static Task<ScanSession?> LoadScanSessionAsync(
-        LibroryDbContext db,
-        Guid familyId,
-        Guid scanSessionId,
-        CancellationToken cancellationToken)
-    {
-        return db.ScanSessions
-            .Include(x => x.Candidates)
-            .SingleOrDefaultAsync(x => x.FamilyId == familyId && x.Id == scanSessionId, cancellationToken);
     }
 
     private static async Task<BookWork> ResolveBookWorkAsync(
@@ -492,22 +486,5 @@ internal static class ScanSessionEndpoints
             dto.ShelfPhotoPath,
             candidates,
             dto.ExpiresAt);
-    }
-
-    private static BookWorkResponse ToResponse(BookWork work)
-    {
-        var editions = work.Editions
-            .Select(edition => new BookEditionResponse(
-                edition.Id,
-                edition.Isbn,
-                edition.Format,
-                edition.PublicationYear))
-            .ToList();
-
-        return new BookWorkResponse(
-            work.Id,
-            work.CanonicalTitle,
-            work.CanonicalAuthor,
-            editions);
     }
 }
