@@ -240,6 +240,7 @@ Let a user save a purchased book into the family library with the minimum viable
 
 `story-03` only creates `BookCopy` records. It assumes the book has already been resolved to a `BookEdition` by a separate catalog or recognition flow. If the edition is not known yet, the user must resolve that first rather than creating a provisional copy.
 The intake flow does not introduce a second place to enter title or cover art; those facts come from the resolved work/edition record that the user is attaching to the family library.
+Raw provider payloads should not be stored on `BookCopy`; the copy should point at canonical book records that were already resolved or promoted by a catalog flow.
 
 ### Acceptance Criteria
 
@@ -269,6 +270,7 @@ Create the temporary scan session record and store the initial batch of candidat
 Acceptance criteria:
 
 - The backend can create a scan session.
+- The backend can store the source shelf photo path on the session.
 - The backend can persist multiple recognized candidates under one session.
 - The backend can retain a session for a short, configurable retention window.
 - The backend can return the stored candidates for a recent session.
@@ -286,6 +288,17 @@ Acceptance criteria:
 - The backend can update one candidate from a scan session.
 - The backend can preserve the rest of the session when one candidate changes.
 - The backend can refresh duplicate and recommendation data for the corrected candidate.
+
+#### story-04c: Catalog Resolution and Metadata Enrichment
+
+Resolve a scan candidate into a reusable book catalog record when the system has enough evidence or the user explicitly confirms it.
+
+Acceptance criteria:
+
+- The backend can look up a scan candidate against existing canonical book records.
+- The backend can enrich a canonical work or edition with sourced metadata and provenance when needed.
+- The backend does not treat every scan candidate as a permanent catalog record by default.
+- The backend can keep unresolved scan candidates temporary until they are promoted or discarded.
 
 ### Acceptance Criteria
 
@@ -360,6 +373,7 @@ API endpoints and persistence wiring will be added in a later story slice.
 - A wishlist item can reference a work, edition, or fuzzy match result.
 - The application layer can add and map wishlist items for a family context.
 - Converting wishlist items into owned copies remains available for a later API/persistence slice.
+- Wishlist items should reference canonical or temporarily resolved book data rather than raw provider payloads.
 
 ## Story-08: Localization-Aware Shaping
 
@@ -393,6 +407,7 @@ Run recognition, enrichment, recommendation, and duplicate workflows inside the 
 - As the system, I want an enrichment workflow so I can add metadata to candidates.
 - As the system, I want a recommendation workflow so I can score books with explainable output.
 - As the system, I want a duplicate workflow so I can surface warnings alongside recommendations.
+- As the system, I want a catalog resolution workflow so scan candidates can promote into reusable book records only when they are confident enough.
 
 ### Acceptance Criteria
 
@@ -400,6 +415,7 @@ Run recognition, enrichment, recommendation, and duplicate workflows inside the 
 - The workflow is isolated from controllers and persistence code.
 - The workflow returns structured output that the API can persist.
 - The workflow does not own the database schema or UI state.
+- The workflow can enrich or promote candidates into canonical book records without making every scan result permanent.
 
 ## Story-10: API and Persistence Foundation
 
@@ -460,6 +476,29 @@ Give the backend a repeatable integration-test harness that exercises the API ag
 - The goal is to keep this story focused on test infrastructure, not new product behavior.
 - If a stronger isolation strategy is needed later, it can be upgraded without changing the API surface.
 
+## Story-12: External Metadata Providers and Canonical Import
+
+### Goal
+
+Normalize book metadata from external providers into Librory's canonical catalog records so later scan, wishlist, and intake flows can reuse the same source of truth.
+
+### User Stories
+
+- As the system, I want to look up a book by ISBN or title against trusted external providers so I can reduce manual data entry.
+- As the system, I want to normalize provider results into a canonical shape so downstream features do not depend on one vendor's raw payload.
+- As a family member, I want confirmed metadata to land in the local catalog so later scans and wishlists resolve faster.
+- As a developer, I want provider adapters so we can add or replace metadata sources without rewriting business logic.
+
+### Acceptance Criteria
+
+- The backend can query at least one external book metadata provider by ISBN and by title.
+- The backend can normalize external metadata into the internal work/edition model.
+- The backend preserves provider provenance and capture metadata alongside imported values.
+- The backend can keep unresolved external results temporary until the user confirms them.
+- The backend can promote confirmed metadata into canonical catalog records when a purchase or wishlist flow requires it.
+- The backend uses an abstraction such as `IBookMetadataProvider` or equivalent so new providers can be added without changing core business rules.
+- The backend does not treat external metadata as authoritative until it has been confirmed or reconciled with existing canonical records.
+
 ## Priority Summary
 
 ### P0
@@ -477,6 +516,7 @@ Give the backend a repeatable integration-test harness that exercises the API ag
 - story-06 Recommendation profiles
 - story-07 Wishlist
 - story-11 PostgreSQL test infrastructure
+- story-12 External metadata providers and canonical import
 
 ### P2
 

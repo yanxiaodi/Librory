@@ -147,6 +147,13 @@ public sealed class Family
         return session;
     }
 
+    public ScanSession StartScanSession(string shelfPhotoPath, TimeSpan? retentionWindow = null)
+    {
+        var session = ScanSession.Create(this, shelfPhotoPath, retentionWindow);
+        ScanSessions.Add(session);
+        return session;
+    }
+
     public RecommendationProfile GetOrCreateRecommendationProfile(
         Member member,
         int? minimumAge = null,

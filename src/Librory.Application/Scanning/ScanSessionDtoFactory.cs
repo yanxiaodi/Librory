@@ -16,6 +16,7 @@ public static class ScanSessionDtoFactory
         return new ScanSessionDto(
             session.Id,
             session.FamilyId,
+            session.ShelfPhotoPath,
             candidates,
             session.ExpiresAt);
     }

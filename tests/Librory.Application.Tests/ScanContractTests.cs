@@ -8,10 +8,17 @@ public class ScanContractTests
     [Fact]
     public void ScanShelfRequest_has_family_and_language_fields()
     {
-        var request = new ScanShelfRequest(Guid.NewGuid(), "zh", "shelf-photo.jpg");
+        var request = new ScanShelfRequest(
+            Guid.NewGuid(),
+            "zh",
+            "shelf-photo.jpg",
+            TimeSpan.FromDays(2),
+            [new ScanCandidateInput("Charlotte's Web", "High")]);
 
         Assert.Equal("zh", request.PreferredLanguage);
         Assert.Equal("shelf-photo.jpg", request.ShelfPhotoPath);
+        Assert.Equal(TimeSpan.FromDays(2), request.RetentionWindow);
+        Assert.Single(request.Candidates!);
     }
 
     [Fact]
@@ -29,9 +36,11 @@ public class ScanContractTests
         var dto = new ScanSessionDto(
             Guid.NewGuid(),
             Guid.NewGuid(),
+            "shelf-photo.jpg",
             [candidate],
             new DateTimeOffset(2026, 7, 24, 12, 0, 0, TimeSpan.Zero));
 
+        Assert.Equal("shelf-photo.jpg", dto.ShelfPhotoPath);
         Assert.Single(dto.Candidates);
         Assert.Same(candidate, dto.Candidates[0]);
         Assert.Equal(candidate.Id, dto.Candidates[0].Id);

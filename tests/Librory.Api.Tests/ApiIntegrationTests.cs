@@ -193,6 +193,54 @@ public sealed class ApiIntegrationTests
     }
 
     [Fact]
+    public async Task Scan_session_can_be_created_and_read_back()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var bootstrapResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        await AssertSuccessAsync(bootstrapResponse);
+
+        var createResponse = await client.PostAsJsonAsync(
+            "/api/family/current/scan-sessions",
+            new CreateScanSessionRequest(
+                "shelf-photo.jpg",
+                3,
+                [
+                    new CreateScanCandidateRequest(
+                        "Charlotte's Web",
+                        "High",
+                        "E. B. White",
+                        0.92m,
+                        false,
+                        "Already owned by the family"),
+                    new CreateScanCandidateRequest(
+                        "Matilda",
+                        "Medium",
+                        "Roald Dahl",
+                        0.78m)]));
+
+        await AssertSuccessAsync(createResponse);
+
+        var created = await createResponse.Content.ReadFromJsonAsync<ScanSessionResponse>();
+        Assert.NotNull(created);
+        Assert.Equal("shelf-photo.jpg", created!.ShelfPhotoPath);
+        Assert.Equal(2, created.Candidates.Count);
+
+        var getResponse = await client.GetAsync($"/api/family/current/scan-sessions/{created.ScanSessionId}");
+        await AssertSuccessAsync(getResponse);
+
+        var fetched = await getResponse.Content.ReadFromJsonAsync<ScanSessionResponse>();
+        Assert.NotNull(fetched);
+        Assert.Equal(created.ScanSessionId, fetched!.ScanSessionId);
+        Assert.Equal(created.ShelfPhotoPath, fetched.ShelfPhotoPath);
+        Assert.Equal(created.Candidates.Count, fetched.Candidates.Count);
+    }
+
+    [Fact]
     public async Task Wishlist_page_validation_omits_empty_error_keys()
     {
         await using var factory = await ApiFactory.CreateAsync();
