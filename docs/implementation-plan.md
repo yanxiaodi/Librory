@@ -29,6 +29,8 @@
 - Family library browse and search
 - Temporary scan session storage with source photo tracking
 - Catalog resolution and candidate enrichment for scan results
+- External metadata lookup and normalization for ISBN/title search
+- Promotion of confirmed external metadata into canonical catalog records
 - Duplicate detection stub
 
 ## Step 5: AI Integration
