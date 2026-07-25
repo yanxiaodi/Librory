@@ -238,14 +238,15 @@ Let a user save a purchased book into the family library with the minimum viable
 
 ### Modeling Note
 
-`story-03` only creates `BookCopy` records. It assumes the book has already been resolved to a `BookEdition` by a separate catalog or recognition flow. If the edition is not known yet, the user must resolve that first rather than creating a provisional copy.
+`story-03` only creates `BookCopy` records. It assumes the book has already been resolved to a `BookEdition` by a separate catalog, metadata import, or recognition flow. If the edition is not known yet, the user must resolve that first rather than creating a provisional copy.
 The intake flow does not introduce a second place to enter title or cover art; those facts come from the resolved work/edition record that the user is attaching to the family library.
 Raw provider payloads should not be stored on `BookCopy`; the copy should point at canonical book records that were already resolved or promoted by a catalog flow.
+Version parsing and canonical edition import belong to later metadata work, not to the manual intake slice.
 
 ### Acceptance Criteria
 
 - The API can create a persisted copy for a purchased book.
-- The minimum intake path records edition, owning member, and duplicate confirmation state.
+- The minimum intake path records the resolved edition, owning member, and duplicate confirmation state.
 - Optional fields such as condition, price, store, shelf location, purchase date, and notes can be added later.
 - The saved record belongs to the current family scope.
 

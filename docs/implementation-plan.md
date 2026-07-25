@@ -25,7 +25,7 @@
 
 ## Step 4: Core Flows
 
-- Manual book intake from a resolved edition into the current family/member context
+- Manual book intake from a resolved edition into the current family/member context, with purchase metadata kept optional
 - Family library browse and search
 - Temporary scan session storage with source photo tracking
 - Catalog resolution and candidate enrichment for scan results
