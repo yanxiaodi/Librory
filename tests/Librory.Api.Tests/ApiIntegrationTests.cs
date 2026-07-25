@@ -241,6 +241,69 @@ public sealed class ApiIntegrationTests
     }
 
     [Fact]
+    public async Task Scan_session_candidate_can_be_corrected_in_place()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var bootstrapResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        await AssertSuccessAsync(bootstrapResponse);
+
+        var createResponse = await client.PostAsJsonAsync(
+            "/api/family/current/scan-sessions",
+            new CreateScanSessionRequest(
+                "shelf-photo.jpg",
+                3,
+                [
+                    new CreateScanCandidateRequest(
+                        "Charlotte's Web",
+                        "High",
+                        "E. B. White",
+                        0.92m,
+                        false,
+                        "Already owned by the family"),
+                    new CreateScanCandidateRequest(
+                        "Matilda",
+                        "Medium",
+                        "Roald Dahl",
+                        0.78m)]));
+
+        await AssertSuccessAsync(createResponse);
+
+        var created = await createResponse.Content.ReadFromJsonAsync<ScanSessionResponse>();
+        Assert.NotNull(created);
+
+        var candidateId = created!.Candidates[0].Id;
+        var correctionResponse = await client.PutAsJsonAsync(
+            $"/api/family/current/scan-sessions/{created.ScanSessionId}/candidates/{candidateId}",
+            new UpdateScanCandidateRequest(
+                "The Spider and the Pig",
+                "Medium",
+                "E. B. White",
+                0.87m,
+                false,
+                "Recheck duplicate after correction"));
+
+        await AssertSuccessAsync(correctionResponse);
+
+        var corrected = await correctionResponse.Content.ReadFromJsonAsync<ScanSessionResponse>();
+        Assert.NotNull(corrected);
+        Assert.Equal(created.ScanSessionId, corrected!.ScanSessionId);
+        Assert.Equal(2, corrected.Candidates.Count);
+        Assert.Equal("The Spider and the Pig", corrected.Candidates[0].DisplayTitle);
+        Assert.Equal("Medium", corrected.Candidates[0].ConfidenceLabel);
+        Assert.Equal("E. B. White", corrected.Candidates[0].Author);
+        Assert.Equal(0.87m, corrected.Candidates[0].RecommendationScore);
+        Assert.False(corrected.Candidates[0].IsAlreadyOwned);
+        Assert.Equal("Recheck duplicate after correction", corrected.Candidates[0].DuplicateMessage);
+        Assert.Equal("Matilda", corrected.Candidates[1].DisplayTitle);
+        Assert.Equal("Medium", corrected.Candidates[1].ConfidenceLabel);
+    }
+
+    [Fact]
     public async Task Wishlist_page_validation_omits_empty_error_keys()
     {
         await using var factory = await ApiFactory.CreateAsync();

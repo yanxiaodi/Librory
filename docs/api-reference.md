@@ -131,6 +131,42 @@ Returns:
 - `200 OK` with the work payload.
 - `404 Not Found` when the work id does not exist.
 
+## Scan Sessions
+
+### `POST /api/family/current/scan-sessions`
+
+Creates a temporary scan session for the current family.
+
+Behavior:
+
+- Requires a shelf photo path.
+- Accepts optional recognized candidates.
+- Accepts an optional retention window in days.
+- Stores the session temporarily for later review.
+
+Returns:
+
+- `201 Created` with the persisted session payload.
+- `400 Bad Request` when required fields are missing or invalid.
+- `401 Unauthorized` when the caller is not signed in.
+
+### `PUT /api/family/current/scan-sessions/{scanSessionId}/candidates/{candidateId}`
+
+Corrects a single scan candidate in place.
+
+Behavior:
+
+- Updates the matching candidate without resetting the rest of the session.
+- Reuses the same correction fields as the candidate creation shape.
+- Returns the full updated session after the correction is saved.
+
+Returns:
+
+- `200 OK` with the updated session payload.
+- `400 Bad Request` when the correction data is invalid.
+- `401 Unauthorized` when the caller is not signed in.
+- `404 Not Found` when the session or candidate does not exist for the current family.
+
 ## Wishlist
 
 ### `GET /api/family/current/wishlist`

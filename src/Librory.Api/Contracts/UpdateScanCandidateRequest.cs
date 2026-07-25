@@ -1,6 +1,6 @@
-namespace Librory.Application.Scanning;
+namespace Librory.Api.Contracts;
 
-public sealed record CorrectionRequest(
+public sealed record UpdateScanCandidateRequest(
     string DisplayTitle,
     string ConfidenceLabel,
     string? Author = null,

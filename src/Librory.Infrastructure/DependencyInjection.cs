@@ -1,4 +1,6 @@
+using Librory.Application.Scanning;
 using Librory.Infrastructure.Persistence;
+using Librory.Infrastructure.Scanning;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,6 +20,8 @@ public static class DependencyInjection
 
             options.UseNpgsql(connectionString);
         });
+
+        services.AddScoped<IScanSessionService, ScanSessionService>();
 
         return services;
     }

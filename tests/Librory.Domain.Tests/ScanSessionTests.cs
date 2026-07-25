@@ -10,12 +10,12 @@ public class ScanSessionTests
     {
         var family = Family.Create("The Yans");
 
-        var session = family.StartScanSession();
+        var session = family.StartScanSession("shelf-photo.jpg");
 
         Assert.Single(family.ScanSessions);
         Assert.Same(session, family.ScanSessions[0]);
         Assert.Equal(family.Id, session.FamilyId);
-        Assert.Equal(string.Empty, session.ShelfPhotoPath);
+        Assert.Equal("shelf-photo.jpg", session.ShelfPhotoPath);
         Assert.Empty(session.Candidates);
         Assert.Equal(TimeSpan.FromDays(7), session.ExpiresAt - session.CreatedAt);
         Assert.False(session.IsExpired(session.CreatedAt));
