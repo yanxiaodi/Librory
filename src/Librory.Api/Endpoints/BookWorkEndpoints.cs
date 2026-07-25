@@ -1,4 +1,5 @@
 using Librory.Api.Contracts;
+using Librory.Api.Validation;
 using Librory.Domain.Models;
 using Librory.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -34,12 +35,11 @@ internal static class BookWorkEndpoints
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (string.IsNullOrWhiteSpace(request.Title))
+        if (ApiValidation.Required(
+                new ValidationField("title", request.Title, "Title is required."))
+            is IResult validationProblem)
         {
-            return Results.ValidationProblem(new Dictionary<string, string[]>
-            {
-                ["title"] = ["Title is required."],
-            });
+            return validationProblem;
         }
 
         var work = BookWork.Create(request.Title, request.Author);

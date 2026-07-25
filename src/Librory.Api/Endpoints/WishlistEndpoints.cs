@@ -1,6 +1,7 @@
 using Librory.Api.Contracts;
 using Librory.Application.Families;
 using Librory.Application.Wishlist;
+using Librory.Api.Validation;
 using Librory.Domain.Models;
 using Librory.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -18,7 +19,7 @@ internal static class WishlistEndpoints
 
         group.MapGet(string.Empty, GetWishlistAsync)
             .WithName("GetWishlist")
-            .Produces<IReadOnlyList<WishlistItemDto>>(StatusCodes.Status200OK)
+            .Produces<WishlistPageResponse>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status401Unauthorized);
 
         group.MapPost(string.Empty, CreateWishlistItemAsync)
@@ -34,7 +35,9 @@ internal static class WishlistEndpoints
     private static async Task<IResult> GetWishlistAsync(
         LibroryDbContext db,
         ICurrentFamilyContextAccessor accessor,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        int page = 1,
+        int pageSize = 20)
     {
         var current = accessor.Current;
         if (current is null)
@@ -42,12 +45,30 @@ internal static class WishlistEndpoints
             return Results.Unauthorized();
         }
 
-        var items = await db.WishlistItems
+        if (page < 1 || pageSize < 1 || pageSize > 100)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["page"] = page < 1 ? ["Page must be at least 1."] : [],
+                ["pageSize"] = pageSize < 1 || pageSize > 100 ? ["Page size must be between 1 and 100."] : [],
+            });
+        }
+
+        var query = db.WishlistItems
             .Where(x => x.FamilyId == current.FamilyId)
-            .OrderByDescending(x => x.CreatedAt)
+            .OrderByDescending(x => x.CreatedAt);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync(cancellationToken);
 
-        return Results.Ok(items.Select(WishlistItemDtoFactory.Create).ToList());
+        return Results.Ok(new WishlistPageResponse(
+            items.Select(WishlistItemDtoFactory.Create).ToList(),
+            page,
+            pageSize,
+            totalCount));
     }
 
     private static async Task<IResult> CreateWishlistItemAsync(
@@ -64,12 +85,11 @@ internal static class WishlistEndpoints
             return Results.Unauthorized();
         }
 
-        if (string.IsNullOrWhiteSpace(request.Title))
+        if (ApiValidation.Required(
+                new ValidationField("title", request.Title, "Title is required."))
+            is IResult validationProblem)
         {
-            return Results.ValidationProblem(new Dictionary<string, string[]>
-            {
-                ["title"] = ["Title is required."],
-            });
+            return validationProblem;
         }
 
         var family = await db.Families

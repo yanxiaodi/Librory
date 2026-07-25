@@ -15,14 +15,8 @@ internal static class FamilyEndpoints
         var group = app.MapGroup("/api")
             .RequireAuthorization();
 
-        group.MapGet("/me", GetCurrentFamilyAsync)
-            .WithName("GetCurrentFamily")
-            .Produces<CurrentFamilyResponse>(StatusCodes.Status200OK)
-            .Produces(StatusCodes.Status401Unauthorized)
-            .Produces(StatusCodes.Status404NotFound);
-
         group.MapGet("/family/current", GetCurrentFamilyAsync)
-            .WithName("GetCurrentFamilySummary")
+            .WithName("GetCurrentFamily")
             .Produces<CurrentFamilyResponse>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status404NotFound);
