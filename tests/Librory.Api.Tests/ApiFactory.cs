@@ -44,16 +44,25 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
                 options.UseNpgsql(_connectionString);
             });
 
-            var provider = services.BuildServiceProvider();
+            using var provider = services.BuildServiceProvider();
             using var scope = provider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<LibroryDbContext>();
             db.Database.Migrate();
         });
     }
 
-    public new void Dispose()
+    protected override void Dispose(bool disposing)
     {
-        base.Dispose();
-        _database.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        try
+        {
+            if (disposing)
+            {
+                _database.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            }
+        }
+        finally
+        {
+            base.Dispose(disposing);
+        }
     }
 }

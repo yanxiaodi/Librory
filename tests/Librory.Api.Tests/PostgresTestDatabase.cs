@@ -20,7 +20,7 @@ internal sealed class PostgresTestDatabase : IAsyncDisposable
     {
         _host = host;
         _databaseName = databaseName;
-        ConnectionString = $"Host=localhost;Port={host.Port};Database={databaseName};Username={Username};Password={Password}";
+        ConnectionString = $"Host=localhost;Port={host.Port};Database={databaseName};Username={Username};Password={Password};Pooling=false";
     }
 
     public string ConnectionString { get; }
@@ -129,7 +129,7 @@ internal sealed class PostgresTestDatabase : IAsyncDisposable
         {
             _containerName = containerName;
             Port = port;
-            _adminConnectionString = $"Host=localhost;Port={port};Database={AdminDatabase};Username={Username};Password={Password}";
+            _adminConnectionString = $"Host=localhost;Port={port};Database={AdminDatabase};Username={Username};Password={Password};Pooling=false";
         }
 
         public int Port { get; }
