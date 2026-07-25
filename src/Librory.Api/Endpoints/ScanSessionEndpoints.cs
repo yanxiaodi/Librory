@@ -115,7 +115,7 @@ internal static class ScanSessionEndpoints
                 $"/api/family/current/scan-sessions/{dto.ScanSessionId}",
                 ToResponse(dto));
         }
-        catch (Exception exception) when (exception is UnauthorizedAccessException or KeyNotFoundException or InvalidOperationException or ArgumentOutOfRangeException)
+        catch (Exception exception) when (exception is UnauthorizedAccessException or KeyNotFoundException or InvalidOperationException or ArgumentOutOfRangeException or ArgumentException)
         {
             return Results.Problem(
                 detail: exception.Message,

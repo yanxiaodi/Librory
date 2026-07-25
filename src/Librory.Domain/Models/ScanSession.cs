@@ -16,7 +16,6 @@ public sealed class ScanSession
     public static ScanSession Create(Family family, string shelfPhotoPath, TimeSpan? retentionWindow = null)
     {
         ArgumentNullException.ThrowIfNull(family);
-        var normalizedShelfPhotoPath = NormalizeShelfPhotoPath(shelfPhotoPath);
         var window = retentionWindow ?? TimeSpan.FromDays(7);
         if (window <= TimeSpan.Zero)
         {
@@ -25,7 +24,7 @@ public sealed class ScanSession
 
         var now = DateTimeOffset.UtcNow;
         var session = new ScanSession();
-        session.AttachTo(family, normalizedShelfPhotoPath, now, window);
+        session.AttachTo(family, shelfPhotoPath, now, window);
         return session;
     }
 

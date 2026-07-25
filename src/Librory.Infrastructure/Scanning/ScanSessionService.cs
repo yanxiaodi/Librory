@@ -71,8 +71,7 @@ public sealed class ScanSessionService : IScanSessionService
             throw new KeyNotFoundException("Scan candidate not found.");
         }
 
-        session.CorrectCandidate(
-            candidateId,
+        candidate.ApplyCorrection(
             request.DisplayTitle,
             request.ConfidenceLabel,
             request.Author,
