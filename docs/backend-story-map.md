@@ -425,6 +425,9 @@ This story should be implemented before `story-09` even though it has a higher I
 - Scalar documentation is enabled for the API.
 - Developers can authenticate against the API in local development and use that identity in Scalar to call secured endpoints.
 - The first API slice can persist and read back the core family, book, and wishlist data needed by the completed domain and application stories.
+- The current family endpoint is canonical at `/api/family/current`.
+- The wishlist endpoint supports paging for larger families.
+- Developer tooling includes login, bootstrap, and logout endpoints for local debugging only.
 
 ### Notes
 
