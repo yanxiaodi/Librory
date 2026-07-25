@@ -15,22 +15,28 @@
 - Add wishlist and scan session entities
 - Add preferred language support
 
-## Step 3: Core Flows
+## Step 3: API and Persistence Foundation
+
+- Add PostgreSQL persistence through EF Core
+- Add a design-time DbContext and generated migrations
+- Add Scalar API docs
+- Add local development auth support for debugging
+
+## Step 4: Core Flows
 
 - Manual book intake from a resolved edition into the current family/member context
 - Family library browse and search
 - Temporary scan session storage
 - Duplicate detection stub
-- Wishlist domain and application flow before API and persistence wiring
 
-## Step 4: AI Integration
+## Step 5: AI Integration
 
 - Add Microsoft Agent Framework workflows inside the API project
 - Add metadata enrichment pipeline
 - Add recommendation reasoning pipeline
 - Keep AI workflow code modular inside the API instead of splitting it into a separate service
 
-## Step 5: Azure Readiness
+## Step 6: Azure Readiness
 
 - Configure Azure deployment target
 - Configure storage for images and artifacts

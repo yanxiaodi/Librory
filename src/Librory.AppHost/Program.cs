@@ -1,7 +1,13 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
+var postgres = builder.AddPostgres("postgres")
+    .WithDataVolume();
+var db = postgres.AddDatabase("LibroryDb");
+
 var api = builder.AddProject("api", "../Librory.Api/Librory.Api.csproj")
-    .WithEndpoint("http", endpoint => endpoint.Port = 5172);
+    .WithEndpoint("http", endpoint => endpoint.Port = 5172)
+    .WithReference(db)
+    .WaitFor(db);
 
 builder.AddNpmApp("web", "../Librory.Web")
     .WithReference(api)
