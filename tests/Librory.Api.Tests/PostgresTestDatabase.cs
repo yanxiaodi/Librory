@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Net;
 using Npgsql;
 
 namespace Librory.Api.Tests;
@@ -19,7 +18,7 @@ internal sealed class PostgresTestDatabase : IAsyncDisposable
     {
         _host = host;
         _databaseName = databaseName;
-        ConnectionString = $"Host=localhost;Port={host.Port};Database={databaseName};Username={Username};Password={Password};Pooling=false";
+        ConnectionString = $"Host=127.0.0.1;Port={host.Port};Database={databaseName};Username={Username};Password={Password};Pooling=false";
     }
 
     public string ConnectionString { get; }
@@ -43,6 +42,7 @@ internal sealed class PostgresTestDatabase : IAsyncDisposable
     {
         var containerName = $"librory-postgres-tests-{Environment.ProcessId}";
 
+        await TryRemoveContainerAsync(containerName);
         await RunDockerAsync(
             "run",
             "--name",
@@ -75,6 +75,18 @@ internal sealed class PostgresTestDatabase : IAsyncDisposable
         };
 
         return host;
+    }
+
+    private static async Task TryRemoveContainerAsync(string containerName)
+    {
+        try
+        {
+            await RunDockerAsync("rm", "-f", containerName);
+        }
+        catch
+        {
+            // Ignore stale-container cleanup failures.
+        }
     }
 
     private static async Task<int> GetMappedPortAsync(string containerName)
@@ -130,7 +142,7 @@ internal sealed class PostgresTestDatabase : IAsyncDisposable
         {
             _containerName = containerName;
             Port = port;
-            _adminConnectionString = $"Host=localhost;Port={port};Database={AdminDatabase};Username={Username};Password={Password};Pooling=false";
+            _adminConnectionString = $"Host=127.0.0.1;Port={port};Database={AdminDatabase};Username={Username};Password={Password};Pooling=false";
         }
 
         public int Port { get; }

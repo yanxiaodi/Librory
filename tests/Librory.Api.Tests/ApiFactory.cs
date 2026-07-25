@@ -55,14 +55,14 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     {
         try
         {
+            base.Dispose(disposing);
+        }
+        finally
+        {
             if (disposing)
             {
                 _database.DisposeAsync().AsTask().GetAwaiter().GetResult();
             }
-        }
-        finally
-        {
-            base.Dispose(disposing);
         }
     }
 }
