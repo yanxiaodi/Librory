@@ -10,6 +10,8 @@ namespace Librory.Api.Endpoints;
 
 internal static class ScanSessionEndpoints
 {
+    private const int MaxShelfPhotoPathLength = 400;
+
     public static IEndpointRouteBuilder MapScanSessionEndpoints(this IEndpointRouteBuilder app)
     {
         ArgumentNullException.ThrowIfNull(app);
@@ -27,6 +29,15 @@ internal static class ScanSessionEndpoints
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status404NotFound);
 
+        group.MapPut("{scanSessionId:guid}/candidates/{candidateId:guid}", CorrectScanCandidateAsync)
+            .WithName("CorrectScanCandidate")
+            .WithSummary("Correct a scan candidate.")
+            .WithDescription("Updates a single scan candidate in place without disturbing the rest of the session.")
+            .Produces<ScanSessionResponse>(StatusCodes.Status200OK)
+            .ProducesValidationProblem()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status404NotFound);
+
         group.MapGet("{scanSessionId:guid}", GetScanSessionAsync)
             .WithName("GetScanSession")
             .WithSummary("Get a scan session by id.")
@@ -40,8 +51,8 @@ internal static class ScanSessionEndpoints
 
     private static async Task<IResult> CreateScanSessionAsync(
         CreateScanSessionRequest request,
-        LibroryDbContext db,
         ICurrentFamilyContextAccessor accessor,
+        IScanSessionService scanSessionService,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -59,54 +70,71 @@ internal static class ScanSessionEndpoints
             return validationProblem;
         }
 
-        if (request.RetentionWindowDays is <= 0)
+        var shelfPhotoPath = request.ShelfPhotoPath.Trim();
+        if (shelfPhotoPath.Length > MaxShelfPhotoPathLength)
         {
             return Results.ValidationProblem(new Dictionary<string, string[]>
             {
-                ["retentionWindowDays"] = ["Retention window days must be positive."],
+                ["shelfPhotoPath"] = [$"Shelf photo path must be {MaxShelfPhotoPathLength} characters or fewer."],
             });
         }
 
-        var family = await LoadFamilyForScanAsync(db, current.FamilyId, cancellationToken);
-        if (family is null)
+        var retentionWindow = TryCreateRetentionWindow(request.RetentionWindowDays, out var retentionProblem);
+        if (retentionProblem is not null)
         {
-            return Results.NotFound();
+            return retentionProblem;
         }
 
-        var scanRequest = new ScanShelfRequest(
-            current.FamilyId,
-            current.PreferredLanguage.ToString(),
-            request.ShelfPhotoPath,
-            request.RetentionWindowDays.HasValue
-                ? TimeSpan.FromDays(request.RetentionWindowDays.Value)
-                : null,
-            request.Candidates?.Select(candidate => new ScanCandidateInput(
-                    candidate.DisplayTitle,
-                    candidate.ConfidenceLabel,
-                    candidate.Author,
-                    candidate.RecommendationScore,
-                    candidate.IsAlreadyOwned,
-                    candidate.DuplicateMessage))
-                .ToList());
+        if (request.Candidates is not null && request.Candidates.Any(candidate => candidate is null))
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["candidates"] = ["Candidate entries cannot be null."],
+            });
+        }
 
-        ScanSession session;
         try
         {
-            session = ScanSessionRecorder.Record(family, scanRequest);
+            var dto = await scanSessionService.StartShelfScanAsync(
+                new ScanShelfRequest(
+                    current.FamilyId,
+                    ToLanguageCode(current.PreferredLanguage),
+                    shelfPhotoPath,
+                    retentionWindow,
+                    request.Candidates?.Select(candidate => new ScanCandidateInput(
+                            candidate.DisplayTitle,
+                            candidate.ConfidenceLabel,
+                            candidate.Author,
+                            candidate.RecommendationScore,
+                            candidate.IsAlreadyOwned,
+                            candidate.DuplicateMessage))
+                        .ToList()),
+                cancellationToken);
+
+            return Results.Created(
+                $"/api/family/current/scan-sessions/{dto.ScanSessionId}",
+                ToResponse(dto));
         }
-        catch (Exception exception) when (exception is InvalidOperationException or ArgumentException or ArgumentOutOfRangeException)
+        catch (Exception exception) when (exception is UnauthorizedAccessException or KeyNotFoundException or InvalidOperationException or ArgumentOutOfRangeException or ArgumentException)
         {
-            return Results.Problem(
-                detail: exception.Message,
-                statusCode: StatusCodes.Status400BadRequest);
+            return exception switch
+            {
+                UnauthorizedAccessException => Results.Unauthorized(),
+                KeyNotFoundException => Results.NotFound(),
+                _ => Results.Problem(
+                    detail: exception.Message,
+                    statusCode: StatusCodes.Status400BadRequest),
+            };
         }
+    }
 
-        db.ScanSessions.Add(session);
-        await db.SaveChangesAsync(cancellationToken);
-
-        return Results.Created(
-            $"/api/family/current/scan-sessions/{session.Id}",
-            ToResponse(family, session));
+    private static string ToLanguageCode(PreferredLanguage preferredLanguage)
+    {
+        return preferredLanguage switch
+        {
+            PreferredLanguage.Chinese => "zh",
+            _ => "en",
+        };
     }
 
     private static async Task<IResult> GetScanSessionAsync(
@@ -121,13 +149,13 @@ internal static class ScanSessionEndpoints
             return Results.Unauthorized();
         }
 
-        var family = await LoadFamilyForScanAsync(db, current.FamilyId, cancellationToken);
+        var family = await LoadFamilyForDuplicateDetectionAsync(db, current.FamilyId, cancellationToken);
         if (family is null)
         {
             return Results.NotFound();
         }
 
-        var session = family.ScanSessions.SingleOrDefault(x => x.Id == scanSessionId);
+        var session = await LoadScanSessionAsync(db, current.FamilyId, scanSessionId, cancellationToken);
         if (session is null || session.IsExpired())
         {
             return Results.NotFound();
@@ -136,7 +164,60 @@ internal static class ScanSessionEndpoints
         return Results.Ok(ToResponse(family, session));
     }
 
-    private static Task<Family?> LoadFamilyForScanAsync(
+    private static async Task<IResult> CorrectScanCandidateAsync(
+        Guid scanSessionId,
+        Guid candidateId,
+        UpdateScanCandidateRequest request,
+        IScanSessionService scanSessionService,
+        ICurrentFamilyContextAccessor accessor,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (ApiValidation.Required(
+                new ValidationField("displayTitle", request.DisplayTitle, "Display title is required."),
+                new ValidationField("confidenceLabel", request.ConfidenceLabel, "Confidence label is required."))
+            is IResult validationProblem)
+        {
+            return validationProblem;
+        }
+
+        var current = accessor.Current;
+        if (current is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        try
+        {
+            var dto = await scanSessionService.ApplyCorrectionAsync(
+                scanSessionId,
+                candidateId,
+                new CorrectionRequest(
+                    request.DisplayTitle,
+                    request.ConfidenceLabel,
+                    request.Author,
+                    request.RecommendationScore,
+                    request.IsAlreadyOwned,
+                    request.DuplicateMessage),
+                cancellationToken);
+
+            return Results.Ok(ToResponse(dto));
+        }
+        catch (Exception exception) when (exception is UnauthorizedAccessException or KeyNotFoundException or InvalidOperationException or ArgumentOutOfRangeException or ArgumentException)
+        {
+            return exception switch
+            {
+                UnauthorizedAccessException => Results.Unauthorized(),
+                KeyNotFoundException => Results.NotFound(),
+                _ => Results.Problem(
+                    detail: exception.Message,
+                    statusCode: StatusCodes.Status400BadRequest),
+            };
+        }
+    }
+
+    private static Task<Family?> LoadFamilyForDuplicateDetectionAsync(
         LibroryDbContext db,
         Guid familyId,
         CancellationToken cancellationToken)
@@ -145,14 +226,60 @@ internal static class ScanSessionEndpoints
             .Include(x => x.BookCopies)
                 .ThenInclude(x => x.BookEdition)
                     .ThenInclude(x => x.BookWork)
-            .Include(x => x.ScanSessions)
-                .ThenInclude(x => x.Candidates)
             .SingleOrDefaultAsync(x => x.Id == familyId, cancellationToken);
+    }
+
+    private static Task<ScanSession?> LoadScanSessionAsync(
+        LibroryDbContext db,
+        Guid familyId,
+        Guid scanSessionId,
+        CancellationToken cancellationToken)
+    {
+        return db.ScanSessions
+            .Include(x => x.Candidates)
+            .SingleOrDefaultAsync(x => x.FamilyId == familyId && x.Id == scanSessionId, cancellationToken);
+    }
+
+    private static TimeSpan? TryCreateRetentionWindow(int? retentionWindowDays, out IResult? validationProblem)
+    {
+        validationProblem = null;
+
+        if (retentionWindowDays is null)
+        {
+            return null;
+        }
+
+        if (retentionWindowDays <= 0)
+        {
+            validationProblem = Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["retentionWindowDays"] = ["Retention window days must be positive."],
+            });
+            return null;
+        }
+
+        try
+        {
+            return TimeSpan.FromDays(retentionWindowDays.Value);
+        }
+        catch (OverflowException)
+        {
+            validationProblem = Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["retentionWindowDays"] = ["Retention window days is too large."],
+            });
+            return null;
+        }
     }
 
     private static ScanSessionResponse ToResponse(Family family, ScanSession session)
     {
         var dto = ScanSessionDtoFactory.Create(family, session);
+        return ToResponse(dto);
+    }
+
+    private static ScanSessionResponse ToResponse(ScanSessionDto dto)
+    {
         var candidates = dto.Candidates
             .Select(candidate => new ScanCandidateResponse(
                 candidate.Id,

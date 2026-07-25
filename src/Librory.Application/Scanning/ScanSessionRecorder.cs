@@ -9,6 +9,11 @@ public static class ScanSessionRecorder
         ArgumentNullException.ThrowIfNull(family);
         ArgumentNullException.ThrowIfNull(request);
 
+        if (request.FamilyId != family.Id)
+        {
+            throw new InvalidOperationException("Scan request family id must match the loaded family.");
+        }
+
         var session = family.StartScanSession(request.ShelfPhotoPath, request.RetentionWindow);
         foreach (var candidateInput in request.Candidates ?? [])
         {
