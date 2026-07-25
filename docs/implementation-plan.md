@@ -21,6 +21,7 @@
 - Add a design-time DbContext and generated migrations
 - Add Scalar API docs
 - Add local development auth support for debugging
+- Add PostgreSQL-backed test infrastructure for API integration coverage
 
 ## Step 4: Core Flows
 
