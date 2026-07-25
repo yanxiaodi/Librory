@@ -2,16 +2,31 @@ using Librory.Infrastructure.Persistence;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace Librory.Api.Tests;
 
-public sealed class ApiFactory : WebApplicationFactory<Program>
+public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncDisposable
 {
+    private readonly PostgresTestDatabase _database;
+    private readonly string _connectionString;
+
+    private ApiFactory(PostgresTestDatabase database)
+    {
+        _database = database;
+        _connectionString = database.ConnectionString;
+    }
+
+    public static async Task<ApiFactory> CreateAsync()
+    {
+        var database = await PostgresTestDatabase.CreateAsync();
+        return new ApiFactory(database);
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
@@ -20,7 +35,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         {
             configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["ConnectionStrings:LibroryDb"] = "Host=localhost;Port=5432;Database=librory_test;Username=postgres;Password=postgres",
+                ["ConnectionStrings:LibroryDb"] = _connectionString,
             });
         });
 
@@ -30,17 +45,22 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
             services.RemoveAll<DbContextOptions<LibroryDbContext>>();
             services.RemoveAll<LibroryDbContext>();
-
-            var inMemoryProvider = new ServiceCollection()
-                .AddEntityFrameworkInMemoryDatabase()
-                .BuildServiceProvider();
-
-            services.AddSingleton(inMemoryProvider);
             services.AddDbContext<LibroryDbContext>((_, options) =>
             {
-                options.UseInMemoryDatabase(nameof(LibroryDbContext));
-                options.UseInternalServiceProvider(inMemoryProvider);
+                options.UseNpgsql(_connectionString);
             });
+
+            using var provider = services.BuildServiceProvider();
+            using var scope = provider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<LibroryDbContext>();
+            db.Database.Migrate();
         });
     }
+
+    public override async ValueTask DisposeAsync()
+    {
+        await base.DisposeAsync();
+        await _database.DisposeAsync();
+    }
+
 }
