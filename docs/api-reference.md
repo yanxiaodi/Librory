@@ -39,6 +39,11 @@ Behavior:
 - Signs the caller in with the current family and member claims.
 - `preferredLanguage` uses the current enum mapping: `0 = English`, `1 = Chinese`.
 
+Returns:
+
+- `200 OK` with the created or reused family/member context.
+- `400 Bad Request` when `familyName` or `memberDisplayName` is missing.
+
 ### `POST /dev/bootstrap`
 
 Bootstraps the default local development identity.
@@ -49,6 +54,11 @@ Behavior:
 - Is idempotent for repeated local calls.
 - Signs the caller in with the default dev identity.
 
+Returns:
+
+- `200 OK` with the default family/member context.
+- `400 Bad Request` only if the internal bootstrap payload is invalid, which should not happen in normal use.
+
 ### `POST /dev/auth/logout`
 
 Clears the current development auth cookie.
@@ -57,6 +67,10 @@ Behavior:
 
 - Returns `204 No Content` on success.
 - Makes subsequent protected requests unauthenticated until login runs again.
+
+Returns:
+
+- `204 No Content` on success.
 
 ## Family
 
@@ -86,6 +100,12 @@ Notes:
 - This route is the canonical current-family endpoint.
 - `memberRole` uses the current enum mapping: `0 = Member`, `1 = Admin`.
 
+Returns:
+
+- `200 OK` with the family summary when authenticated.
+- `401 Unauthorized` when no valid family context is present.
+- `404 Not Found` when the cookie points at a family that no longer exists.
+
 ## Books
 
 ### `POST /api/book-works`
@@ -97,9 +117,19 @@ Behavior:
 - Returns a work without editions when no edition details are supplied.
 - Creates an edition only when at least one of `isbn`, `format`, or `publicationYear` is present.
 
+Returns:
+
+- `201 Created` with the persisted work and its editions.
+- `400 Bad Request` when the title is blank.
+
 ### `GET /api/book-works/{bookWorkId}`
 
 Returns a single work with its editions.
+
+Returns:
+
+- `200 OK` with the work payload.
+- `404 Not Found` when the work id does not exist.
 
 ## Wishlist
 
@@ -130,6 +160,12 @@ Behavior:
 - The response includes the current page, the page size, and the total matching item count.
 - Use `page` and `pageSize` to page through large family wishlists without loading the full result set.
 
+Returns:
+
+- `200 OK` with the current page of items.
+- `400 Bad Request` when `page` is less than `1` or `pageSize` is outside `1..100`.
+- `401 Unauthorized` when the caller is not signed in.
+
 ### `POST /api/family/current/wishlist`
 
 Creates a wishlist item for the current family.
@@ -139,3 +175,10 @@ Behavior:
 - Accepts a title plus optional author, work, and edition references.
 - Returns validation errors for missing required fields.
 - Returns `400` when the requested work/edition combination is invalid.
+
+Returns:
+
+- `201 Created` with the persisted wishlist item.
+- `400 Bad Request` when the title is missing or the requested work/edition combination is invalid.
+- `401 Unauthorized` when the caller is not signed in.
+- `404 Not Found` when the referenced work or edition does not exist.

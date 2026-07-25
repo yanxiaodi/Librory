@@ -18,11 +18,15 @@ internal static class BookWorkEndpoints
 
         group.MapPost(string.Empty, CreateBookWorkAsync)
             .WithName("CreateBookWork")
+            .WithSummary("Create a book work.")
+            .WithDescription("Creates a canonical work and optionally creates the first edition when edition details are provided.")
             .Produces<BookWorkResponse>(StatusCodes.Status201Created)
             .ProducesValidationProblem();
 
         group.MapGet("{bookWorkId:guid}", GetBookWorkAsync)
             .WithName("GetBookWork")
+            .WithSummary("Get a book work by id.")
+            .WithDescription("Returns the requested work together with its editions.")
             .Produces<BookWorkResponse>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status404NotFound);
 

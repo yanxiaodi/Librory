@@ -18,6 +18,8 @@ internal static class FamilyEndpoints
 
         group.MapGet("/family/current", GetCurrentFamilyAsync)
             .WithName("GetCurrentFamily")
+            .WithSummary("Get the current family summary.")
+            .WithDescription("Returns the active family, current member, and simple family counts for the signed-in user.")
             .Produces<CurrentFamilyResponse>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status404NotFound);

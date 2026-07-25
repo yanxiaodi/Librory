@@ -20,11 +20,16 @@ internal static class WishlistEndpoints
 
         group.MapGet(string.Empty, GetWishlistAsync)
             .WithName("GetWishlist")
+            .WithSummary("Get the current family's wishlist.")
+            .WithDescription("Returns a paged newest-first wishlist view for the signed-in family.")
             .Produces<WishlistPageResponse>(StatusCodes.Status200OK)
+            .ProducesValidationProblem()
             .Produces(StatusCodes.Status401Unauthorized);
 
         group.MapPost(string.Empty, CreateWishlistItemAsync)
             .WithName("CreateWishlistItem")
+            .WithSummary("Create a wishlist item.")
+            .WithDescription("Adds a wishlist entry that can optionally link to a known work or edition.")
             .Produces<WishlistItemDto>(StatusCodes.Status201Created)
             .ProducesValidationProblem()
             .Produces(StatusCodes.Status401Unauthorized)

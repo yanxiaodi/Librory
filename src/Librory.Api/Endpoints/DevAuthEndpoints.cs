@@ -20,6 +20,8 @@ internal static class DevAuthEndpoints
             .AllowAnonymous()
             .WithTags("Development")
             .WithName("DevAuthLogin")
+            .WithSummary("Log in to a development family context.")
+            .WithDescription("Creates or reuses a dev family/member pair, then signs the caller in with a cookie.")
             .Produces<DevLoginResponse>(StatusCodes.Status200OK)
             .ProducesValidationProblem();
 
@@ -31,7 +33,10 @@ internal static class DevAuthEndpoints
         })
             .AllowAnonymous()
             .WithTags("Development")
-            .WithName("DevAuthLogout");
+            .WithName("DevAuthLogout")
+            .WithSummary("Clear the development auth cookie.")
+            .WithDescription("Signs the caller out of the dev cookie-auth session used for local debugging.")
+            .Produces(StatusCodes.Status204NoContent);
 
         app.MapPost("/dev/bootstrap", async (
             LibroryDbContext db,
@@ -40,6 +45,8 @@ internal static class DevAuthEndpoints
             .AllowAnonymous()
             .WithTags("Development")
             .WithName("DevBootstrap")
+            .WithSummary("Bootstrap the default development identity.")
+            .WithDescription("Creates or reuses the built-in Demo Family and Demo Admin identity, then signs the caller in.")
             .Produces<DevLoginResponse>(StatusCodes.Status200OK)
             .ProducesValidationProblem();
 
