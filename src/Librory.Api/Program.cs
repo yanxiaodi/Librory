@@ -58,7 +58,11 @@ app.MapGet("/", () => Results.Ok(new
     version = "0.2",
 })).ExcludeFromDescription();
 
-app.MapDevAuthEndpoints();
+if (app.Environment.IsDevelopment())
+{
+    app.MapDevAuthEndpoints();
+}
+
 app.MapFamilyEndpoints();
 app.MapBookWorkEndpoints();
 app.MapWishlistEndpoints();
@@ -66,3 +70,5 @@ app.MapWishlistEndpoints();
 app.MapDefaultEndpoints();
 
 app.Run();
+
+public partial class Program { }

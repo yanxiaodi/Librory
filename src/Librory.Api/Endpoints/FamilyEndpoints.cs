@@ -43,8 +43,6 @@ internal static class FamilyEndpoints
 
         var family = await db.Families
             .Include(x => x.Members)
-            .Include(x => x.BookCopies)
-            .Include(x => x.WishlistItems)
             .SingleOrDefaultAsync(x => x.Id == current.FamilyId, cancellationToken);
 
         if (family is null)
@@ -58,6 +56,10 @@ internal static class FamilyEndpoints
             return Results.Unauthorized();
         }
 
+        var memberCount = await db.Members.CountAsync(x => x.FamilyId == current.FamilyId, cancellationToken);
+        var bookCopyCount = await db.BookCopies.CountAsync(x => x.FamilyId == current.FamilyId, cancellationToken);
+        var wishlistItemCount = await db.WishlistItems.CountAsync(x => x.FamilyId == current.FamilyId, cancellationToken);
+
         return Results.Ok(new CurrentFamilyResponse(
             family.Id,
             family.Name,
@@ -65,8 +67,8 @@ internal static class FamilyEndpoints
             member.DisplayName,
             member.Role,
             member.PreferredLanguage,
-            family.Members.Count,
-            family.BookCopies.Count,
-            family.WishlistItems.Count));
+            memberCount,
+            bookCopyCount,
+            wishlistItemCount));
     }
 }

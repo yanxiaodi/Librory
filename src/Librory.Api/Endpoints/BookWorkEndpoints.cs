@@ -43,7 +43,10 @@ internal static class BookWorkEndpoints
         }
 
         var work = BookWork.Create(request.Title, request.Author);
-        work.AddEdition(request.Isbn, request.Format, request.PublicationYear);
+        if (HasEditionDetails(request))
+        {
+            work.AddEdition(request.Isbn, request.Format, request.PublicationYear);
+        }
 
         db.BookWorks.Add(work);
         await db.SaveChangesAsync(cancellationToken);
@@ -82,5 +85,12 @@ internal static class BookWorkEndpoints
             work.CanonicalTitle,
             work.CanonicalAuthor,
             editions);
+    }
+
+    private static bool HasEditionDetails(CreateBookWorkRequest request)
+    {
+        return !string.IsNullOrWhiteSpace(request.Isbn)
+            || !string.IsNullOrWhiteSpace(request.Format)
+            || request.PublicationYear.HasValue;
     }
 }

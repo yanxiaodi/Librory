@@ -41,12 +41,39 @@ internal static class DevAuthEndpoints
             });
         }
 
-        var family = Family.Create(request.FamilyName);
-        var member = family.AddMember(request.MemberDisplayName, MemberRole.Admin, request.PreferredLanguage);
+        var normalizedFamilyName = request.FamilyName.Trim();
+        var normalizedMemberDisplayName = request.MemberDisplayName.Trim();
 
-        db.Families.Add(family);
-        await db.SaveChangesAsync(cancellationToken);
+        var family = await db.Families
+            .Include(x => x.Members)
+            .SingleOrDefaultAsync(x => x.Name == normalizedFamilyName, cancellationToken);
 
+        if (family is null)
+        {
+            family = Family.Create(normalizedFamilyName);
+            var createdMember = family.AddMember(normalizedMemberDisplayName, MemberRole.Admin, request.PreferredLanguage);
+
+            db.Families.Add(family);
+            await db.SaveChangesAsync(cancellationToken);
+
+            return await SignInAsync(httpContext, family, createdMember);
+        }
+
+        var existingMember = family.Members.SingleOrDefault(x => x.DisplayName == normalizedMemberDisplayName);
+        if (existingMember is null)
+        {
+            existingMember = family.AddMember(normalizedMemberDisplayName, MemberRole.Admin, request.PreferredLanguage);
+            await db.SaveChangesAsync(cancellationToken);
+        }
+
+        return await SignInAsync(httpContext, family, existingMember);
+    }
+
+    private static async Task<IResult> SignInAsync(
+        HttpContext httpContext,
+        Family family,
+        Member member)
+    {
         var claims = new List<Claim>
         {
             new(CurrentFamilyContextClaimTypes.FamilyId, family.Id.ToString()),
