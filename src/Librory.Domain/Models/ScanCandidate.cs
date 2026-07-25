@@ -3,12 +3,14 @@ namespace Librory.Domain.Models;
 public sealed class ScanCandidate
 {
     public Guid Id { get; private set; } = Guid.NewGuid();
+    public Guid ScanSessionId { get; private set; }
     public string DisplayTitle { get; private set; } = string.Empty;
     public string? Author { get; private set; }
     public decimal RecommendationScore { get; private set; }
     public bool IsAlreadyOwned { get; private set; }
     public string? DuplicateMessage { get; private set; }
     public string ConfidenceLabel { get; private set; } = string.Empty;
+    public ScanSession ScanSession { get; private set; } = null!;
 
     public static ScanCandidate Create(
         string displayTitle,
@@ -50,6 +52,19 @@ public sealed class ScanCandidate
         IsAlreadyOwned = isAlreadyOwned;
         DuplicateMessage = Normalize(duplicateMessage);
         ConfidenceLabel = confidenceLabel.Trim();
+    }
+
+    internal void AttachTo(ScanSession scanSession)
+    {
+        ArgumentNullException.ThrowIfNull(scanSession);
+
+        if (ScanSessionId != Guid.Empty && ScanSessionId != scanSession.Id)
+        {
+            throw new InvalidOperationException("Scan candidate already belongs to a different scan session.");
+        }
+
+        ScanSession = scanSession;
+        ScanSessionId = scanSession.Id;
     }
 
     private static string? Normalize(string? value)

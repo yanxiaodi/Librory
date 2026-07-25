@@ -11,6 +11,8 @@ public sealed class LibroryDbContext(DbContextOptions<LibroryDbContext> options)
     public DbSet<BookEdition> BookEditions => Set<BookEdition>();
     public DbSet<BookCopy> BookCopies => Set<BookCopy>();
     public DbSet<WishlistItem> WishlistItems => Set<WishlistItem>();
+    public DbSet<ScanSession> ScanSessions => Set<ScanSession>();
+    public DbSet<ScanCandidate> ScanCandidates => Set<ScanCandidate>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

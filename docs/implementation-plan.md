@@ -27,13 +27,15 @@
 
 - Manual book intake from a resolved edition into the current family/member context
 - Family library browse and search
-- Temporary scan session storage
+- Temporary scan session storage with source photo tracking
+- Catalog resolution and candidate enrichment for scan results
 - Duplicate detection stub
 
 ## Step 5: AI Integration
 
 - Add Microsoft Agent Framework workflows inside the API project
 - Add metadata enrichment pipeline
+- Add catalog resolution pipeline for scan candidates
 - Add recommendation reasoning pipeline
 - Keep AI workflow code modular inside the API instead of splitting it into a separate service
 

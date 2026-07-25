@@ -17,6 +17,10 @@ internal sealed class FamilyConfiguration : IEntityTypeConfiguration<Family>
         builder.HasIndex(x => x.Name).IsUnique();
 
         builder.Ignore(x => x.RecommendationProfiles);
-        builder.Ignore(x => x.ScanSessions);
+
+        builder.HasMany(x => x.ScanSessions)
+            .WithOne(x => x.Family)
+            .HasForeignKey(x => x.FamilyId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

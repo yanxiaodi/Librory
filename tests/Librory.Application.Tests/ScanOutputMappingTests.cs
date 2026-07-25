@@ -15,7 +15,7 @@ public class ScanOutputMappingTests
         var edition = work.AddEdition(isbn: "978-0-06-112495-2", format: "Hardcover");
         family.AddBookCopy(edition, member);
 
-        var session = family.StartScanSession();
+        var session = family.StartScanSession("shelf-photo.jpg");
         var candidate = ScanCandidate.Create(
             "  charlotte s web!  ",
             confidenceLabel: "High",
@@ -25,6 +25,7 @@ public class ScanOutputMappingTests
 
         var dto = ScanSessionDtoFactory.Create(family, session);
 
+        Assert.Equal("shelf-photo.jpg", dto.ShelfPhotoPath);
         Assert.Single(dto.Candidates);
         Assert.True(dto.Candidates[0].IsAlreadyOwned);
         Assert.Equal("Capture ISBN or barcode information to confirm the edition.", dto.Candidates[0].DuplicateMessage);

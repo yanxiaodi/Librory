@@ -15,6 +15,7 @@ public class ScanSessionTests
         Assert.Single(family.ScanSessions);
         Assert.Same(session, family.ScanSessions[0]);
         Assert.Equal(family.Id, session.FamilyId);
+        Assert.Equal(string.Empty, session.ShelfPhotoPath);
         Assert.Empty(session.Candidates);
         Assert.Equal(TimeSpan.FromDays(7), session.ExpiresAt - session.CreatedAt);
         Assert.False(session.IsExpired(session.CreatedAt));
@@ -22,11 +23,21 @@ public class ScanSessionTests
     }
 
     [Fact]
+    public void Family_start_scan_session_can_store_shelf_photo_path()
+    {
+        var family = Family.Create("The Yans");
+
+        var session = family.StartScanSession("shelf-photo.jpg");
+
+        Assert.Equal("shelf-photo.jpg", session.ShelfPhotoPath);
+    }
+
+    [Fact]
     public void Family_start_scan_session_accepts_custom_retention_and_candidates()
     {
         var family = Family.Create("The Yans");
 
-        var session = family.StartScanSession(TimeSpan.FromDays(3));
+        var session = family.StartScanSession("shelf-photo.jpg", TimeSpan.FromDays(3));
         var candidate = ScanCandidate.Create(
             "Charlotte's Web",
             author: "E. B. White",
@@ -48,13 +59,14 @@ public class ScanSessionTests
         Assert.Equal("High", session.Candidates[0].ConfidenceLabel);
         Assert.Equal(family.Id, session.FamilyId);
         Assert.Same(family, session.Family);
+        Assert.Equal("shelf-photo.jpg", session.ShelfPhotoPath);
     }
 
     [Fact]
     public void Scan_session_correct_candidate_updates_only_the_target_candidate()
     {
         var family = Family.Create("The Yans");
-        var session = family.StartScanSession();
+        var session = family.StartScanSession("shelf-photo.jpg");
         var firstCandidate = ScanCandidate.Create(
             "Charlotte's Web",
             confidenceLabel: "High",
@@ -98,7 +110,7 @@ public class ScanSessionTests
     public void Scan_session_correct_candidate_throws_when_candidate_is_missing()
     {
         var family = Family.Create("The Yans");
-        var session = family.StartScanSession();
+        var session = family.StartScanSession("shelf-photo.jpg");
 
         Assert.Throws<InvalidOperationException>(() => session.CorrectCandidate(
             Guid.NewGuid(),
@@ -110,7 +122,7 @@ public class ScanSessionTests
     public void Scan_session_add_candidate_throws_when_candidate_is_null()
     {
         var family = Family.Create("The Yans");
-        var session = family.StartScanSession();
+        var session = family.StartScanSession("shelf-photo.jpg");
 
         Assert.Throws<ArgumentNullException>(() => session.AddCandidate(null!));
     }
@@ -120,7 +132,7 @@ public class ScanSessionTests
     {
         var family = Family.Create("The Yans");
 
-        Assert.Throws<ArgumentOutOfRangeException>(() => family.StartScanSession(TimeSpan.Zero));
-        Assert.Throws<ArgumentOutOfRangeException>(() => family.StartScanSession(TimeSpan.FromDays(-1)));
+        Assert.Throws<ArgumentOutOfRangeException>(() => family.StartScanSession("shelf-photo.jpg", TimeSpan.Zero));
+        Assert.Throws<ArgumentOutOfRangeException>(() => family.StartScanSession("shelf-photo.jpg", TimeSpan.FromDays(-1)));
     }
 }

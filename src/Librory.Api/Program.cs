@@ -65,6 +65,7 @@ if (app.Environment.IsDevelopment())
 
 app.MapFamilyEndpoints();
 app.MapBookWorkEndpoints();
+app.MapScanSessionEndpoints();
 app.MapWishlistEndpoints();
 
 app.MapDefaultEndpoints();

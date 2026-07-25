@@ -269,6 +269,7 @@ Create the temporary scan session record and store the initial batch of candidat
 Acceptance criteria:
 
 - The backend can create a scan session.
+- The backend can store the source shelf photo path on the session.
 - The backend can persist multiple recognized candidates under one session.
 - The backend can retain a session for a short, configurable retention window.
 - The backend can return the stored candidates for a recent session.
@@ -286,6 +287,17 @@ Acceptance criteria:
 - The backend can update one candidate from a scan session.
 - The backend can preserve the rest of the session when one candidate changes.
 - The backend can refresh duplicate and recommendation data for the corrected candidate.
+
+#### story-04c: Catalog Resolution and Metadata Enrichment
+
+Resolve a scan candidate into a reusable book catalog record when the system has enough evidence or the user explicitly confirms it.
+
+Acceptance criteria:
+
+- The backend can look up a scan candidate against existing canonical book records.
+- The backend can enrich a canonical work or edition with sourced metadata and provenance when needed.
+- The backend does not treat every scan candidate as a permanent catalog record by default.
+- The backend can keep unresolved scan candidates temporary until they are promoted or discarded.
 
 ### Acceptance Criteria
 
@@ -393,6 +405,7 @@ Run recognition, enrichment, recommendation, and duplicate workflows inside the 
 - As the system, I want an enrichment workflow so I can add metadata to candidates.
 - As the system, I want a recommendation workflow so I can score books with explainable output.
 - As the system, I want a duplicate workflow so I can surface warnings alongside recommendations.
+- As the system, I want a catalog resolution workflow so scan candidates can promote into reusable book records only when they are confident enough.
 
 ### Acceptance Criteria
 
@@ -400,6 +413,7 @@ Run recognition, enrichment, recommendation, and duplicate workflows inside the 
 - The workflow is isolated from controllers and persistence code.
 - The workflow returns structured output that the API can persist.
 - The workflow does not own the database schema or UI state.
+- The workflow can enrich or promote candidates into canonical book records without making every scan result permanent.
 
 ## Story-10: API and Persistence Foundation
 
