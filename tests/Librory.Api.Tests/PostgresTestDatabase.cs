@@ -5,10 +5,11 @@ namespace Librory.Api.Tests;
 
 internal sealed class PostgresTestDatabase : IAsyncDisposable
 {
-    private const string Image = "postgres:16-alpine";
     private const string Username = "postgres";
     private const string Password = "postgres";
     private const string AdminDatabase = "postgres";
+    private const string DefaultImage = "postgres:16-alpine";
+    private const string ImageVariable = "LIBRORY_POSTGRES_IMAGE";
     private static readonly Lazy<Task<PostgresTestHost>> Host = new(InitializeHostAsync);
 
     private readonly string _databaseName;
@@ -41,6 +42,7 @@ internal sealed class PostgresTestDatabase : IAsyncDisposable
     private static async Task<PostgresTestHost> InitializeHostAsync()
     {
         var containerName = $"librory-postgres-tests-{Environment.ProcessId}";
+        var image = GetImage();
 
         await TryRemoveContainerAsync(containerName);
         await RunDockerAsync(
@@ -57,7 +59,7 @@ internal sealed class PostgresTestDatabase : IAsyncDisposable
             "-p",
             "127.0.0.1::5432",
             "-d",
-            Image);
+            image);
 
         var port = await GetMappedPortAsync(containerName);
         var host = new PostgresTestHost(containerName, port);
@@ -169,6 +171,12 @@ internal sealed class PostgresTestDatabase : IAsyncDisposable
         }
 
         return TimeSpan.FromSeconds(timeoutSeconds);
+    }
+
+    private static string GetImage()
+    {
+        var image = Environment.GetEnvironmentVariable(ImageVariable);
+        return string.IsNullOrWhiteSpace(image) ? DefaultImage : image.Trim();
     }
 
     private static void TryKillProcess(Process process)
