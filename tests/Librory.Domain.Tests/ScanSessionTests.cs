@@ -128,6 +128,24 @@ public class ScanSessionTests
     }
 
     [Fact]
+    public void Scan_session_remove_candidate_deletes_the_target_candidate_only()
+    {
+        var family = Family.Create("The Yans");
+        var session = family.StartScanSession("shelf-photo.jpg");
+        var firstCandidate = ScanCandidate.Create("Charlotte's Web", confidenceLabel: "High");
+        var secondCandidate = ScanCandidate.Create("Matilda", confidenceLabel: "Medium");
+
+        session.AddCandidate(firstCandidate);
+        session.AddCandidate(secondCandidate);
+
+        session.RemoveCandidate(firstCandidate.Id);
+
+        Assert.Single(session.Candidates);
+        Assert.Same(secondCandidate, session.Candidates[0]);
+        Assert.Throws<InvalidOperationException>(() => session.RemoveCandidate(firstCandidate.Id));
+    }
+
+    [Fact]
     public void Scan_session_throws_when_retention_window_is_not_positive()
     {
         var family = Family.Create("The Yans");

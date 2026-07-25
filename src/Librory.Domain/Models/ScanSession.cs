@@ -44,6 +44,12 @@ public sealed class ScanSession
         _candidates.Add(candidate);
     }
 
+    public void RemoveCandidate(Guid candidateId)
+    {
+        var candidate = GetCandidateById(candidateId);
+        _candidates.Remove(candidate);
+    }
+
     public void CorrectCandidate(
         Guid candidateId,
         string displayTitle,

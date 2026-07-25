@@ -292,13 +292,19 @@ Acceptance criteria:
 
 #### story-04c: Catalog Resolution and Metadata Enrichment
 
-Resolve a scan candidate into a reusable book catalog record when the system has enough evidence or the user explicitly confirms it.
+Promote a scan candidate into a reusable book catalog record when the system has enough evidence or the user explicitly confirms it.
+
+### Modeling Note
+
+This slice turns a temporary scan candidate into canonical catalog data. The resolved candidate may create a new `BookWork` and optional first `BookEdition`, or enrich an existing canonical work/edition when the user already knows the target record.
+Unresolved candidates stay in the temporary scan session until they are promoted or discarded.
 
 Acceptance criteria:
 
-- The backend can look up a scan candidate against existing canonical book records.
-- The backend can enrich a canonical work or edition with sourced metadata and provenance when needed.
-- The backend does not treat every scan candidate as a permanent catalog record by default.
+- The backend can promote a scan candidate into a canonical work and optional edition.
+- The backend can enrich an existing canonical work or edition with the resolved candidate data when a target record already exists.
+- The backend can remove a promoted candidate from the temporary scan session.
+- The backend can discard an unwanted scan candidate from the temporary scan session without promoting it.
 - The backend can keep unresolved scan candidates temporary until they are promoted or discarded.
 
 ### Acceptance Criteria

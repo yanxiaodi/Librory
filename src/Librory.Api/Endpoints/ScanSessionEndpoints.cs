@@ -38,6 +38,24 @@ internal static class ScanSessionEndpoints
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status404NotFound);
 
+        group.MapPost("{scanSessionId:guid}/candidates/{candidateId:guid}/resolve", ResolveScanCandidateAsync)
+            .WithName("ResolveScanCandidate")
+            .WithSummary("Promote a scan candidate.")
+            .WithDescription("Promotes a scan candidate into canonical catalog data and removes it from the temporary session.")
+            .Produces<BookWorkResponse>(StatusCodes.Status201Created)
+            .Produces<BookWorkResponse>(StatusCodes.Status200OK)
+            .ProducesValidationProblem()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status404NotFound);
+
+        group.MapDelete("{scanSessionId:guid}/candidates/{candidateId:guid}", DiscardScanCandidateAsync)
+            .WithName("DiscardScanCandidate")
+            .WithSummary("Discard a scan candidate.")
+            .WithDescription("Removes an unwanted scan candidate from the temporary session without promoting it.")
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status404NotFound);
+
         group.MapGet("{scanSessionId:guid}", GetScanSessionAsync)
             .WithName("GetScanSession")
             .WithSummary("Get a scan session by id.")
@@ -217,6 +235,102 @@ internal static class ScanSessionEndpoints
         }
     }
 
+    private static async Task<IResult> ResolveScanCandidateAsync(
+        Guid scanSessionId,
+        Guid candidateId,
+        ResolveScanCandidateRequest request,
+        LibroryDbContext db,
+        ICurrentFamilyContextAccessor accessor,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (ApiValidation.Required(
+                new ValidationField("title", request.Title, "Title is required."))
+            is IResult validationProblem)
+        {
+            return validationProblem;
+        }
+
+        var current = accessor.Current;
+        if (current is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        try
+        {
+            var family = await LoadFamilyForDuplicateDetectionAsync(db, current.FamilyId, cancellationToken);
+            if (family is null)
+            {
+                return Results.NotFound();
+            }
+
+            var session = await LoadScanSessionAsync(db, current.FamilyId, scanSessionId, cancellationToken);
+            if (session is null || session.IsExpired())
+            {
+                return Results.NotFound();
+            }
+
+            var candidate = session.Candidates.SingleOrDefault(existing => existing.Id == candidateId);
+            if (candidate is null)
+            {
+                return Results.NotFound();
+            }
+
+            var work = await ResolveBookWorkAsync(db, request, cancellationToken);
+            session.RemoveCandidate(candidateId);
+
+            await db.SaveChangesAsync(cancellationToken);
+
+            var response = ToResponse(work);
+            return request.BookWorkId is null
+                ? Results.Created($"/api/book-works/{work.Id}", response)
+                : Results.Ok(response);
+        }
+        catch (Exception exception) when (exception is KeyNotFoundException or InvalidOperationException or ArgumentOutOfRangeException or ArgumentException)
+        {
+            return exception switch
+            {
+                KeyNotFoundException => Results.NotFound(),
+                _ => Results.Problem(
+                    detail: exception.Message,
+                    statusCode: StatusCodes.Status400BadRequest),
+            };
+        }
+    }
+
+    private static async Task<IResult> DiscardScanCandidateAsync(
+        Guid scanSessionId,
+        Guid candidateId,
+        LibroryDbContext db,
+        ICurrentFamilyContextAccessor accessor,
+        CancellationToken cancellationToken)
+    {
+        var current = accessor.Current;
+        if (current is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        var session = await LoadScanSessionAsync(db, current.FamilyId, scanSessionId, cancellationToken);
+        if (session is null || session.IsExpired())
+        {
+            return Results.NotFound();
+        }
+
+        var candidate = session.Candidates.SingleOrDefault(existing => existing.Id == candidateId);
+        if (candidate is null)
+        {
+            return Results.NotFound();
+        }
+
+        session.RemoveCandidate(candidateId);
+        await db.SaveChangesAsync(cancellationToken);
+
+        return Results.NoContent();
+    }
+
     private static Task<Family?> LoadFamilyForDuplicateDetectionAsync(
         LibroryDbContext db,
         Guid familyId,
@@ -238,6 +352,87 @@ internal static class ScanSessionEndpoints
         return db.ScanSessions
             .Include(x => x.Candidates)
             .SingleOrDefaultAsync(x => x.FamilyId == familyId && x.Id == scanSessionId, cancellationToken);
+    }
+
+    private static async Task<BookWork> ResolveBookWorkAsync(
+        LibroryDbContext db,
+        ResolveScanCandidateRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (request.BookWorkId is Guid bookWorkId)
+        {
+            var work = await db.BookWorks
+                .Include(x => x.Editions)
+                .SingleOrDefaultAsync(x => x.Id == bookWorkId, cancellationToken);
+
+            if (work is null)
+            {
+                throw new KeyNotFoundException("Book work not found.");
+            }
+
+            work.CanonicalTitle = request.Title;
+            var normalizedAuthor = NormalizeOptional(request.Author);
+            if (normalizedAuthor is not null)
+            {
+                work.CanonicalAuthor = normalizedAuthor;
+            }
+
+            if (HasEditionDetails(request) && FindMatchingEdition(work, request) is null)
+            {
+                work.AddEdition(request.Isbn, request.Format, request.PublicationYear);
+            }
+
+            return work;
+        }
+
+        var created = BookWork.Create(request.Title, request.Author);
+        if (HasEditionDetails(request))
+        {
+            created.AddEdition(request.Isbn, request.Format, request.PublicationYear);
+        }
+
+        db.BookWorks.Add(created);
+        return created;
+    }
+
+    private static bool HasEditionDetails(ResolveScanCandidateRequest request)
+    {
+        return !string.IsNullOrWhiteSpace(request.Isbn)
+            || !string.IsNullOrWhiteSpace(request.Format)
+            || request.PublicationYear.HasValue;
+    }
+
+    private static BookEdition? FindMatchingEdition(BookWork work, ResolveScanCandidateRequest request)
+    {
+        if (!HasEditionDetails(request))
+        {
+            return null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Isbn))
+        {
+            var isbn = request.Isbn.Trim();
+            var matchingIsbn = work.Editions.FirstOrDefault(edition => string.Equals(edition.Isbn, isbn, StringComparison.OrdinalIgnoreCase));
+            if (matchingIsbn is not null)
+            {
+                return matchingIsbn;
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Format) && !request.PublicationYear.HasValue)
+            {
+                return null;
+            }
+        }
+
+        var normalizedFormat = request.Format?.Trim();
+        return work.Editions.FirstOrDefault(edition =>
+            string.Equals(edition.Format, normalizedFormat, StringComparison.OrdinalIgnoreCase)
+            && edition.PublicationYear == request.PublicationYear);
+    }
+
+    private static string? NormalizeOptional(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
     private static TimeSpan? TryCreateRetentionWindow(int? retentionWindowDays, out IResult? validationProblem)
@@ -297,5 +492,22 @@ internal static class ScanSessionEndpoints
             dto.ShelfPhotoPath,
             candidates,
             dto.ExpiresAt);
+    }
+
+    private static BookWorkResponse ToResponse(BookWork work)
+    {
+        var editions = work.Editions
+            .Select(edition => new BookEditionResponse(
+                edition.Id,
+                edition.Isbn,
+                edition.Format,
+                edition.PublicationYear))
+            .ToList();
+
+        return new BookWorkResponse(
+            work.Id,
+            work.CanonicalTitle,
+            work.CanonicalAuthor,
+            editions);
     }
 }
