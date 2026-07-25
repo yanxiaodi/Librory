@@ -241,11 +241,14 @@ Minimum required at intake:
 Fields that can be completed later:
 
 - Author
+- Condition
 - Price
 - Store
 - Shelf location
 - Purchase date
 - Notes
+
+Edition resolution can happen through a separate catalog, scan-candidate, or metadata-import flow before home intake runs. Manual intake itself should stay fast and should not try to parse or reconcile versions on the spot.
 
 ### 9.6 Family Accounts
 

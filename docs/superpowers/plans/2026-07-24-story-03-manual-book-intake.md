@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add the smallest useful manual intake flow for `story-03`: create a `BookCopy` for a resolved `BookEdition` inside the current family scope, with duplicate status and optional purchase metadata.
+**Goal:** Add the smallest useful manual intake flow for `story-03`: create a `BookCopy` for a resolved `BookEdition` inside the current family scope, with duplicate status and optional purchase metadata. This slice does not parse or reconcile versions; it only records a copy once the edition is already known.
 
 **Architecture:** Keep the first slice application-focused. Reuse the existing `Family.AddBookCopy` and `BookCopy.Create` domain behavior, and add a thin application helper plus tests that prove the intake path preserves the current family/member context. Do not introduce repositories or persistence abstractions in this slice.
 
@@ -39,3 +39,4 @@
 - [x] Keep `story-03` scoped to copy creation rather than work/edition resolution.
 - [x] Keep the PRD minimum intake requirements aligned with the resolved-edition model.
 - [x] Keep the implementation plan explicit that intake is family-scoped and edition-resolved.
+- [x] Keep version parsing and canonical import outside the manual intake slice.
