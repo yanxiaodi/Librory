@@ -116,8 +116,7 @@ internal sealed class PostgresTestDatabase : IAsyncDisposable
             processStartInfo.ArgumentList.Add(argument);
         }
 
-        using var process = Process.Start(processStartInfo)
-            ?? throw new InvalidOperationException("Failed to start docker.");
+        using var process = StartDockerProcess(processStartInfo);
 
         var standardOutputTask = process.StandardOutput.ReadToEndAsync();
         var standardErrorTask = process.StandardError.ReadToEndAsync();
@@ -133,6 +132,19 @@ internal sealed class PostgresTestDatabase : IAsyncDisposable
         }
 
         return standardOutput.Trim();
+    }
+
+    private static Process StartDockerProcess(ProcessStartInfo processStartInfo)
+    {
+        try
+        {
+            return Process.Start(processStartInfo)
+                ?? throw new InvalidOperationException("Failed to start docker.");
+        }
+        catch (System.ComponentModel.Win32Exception exception)
+        {
+            throw new InvalidOperationException("Docker is required to run the API integration tests. Ensure docker is installed and available on PATH.", exception);
+        }
     }
 
     private sealed class PostgresTestHost

@@ -15,10 +15,16 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     private readonly PostgresTestDatabase _database;
     private readonly string _connectionString;
 
-    public ApiFactory()
+    private ApiFactory(PostgresTestDatabase database)
     {
-        _database = PostgresTestDatabase.CreateAsync().GetAwaiter().GetResult();
-        _connectionString = _database.ConnectionString;
+        _database = database;
+        _connectionString = database.ConnectionString;
+    }
+
+    public static async Task<ApiFactory> CreateAsync()
+    {
+        var database = await PostgresTestDatabase.CreateAsync();
+        return new ApiFactory(database);
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -65,4 +71,5 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
             }
         }
     }
+
 }
