@@ -92,10 +92,15 @@ internal sealed class PostgresTestDatabase : IAsyncDisposable
     private static async Task<int> GetMappedPortAsync(string containerName)
     {
         var output = await RunDockerAsync("port", containerName, "5432/tcp");
-        var endpoint = output.Split(new[] { Environment.NewLine, "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries)
-            .FirstOrDefault(line => line.StartsWith("127.0.0.1:", StringComparison.Ordinal))
-            ?? output.Split(new[] { Environment.NewLine, "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries)
-                .First();
+        var endpoints = output.Split(new[] { Environment.NewLine, "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries);
+        var endpoint = endpoints.FirstOrDefault(line => line.StartsWith("127.0.0.1:", StringComparison.Ordinal));
+
+        if (endpoint is null)
+        {
+            throw new InvalidOperationException(
+                $"docker port {containerName} 5432/tcp did not return a usable 127.0.0.1 mapping. Output: {output}");
+        }
+
         var address = endpoint[(endpoint.LastIndexOf(':') + 1)..];
         return int.Parse(address, System.Globalization.CultureInfo.InvariantCulture);
     }
