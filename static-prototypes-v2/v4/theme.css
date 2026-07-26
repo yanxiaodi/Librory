@@ -1,0 +1,618 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=IM+Fell+DW+Pica:ital@0;1&display=swap');
+
+/* ================================================================
+   Theme v4 — Botanical Press
+   Based on v1 Classic Scholar layout.
+   Dusty rose, pale sage, warm stone.
+      #CFB4AB  dusty rose      (accent highlight)
+      #D7CCAE  pale sage       (page background base)
+      #B2BABC  cool grey       (tertiary text, borders)
+      #C0AF99  warm stone      (borders, dividers)
+      #B57873  dusty brick     (primary accent / CTA)
+   Font: IM Fell DW Pica (19th-century book type)
+   ================================================================ */
+
+.theme-v4 {
+  --page-bg: #EDE5DC;
+  --surface-elevated: #F7F2EE;
+  --surface-sunken: #E2D5CB;
+  --border-subtle: #C0AF99;
+  --border-strong: #B2BABC;
+
+  --text-primary: #3A302A;
+  --text-secondary: #7A6E68;
+  --text-tertiary: #A39A94;
+
+  --accent: #B57873;
+  --accent-on-accent: #FFFFFF;
+  --accent-subtle: rgba(181, 120, 115, 0.10);
+  --accent-muted: rgba(181, 120, 115, 0.05);
+
+  --status-recommend: #8FA68C;
+  --status-warn: #C9A87C;
+  --status-alert: #B57873;
+  --status-neutral: #B2BABC;
+
+  --shadow-1: none;
+  --shadow-2: none;
+  --shadow-3: 0 8px 28px rgba(58, 48, 42, 0.10);
+
+  --font-body: "DM Sans", system-ui, -apple-system, sans-serif;
+  --font-display: "IM Fell DW Pica", Georgia, serif;
+  --font-mono: "DM Sans", system-ui, sans-serif;
+
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --text-2xl: 26px;
+  --text-3xl: 32px;
+
+  --leading-tight: 1.15;
+  --leading-normal: 1.55;
+  --leading-relaxed: 1.7;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+}
+
+/* --- v4 Overrides --- */
+
+/* Display: IM Fell DW Pica */
+.theme-v4 .headline-large,
+.theme-v4 .headline {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+.theme-v4 .headline-large {
+  font-style: italic;
+}
+
+/* Labels: tight tracking, uppercase, airy */
+.theme-v4 .label {
+  font-family: var(--font-body);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  font-size: 9px;
+  color: var(--text-tertiary);
+}
+
+/* Nav */
+.theme-v4 .bottom-nav {
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* Borders: single hairline, no shadows */
+.theme-v4 .card,
+.theme-v4 .list-row,
+.theme-v4 .book-item {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  box-shadow: none;
+}
+
+/* Buttons */
+.theme-v4 .btn {
+  height: 50px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-style: italic;
+  font-size: var(--text-base);
+  letter-spacing: 0.01em;
+}
+
+.theme-v4 .btn-primary {
+  background: var(--accent);
+  color: var(--accent-on-accent);
+}
+
+.theme-v4 .btn-secondary {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+}
+
+/* Score badges: outline-only (like v1) but in warm tones */
+.theme-v4 .score-badge {
+  background: transparent !important;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  height: 24px;
+  font-weight: 500;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+
+.theme-v4 .score-high  { color: var(--status-recommend); border-color: var(--status-recommend); }
+.theme-v4 .score-mid   { color: var(--status-warn);      border-color: var(--status-warn); }
+.theme-v4 .score-own   { color: var(--status-neutral);  border-color: var(--status-neutral); }
+
+/* Search bar: bottom rule only, clean */
+.theme-v4 .search-bar {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  border-radius: 0;
+  padding-left: 0;
+  height: 44px;
+  color: var(--text-tertiary);
+}
+
+/* Info grid: clean cells, single border */
+.theme-v4 .info-grid .info-cell {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+}
+
+/* ================================================================
+   V4 SCREEN-SPECIFIC LAYOUTS (identical to v1, only color change)
+   ================================================================ */
+
+/* --- Home Screen --- */
+.v4-home .home-hero {
+  padding: var(--space-2) 0 var(--space-6);
+  text-align: center;
+}
+
+.v4-home .home-hero .headline-large {
+  font-size: var(--text-2xl);
+  margin-bottom: var(--space-3);
+  font-style: italic;
+  color: var(--text-primary);
+}
+
+.v4-home .home-hero .body {
+  max-width: 280px;
+  margin: 0 auto;
+  color: var(--text-secondary);
+}
+
+/* Overview strip */
+.v4-home .home-overview {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0;
+  padding: var(--space-5) 0 var(--space-4);
+  margin-bottom: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.v4-home .home-overview .overview-col {
+  text-align: center;
+  flex: 1;
+  padding: 0 var(--space-3);
+}
+
+.v4-home .home-overview .overview-num {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+.v4-home .home-overview .overview-label {
+  font-family: var(--font-body);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-top: var(--space-1);
+}
+
+.v4-home .home-overview .divider-v {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border-subtle);
+}
+
+.v4-home .home-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-8);
+}
+
+.v4-home .home-actions .btn {
+  width: 100%;
+}
+
+.v4-home .home-actions .btn-primary {
+  height: 52px;
+  font-size: var(--text-lg);
+}
+
+.v4-home .recent-scans-title {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-style: italic;
+  font-weight: 400;
+  margin-bottom: var(--space-4);
+  text-align: center;
+  color: var(--text-primary);
+}
+
+.v4-home .scan-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.v4-home .scan-history-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-elevated);
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.v4-home .scan-history-item:active {
+  transform: scale(0.985);
+  background: var(--surface-sunken);
+}
+
+.v4-home .scan-history-item .date {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  min-width: 56px;
+}
+
+.v4-home .scan-history-item .info {
+  flex: 1;
+}
+
+.v4-home .scan-history-item .info .store {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.v4-home .scan-history-item .info .meta {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.v4-home .scan-history-item .count {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.v4-home .scan-empty {
+  text-align: center;
+  padding: var(--space-8) 0;
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+  font-style: italic;
+  font-family: var(--font-display);
+}
+
+/* --- Scan Results Screen --- */
+.v4-scan .scan-header {
+  margin-bottom: var(--space-5);
+}
+
+.v4-scan .scan-header .title {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-style: italic;
+  font-weight: 400;
+  margin-bottom: var(--space-2);
+  color: var(--text-primary);
+}
+
+.v4-scan .scan-summary {
+  display: flex;
+  gap: var(--space-5);
+  margin-bottom: var(--space-5);
+}
+
+.v4-scan .scan-summary .summary-item {
+  text-align: center;
+}
+
+.v4-scan .scan-summary .summary-item .num {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 400;
+  line-height: 1;
+  color: var(--text-primary);
+}
+
+.v4-scan .scan-summary .summary-item .label {
+  margin-top: var(--space-1);
+  font-size: 9px;
+}
+
+.v4-scan .filter-tabs {
+  display: flex;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: var(--space-3);
+}
+
+.v4-scan .filter-tabs button {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-tertiary);
+  padding: var(--space-1) 0;
+  position: relative;
+  background: none;
+}
+
+.v4-scan .filter-tabs button.active {
+  color: var(--text-primary);
+}
+
+.v4-scan .filter-tabs button.active::after {
+  content: "";
+  position: absolute;
+  bottom: -13px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent);
+}
+
+.v4-scan .scan-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.v4-scan .book-item {
+  padding: var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-elevated);
+}
+
+.v4-scan .book-item .book-cover {
+  width: 48px;
+  height: 72px;
+  border-radius: var(--radius-sm);
+  border: none;
+}
+
+.v4-scan .book-item .book-info .title {
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: 400;
+  margin-bottom: var(--space-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-primary);
+}
+
+.v4-scan .book-item .book-info .author {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-2);
+}
+
+.v4-scan .book-item .book-reason {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-style: italic;
+  font-family: var(--font-display);
+  line-height: 1.5;
+}
+
+/* --- Book Detail Screen --- */
+.v4-detail .detail-eyebrow {
+  text-align: center;
+  margin-bottom: var(--space-5);
+}
+
+.v4-detail .detail-eyebrow .label {
+  font-size: 9px;
+}
+
+.v4-detail .detail-cover-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--space-6);
+}
+
+.v4-detail .detail-cover {
+  width: 150px;
+  height: 220px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+  /* no shadow */
+}
+
+.v4-detail .detail-title {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 400;
+  font-style: italic;
+  text-align: center;
+  margin-bottom: var(--space-2);
+  line-height: var(--leading-tight);
+  color: var(--text-primary);
+}
+
+.v4-detail .detail-author {
+  text-align: center;
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-5);
+}
+
+.v4-detail .detail-status-line {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.v4-detail .detail-section .section-title {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 400;
+  font-style: italic;
+  margin-bottom: var(--space-3);
+  color: var(--text-primary);
+}
+
+.v4-detail .detail-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1px;
+  background: var(--border-subtle);
+  border: 1px solid var(--border-subtle);
+  margin-bottom: var(--space-5);
+}
+
+.v4-detail .detail-info-grid .info-cell {
+  background: var(--surface-elevated);
+  padding: var(--space-3);
+  text-align: center;
+}
+
+.v4-detail .detail-info-grid .info-cell .label {
+  margin-bottom: var(--space-1);
+  font-size: 9px;
+}
+
+.v4-detail .detail-info-grid .info-cell .value {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 400;
+}
+
+.v4-detail .detail-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.v4-detail .detail-actions .btn {
+  width: 100%;
+}
+
+/* --- Library Screen --- */
+.v4-library .library-header {
+  margin-bottom: var(--space-5);
+}
+
+.v4-library .library-header .headline {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  color: var(--text-primary);
+}
+
+.v4-library .library-header .label {
+  margin-top: var(--space-1);
+  color: var(--text-tertiary);
+}
+
+.v4-library .member-filters {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.v4-library .member-filters::-webkit-scrollbar { display: none; }
+
+.v4-library .member-chip {
+  white-space: nowrap;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  background: transparent;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.v4-library .member-chip.active {
+  background: var(--accent);
+  color: var(--accent-on-accent);
+  border-color: var(--accent);
+}
+
+.v4-library .library-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.v4-library .library-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-elevated);
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.v4-library .library-item:active {
+  transform: scale(0.985);
+  background: var(--surface-sunken);
+}
+
+.v4-library .library-item .book-spine-sm {
+  width: 36px;
+  height: 56px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.v4-library .library-item .book-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.v4-library .library-item .book-info .title {
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: 400;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-primary);
+}
+
+.v4-library .library-item .book-info .meta {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.v4-library .library-item .owner-tag {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-style: italic;
+}

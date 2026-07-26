@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Librory — UI Design Comparison</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-light: #334155;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --accent: #0d9488;
+      --accent-warm: #d97706;
+      --accent-cool: #6366f1;
+    }
+    body {
+      font-family: "Inter", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    .page {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 48px 24px;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 60px;
+    }
+    .header .eyebrow {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 16px;
+    }
+    .header h1 {
+      font-family: "Instrument Serif", Georgia, serif;
+      font-size: clamp(32px, 5vw, 48px);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      margin-bottom: 16px;
+    }
+    .header p {
+      font-size: 17px;
+      color: var(--text-muted);
+      max-width: 520px;
+      margin: 0 auto 24px;
+      line-height: 1.6;
+    }
+    .header .meta {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      flex-wrap: wrap;
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+    .compare-table-wrap {
+      margin-bottom: 64px;
+      overflow-x: auto;
+    }
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .compare-table th, .compare-table td {
+      padding: 14px 20px;
+      text-align: left;
+      border-bottom: 1px solid var(--surface-light);
+    }
+    .compare-table th {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      background: var(--surface);
+      white-space: nowrap;
+    }
+    .compare-table td:first-child { font-weight: 500; color: var(--text-muted); white-space: nowrap; }
+    .compare-table .v1-cell { color: #fb923c; }
+    .compare-table .v2-cell { color: #0d9488; }
+    .compare-table .v3-cell { color: #8b9dfc; }
+
+    .versions-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+    }
+    .version-card {
+      background: var(--surface);
+      border: 1px solid var(--surface-light);
+      border-radius: 20px;
+      overflow: hidden;
+      transition: transform 200ms ease, box-shadow 200ms ease;
+    }
+    .version-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    }
+    .version-card .card-header {
+      padding: 28px 24px 20px;
+    }
+    .version-card .tag {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .version-card.v1 .tag { background: rgba(251,146,60,0.12); color: #fb923c; }
+    .version-card.v2 .tag { background: rgba(13,148,136,0.12); color: #14b8a6; }
+    .version-card.v3 .tag { background: rgba(129,140,248,0.12); color: #8b9dfc; }
+    .version-card h2 {
+      font-family: "Instrument Serif", Georgia, serif;
+      font-size: 28px;
+      font-weight: 400;
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+    .version-card .subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .version-card .traits {
+      padding: 0 24px;
+      margin-bottom: 20px;
+    }
+    .version-card .traits .trait {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .version-card .traits .trait svg {
+      width: 14px;
+      height: 14px;
+      stroke: var(--text-dim);
+      stroke-width: 2;
+      flex-shrink: 0;
+    }
+    .version-card .card-footer {
+      padding: 0 24px 24px;
+    }
+    .version-card .btn {
+      display: block;
+      width: 100%;
+      text-align: center;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: opacity 150ms ease;
+    }
+    .version-card .btn:active { opacity: 0.85; }
+    .version-card.v1 .btn { background: rgba(251,146,60,0.15); color: #fb923c; }
+    .version-card.v2 .btn { background: rgba(13,148,136,0.15); color: #14b8a6; }
+    .version-card.v3 .btn { background: rgba(129,140,248,0.15); color: #8b9dfc; }
+    .version-card.v4 .tag { background: rgba(181,120,115,0.15); color: #D48B86; }
+    .version-card.v4 .btn { background: rgba(181,120,115,0.20); color: #B57873; }
+
+    @media (max-width: 960px) {
+      .versions-grid { grid-template-columns: 1fr; max-width: 420px; margin: 0 auto; }
+      .compare-table th:nth-child(4), .compare-table td:nth-child(4) { display: none; }
+    }
+    @media (max-width: 600px) {
+      .compare-table th:nth-child(5), .compare-table td:nth-child(5) { display: none; }
+      .page { padding: 32px 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <div class="eyebrow">Design Exploration</div>
+      <h1>Three directions for Librory</h1>
+      <p>A family AI assistant for second-hand book hunting. Each version explores a different visual personality while solving the same core problem: fast, trustworthy decisions at the shelf.</p>
+      <div class="meta">
+        <span>3 visual systems</span>
+        <span>4 screens each</span>
+        <span>Mobile-first</span>
+      </div>
+    </div>
+
+    <div class="compare-table-wrap">
+      <table class="compare-table">
+        <thead>
+          <tr><th>Attribute</th><th class="v1-cell">v1 Classic Scholar</th><th class="v2-cell">v2 Modern Scout</th><th class="v3-cell">v3 Cozy Archive</th><th>Why it matters</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Mood</td><td class="v1-cell">Editorial, refined, trustworthy</td><td class="v2-cell">Precise, data-driven, efficient</td><td class="v3-cell">Warm, approachable, family-first</td><td>Sets emotional context before any interaction</td></tr>
+          <tr><td>Display Font</td><td class="v1-cell">Newsreader (serif)</td><td class="v2-cell">Inter (sans, weight 800)</td><td class="v3-cell">Instrument Serif</td><td>Title personality in milliseconds</td></tr>
+          <tr><td>Accent Color</td><td class="v1-cell">Warm gold (#B45309)</td><td class="v2-cell">Bright teal (#0D9488)</td><td class="v3-cell">Deep teal (#0D9488)</td><td>CTA visibility + brand recall</td></tr>
+          <tr><td>Background</td><td class="v1-cell">Walnut paper (#FAF8F5)</td><td class="v2-cell">Pure white (#FFFFFF)</td><td class="v3-cell">Warm cream (#F5F3EE)</td><td>Reading comfort in various lighting</td></tr>
+          <tr><td>Score Display</td><td class="v1-cell">Outlined badge</td><td class="v2-cell">Blocky mono number</td><td class="v3-cell">Pill badge, soft</td><td>Signal clarity during shelf scan</td></tr>
+          <tr><td>Best For</td><td class="v1-cell">Literary families, book appreciation</td><td class="v2-cell">Quick decisions, data lovers</td><td class="v3-cell">Cozy browsing, warm household UX</td><td>Product positioning alignment</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="versions-grid">
+      <div class="version-card v1">
+        <div class="card-header">
+          <div class="tag">Option 1 &mdash; Updated</div>
+          <h2>Classic Scholar</h2>
+          <p class="subtitle">Editorial warmth with home overview. Newsreader serif + 412/4/12 stats strip.</p>
+        </div>
+        <div class="traits">
+          <div class="trait"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5"/></svg>Newsreader headlines + Figtree body</div>
+          <div class="trait"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5"/></svg>Home overview: Books / Members / Scans</div>
+          <div class="trait"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5"/></svg>Walnut tones, outlined scores</div>
+        </div>
+        <div class="card-footer"><a href="v1/index.html" class="btn">View v1 Prototype</a></div>
+      </div>
+
+      <div class="version-card v2">
+        <div class="card-header">
+          <div class="tag">Option 2</div>
+          <h2>Modern Scout</h2>
+          <p class="subtitle">Clear signals and fast decisions. Inter + Space Mono for data-first shoppers.</p>
+        </div>
+        <div class="traits">
+          <div class="trait"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5"/></svg>Inter 800 + Space Mono data</div>
+          <div class="trait"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5"/></svg>Grid stats bar, filter pills</div>
+          <div class="trait"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5"/></svg>Pure white, minimal decoration</div>
+        </div>
+        <div class="card-footer"><a href="v2/index.html" class="btn">View v2 Prototype</a></div>
+      </div>
+
+      <div class="version-card v3">
+        <div class="card-header">
+          <div class="tag">Option 3</div>
+          <h2>Cozy Archive</h2>
+          <p class="subtitle">Family warmth meets archive precision. Rounded corners and soft shadows.</p>
+        </div>
+        <div class="traits">
+          <div class="trait"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5"/></svg>Instrument Serif for bookish feel</div>
+          <div class="trait"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5"/></svg>Segment tabs, rounded cards</div>
+          <div class="trait"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5"/></svg>Cream palette with teal accents</div>
+        </div>
+        <div class="card-footer"><a href="v3/index.html" class="btn">View v3 Prototype</a></div>
+      </div>
+
+      <div class="version-card v4">
+        <div class="card-header">
+          <div class="tag">Option 4</div>
+          <h2>Botanical Press</h2>
+          <p class="subtitle">Dusty rose, pale sage, and warm stone. A softer, romantic take on the editorial look.</p>
+        </div>
+        <div class="traits">
+          <div class="trait"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5"/></svg>IM Fell DW Pica — vintage book type</div>
+          <div class="trait"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5"/></svg>Dusty rose & sage color palette</div>
+          <div class="trait"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5"/></svg>Same v1 layout, softer mood</div>
+        </div>
+        <div class="card-footer"><a href="v4/index.html" class="btn">View v4 Prototype</a></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

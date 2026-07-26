@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Librory v1 — Classic Scholar</title>
+  <link rel="stylesheet" href="../base.css">
+  <link rel="stylesheet" href="theme.css">
+</head>
+<body class="theme-v1">
+
+  <div class="phone-grid">
+
+    <!-- ===== HOME ===== -->
+    <div class="phone-frame">
+      <div class="phone-screen">
+        <div class="status-bar">
+          <span class="time">9:41</span>
+          <div class="icons">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor"><rect x="1" y="6" width="18" height="12" rx="2"/><rect x="3" y="9" width="14" height="6" rx="1" fill="var(--surface-elevated)"/><rect x="20" y="10" width="2" height="4" rx="1"/></svg>
+          </div>
+        </div>
+
+        <div class="screen-body v1-home">
+          <div class="home-hero">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto var(--space-4);stroke:var(--accent)"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            <div class="headline-large">Librory</div>
+            <p class="body">Your family's reading companion, refined for the bookshop floor.</p>
+          </div>
+
+          <div class="home-overview">
+            <div class="overview-col">
+              <div class="overview-num">412</div>
+              <div class="overview-label">Books</div>
+            </div>
+            <div class="divider-v"></div>
+            <div class="overview-col">
+              <div class="overview-num">4</div>
+              <div class="overview-label">Members</div>
+            </div>
+            <div class="divider-v"></div>
+            <div class="overview-col">
+              <div class="overview-num">12</div>
+              <div class="overview-label">Scans</div>
+            </div>
+          </div>
+
+          <div class="home-actions">
+            <a href="#" class="btn btn-primary" style="text-decoration:none">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="10" height="10" rx="2"/></svg>
+              Scan a Shelf
+            </a>
+            <a href="#" class="btn btn-secondary" style="text-decoration:none">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+              Browse Library
+            </a>
+          </div>
+
+          <div class="recent-scans-title">Recent Scans</div>
+          <div class="scan-history-list">
+            <div class="scan-history-item">
+              <span class="date">Jul 20</span>
+              <div class="info">
+                <div class="store">The Strand</div>
+                <div class="meta">12 books found &middot; 3 recommended</div>
+              </div>
+              <span class="count">12</span>
+            </div>
+            <div class="scan-history-item">
+              <span class="date">Jul 12</span>
+              <div class="info">
+                <div class="store">Housing Works</div>
+                <div class="meta">8 books found &middot; 2 owned</div>
+              </div>
+              <span class="count">8</span>
+            </div>
+          </div>
+        </div>
+
+        <nav class="bottom-nav">
+          <div class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Home</span></div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="10" height="10" rx="2"/></svg><span>Scans</span></div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg><span>Library</span></div>
+        </nav>
+        <div class="home-indicator"></div>
+      </div>
+    </div>
+
+    <!-- ===== SCAN ===== -->
+    <div class="phone-frame">
+      <div class="phone-screen">
+        <div class="status-bar">
+          <span class="time">9:41</span>
+          <div class="icons">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor"><rect x="1" y="6" width="18" height="12" rx="2"/><rect x="3" y="9" width="14" height="6" rx="1" fill="var(--surface-elevated)"/><rect x="20" y="10" width="2" height="4" rx="1"/></svg>
+          </div>
+        </div>
+
+        <div class="screen-body v1-scan">
+          <div class="scan-header">
+            <div class="label">The Strand &middot; Jul 20, 2026</div>
+            <div class="title">Shelf Scan Results</div>
+          </div>
+
+          <div class="scan-summary">
+            <div class="summary-item"><div class="num">12</div><div class="label">Found</div></div>
+            <div class="summary-item"><div class="num" style="color:var(--status-recommend)">3</div><div class="label">Recommended</div></div>
+            <div class="summary-item"><div class="num" style="color:var(--status-alert)">2</div><div class="label">Owned</div></div>
+            <div class="summary-item"><div class="num">7</div><div class="label">Not a match</div></div>
+          </div>
+
+          <div class="filter-tabs">
+            <button class="active" type="button">Recommended</button>
+            <button type="button">All (12)</button>
+            <button type="button">Owned</button>
+          </div>
+
+          <div class="scan-list">
+            <div class="book-item">
+              <div class="book-cover"><div class="spine-color" style="background:#8B5E3C"></div></div>
+              <div class="book-info">
+                <div class="title">Flipped</div>
+                <div class="author">Wendelin Van Draanen</div>
+                <div class="book-reason">Coming-of-age novel — high match for your daughter's reading profile</div>
+              </div>
+              <div class="book-score"><div class="score-num score-high">96</div><div class="score-label">% match</div></div>
+            </div>
+
+            <div class="book-item">
+              <div class="book-cover"><div class="spine-color" style="background:#5A7A3C"></div></div>
+              <div class="book-info">
+                <div class="title">Wonder</div>
+                <div class="author">R.J. Palacio</div>
+                <div class="book-reason">Character-led fiction with themes of kindness — a daughter favorite</div>
+              </div>
+              <div class="book-score"><div class="score-num score-high">92</div><div class="score-label">% match</div></div>
+            </div>
+
+            <div class="book-item">
+              <div class="book-cover"><div class="spine-color" style="background:#3C5A7A"></div></div>
+              <div class="book-info">
+                <div class="title">Holes</div>
+                <div class="author">Louis Sachar</div>
+                <div class="book-reason">Adventure with smart storytelling — highly recommended for her age</div>
+              </div>
+              <div class="book-score"><div class="score-num score-mid">87</div><div class="score-label">% match</div></div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="book-item" style="opacity:0.6">
+              <div class="book-cover" style="position:relative"><div class="spine-color" style="background:#C44D4D"></div><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.3);border-radius:var(--radius-sm)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></div></div>
+              <div class="book-info">
+                <div class="title" style="text-decoration:line-through;color:var(--text-tertiary)">Bridge to Terabithia</div>
+                <div class="author" style="color:var(--text-tertiary)">Katherine Paterson</div>
+                <div class="book-reason" style="color:var(--status-alert);font-style:normal">Already in your family library. SKIP.</div>
+              </div>
+              <div style="text-align:right"><div style="font-family:var(--font-mono);font-size:var(--text-lg);font-weight:700;color:var(--status-alert);text-decoration:line-through">91</div><div class="score-label" style="color:var(--status-alert)">owned</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="home-indicator"></div>
+      </div>
+    </div>
+
+    <!-- ===== DETAIL ===== -->
+    <div class="phone-frame">
+      <div class="phone-screen">
+        <div class="status-bar">
+          <span class="time">9:41</span>
+          <div class="icons">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor"><rect x="1" y="6" width="18" height="12" rx="2"/><rect x="3" y="9" width="14" height="6" rx="1" fill="var(--surface-elevated)"/><rect x="20" y="10" width="2" height="4" rx="1"/></svg>
+          </div>
+        </div>
+
+        <div class="screen-body v1-detail">
+          <div style="margin-bottom:var(--space-3)"><span class="label">The Strand &middot; Shelf Scan &middot; Jul 20</span></div>
+
+          <div class="detail-cover-wrap">
+            <div class="detail-cover">
+              <div style="width:100%;height:100%;background:linear-gradient(135deg,#8B5E3C 0%,#6B4530 100%);display:flex;flex-direction:column;justify-content:flex-end;padding:16px">
+                <div style="font-family:var(--font-display);color:white;font-size:14px;font-style:italic;line-height:1.3">Flipped</div>
+                <div style="font-size:9px;color:rgba(255,255,255,0.7);margin-top:4px">Wendelin Van Draanen</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="detail-title">Flipped</div>
+          <div class="detail-author">Wendelin Van Draanen</div>
+
+          <div class="detail-status-line">
+            <span class="chip chip-recommend">96% Match</span>
+            <span class="chip chip-recommend">Age 10–14</span>
+            <span class="chip chip-warn">New Edition</span>
+          </div>
+
+          <div class="detail-section">
+            <div class="section-title">Details</div>
+            <div class="detail-info-grid">
+              <div class="info-cell"><div class="label">Age Fit</div><div class="value">10–14</div></div>
+              <div class="info-cell"><div class="label">Genre</div><div class="value">Realistic Fiction</div></div>
+              <div class="info-cell"><div class="label">This Edition</div><div class="value">Paperback</div></div>
+              <div class="info-cell"><div class="label">Year</div><div class="value">2001</div></div>
+            </div>
+          </div>
+
+          <div class="detail-section">
+            <div class="section-title">Why it fits</div>
+            <p class="body" style="margin-bottom:var(--space-4)">Your daughter's profile indicates a strong preference for character-driven school-life stories with coming-of-age themes. <em>Flipped</em> alternates between two perspectives, a style she has enjoyed in similar titles.</p>
+          </div>
+
+          <div class="detail-actions">
+            <button class="btn btn-primary" style="width:100%">Buy This Book</button>
+            <button class="btn btn-secondary" style="width:100%">Add to Wishlist</button>
+          </div>
+        </div>
+        <div class="home-indicator"></div>
+      </div>
+    </div>
+
+    <!-- ===== LIBRARY ===== -->
+    <div class="phone-frame">
+      <div class="phone-screen">
+        <div class="status-bar">
+          <span class="time">9:41</span>
+          <div class="icons">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor"><rect x="1" y="6" width="18" height="12" rx="2"/><rect x="3" y="9" width="14" height="6" rx="1" fill="var(--surface-elevated)"/><rect x="20" y="10" width="2" height="4" rx="1"/></svg>
+          </div>
+        </div>
+
+        <div class="screen-body v1-library">
+          <div class="library-header">
+            <div class="headline">Family Library</div>
+            <div class="label" style="margin-top:var(--space-1)">412 books across 4 members</div>
+          </div>
+
+          <div class="member-filters">
+            <button class="member-chip active" type="button">Everyone</button>
+            <button class="member-chip" type="button">Claire</button>
+            <button class="member-chip" type="button">Mom</button>
+            <button class="member-chip" type="button">Dad</button>
+          </div>
+
+          <div class="search-bar" style="margin-bottom:var(--space-5)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            Search by title, author, genre...
+          </div>
+
+          <div class="library-list">
+            <div class="library-item"><div class="book-spine-sm" style="background:#8B5E3C"></div><div class="book-info"><div class="title">Flipped</div><div class="meta">Wendelin Van Draanen &middot; Realistic Fiction</div></div><span class="owner-tag">Claire</span></div>
+            <div class="library-item"><div class="book-spine-sm" style="background:#5A7A3C"></div><div class="book-info"><div class="title">Wonder</div><div class="meta">R.J. Palacio &middot; Realistic Fiction</div></div><span class="owner-tag">Claire</span></div>
+            <div class="library-item"><div class="book-spine-sm" style="background:#4A5A9A"></div><div class="book-info"><div class="title">The Little Prince</div><div class="meta">Saint-Exup&eacute;ry &middot; Classic</div></div><span class="owner-tag">Mom</span></div>
+            <div class="library-item"><div class="book-spine-sm" style="background:#7A3C5A"></div><div class="book-info"><div class="title">Pride and Prejudice</div><div class="meta">Jane Austen &middot; Classic</div></div><span class="owner-tag">Mom</span></div>
+            <div class="library-item"><div class="book-spine-sm" style="background:#3C5A7A"></div><div class="book-info"><div class="title">Holes</div><div class="meta">Louis Sachar &middot; Adventure</div></div><span class="owner-tag">Dad</span></div>
+          </div>
+        </div>
+
+        <nav class="bottom-nav">
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Home</span></div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="10" height="10" rx="2"/></svg><span>Scans</span></div>
+          <div class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg><span>Library</span></div>
+        </nav>
+        <div class="home-indicator"></div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>
