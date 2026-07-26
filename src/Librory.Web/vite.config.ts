@@ -24,17 +24,17 @@ export default defineConfig({
       },
       '/auth': {
         target: process.env.LIBRORY_API_URL ?? 'http://localhost:5178',
-        changeOrigin: true,
+        changeOrigin: false,
         secure: false,
       },
       '/signin-google': {
         target: process.env.LIBRORY_API_URL ?? 'http://localhost:5178',
-        changeOrigin: true,
+        changeOrigin: false,
         secure: false,
       },
       '/signin-microsoft': {
         target: process.env.LIBRORY_API_URL ?? 'http://localhost:5178',
-        changeOrigin: true,
+        changeOrigin: false,
         secure: false,
       },
     },
