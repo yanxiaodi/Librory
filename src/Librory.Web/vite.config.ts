@@ -11,10 +11,10 @@ export default defineConfig({
     },
   },
   server: {
-    port: Number(process.env.VITE_PORT ?? 5174),
+    port: Number(process.env.VITE_PORT ?? 5180),
     proxy: {
       '/api': {
-        target: process.env.LIBRORY_API_URL ?? 'http://localhost:5172',
+        target: process.env.LIBRORY_API_URL ?? 'http://localhost:5178',
         changeOrigin: true,
         secure: false,
       },
