@@ -60,6 +60,22 @@ The same scan, recommendation, duplicate, intake, bilingual, and wishlist flows 
 
 ## 4. Story Map
 
+### Epic 0: Authenticate and Enter the App
+
+Goal: let the user understand the product, sign in, and reach the shelf-scanning home screen without seeing private app data before login.
+
+- As a visitor, I want to see a public landing page so I understand what Librory does before I sign in.
+- As a visitor, I want a dedicated login page so I can sign in with Google, Microsoft, or email.
+- As a signed-in user, I want to land on a simple home screen so I can start scanning quickly.
+- As a new user, I want the app to create a one-person family if I do not invite anyone yet so I can use the product alone.
+
+Acceptance criteria:
+
+- Unauthenticated users can only access public pages and login.
+- Authenticated users go directly to `/app/home`.
+- The home screen keeps the scan action prominent.
+- A solo user can use the app without creating any invitations.
+
 ### Epic 1: Scan a Shelf and Decide Fast
 
 Goal: help the user decide what is worth buying while browsing a second-hand shop.
@@ -209,6 +225,7 @@ Acceptance criteria:
 
 ### P0
 
+- Authenticate and enter the app.
 - Scan shelf photo.
 - Identify books.
 - Rank books by recommendation.

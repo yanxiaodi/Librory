@@ -1,26 +1,30 @@
-import { NavLink, Route, Routes, useLocation } from 'react-router-dom'
+import { NavLink, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { BookOpen, ScanSearch, LibraryBig, Settings2 } from 'lucide-react'
 import { HomePage } from '@/pages/HomePage'
+import { LandingPage } from '@/pages/LandingPage'
+import LoginPage from '@/pages/LoginPage'
 import { ScansPage } from '@/pages/ScansPage'
 import { LibraryPage } from '@/pages/LibraryPage'
 import SettingsPage from '@/pages/SettingsPage'
 import { cn } from '@/lib/utils'
+import { AuthGate } from '@/auth/AuthGate'
+import { PublicOnlyGate } from '@/auth/PublicOnlyGate'
 
 const navigationItems = [
-  { to: '/', label: 'Home', icon: BookOpen },
-  { to: '/scans', label: 'Scans', icon: ScanSearch },
-  { to: '/library', label: 'Library', icon: LibraryBig },
-  { to: '/settings', label: 'Settings', icon: Settings2 },
+  { to: '/app/home', label: 'Home', icon: BookOpen },
+  { to: '/app/scans', label: 'Scans', icon: ScanSearch },
+  { to: '/app/library', label: 'Library', icon: LibraryBig },
+  { to: '/app/settings', label: 'Settings', icon: Settings2 },
 ] as const
 
 const pageTitles: Record<string, string> = {
-  '/': 'Home',
-  '/scans': 'Scans',
-  '/library': 'Library',
-  '/settings': 'Settings',
+  '/app/home': 'Today’s shelf',
+  '/app/scans': 'Scans',
+  '/app/library': 'Library',
+  '/app/settings': 'Settings',
 }
 
-export default function App() {
+function AuthenticatedShell() {
   const location = useLocation()
   const title = pageTitles[location.pathname] ?? 'Librory'
 
@@ -34,12 +38,7 @@ export default function App() {
       </header>
 
       <main className="flex-1 px-4 pb-24">
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/scans" element={<ScansPage />} />
-          <Route path="/library" element={<LibraryPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-        </Routes>
+        <Outlet />
       </main>
 
       <nav
@@ -54,9 +53,7 @@ export default function App() {
               className={({ isActive }) =>
                 cn(
                   'flex flex-col items-center gap-1 px-2 py-2 text-[11px] font-medium transition',
-                  isActive
-                    ? 'text-[var(--accent)]'
-                    : 'text-[var(--text-secondary)]',
+                  isActive ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]',
                 )
               }
             >
@@ -70,5 +67,43 @@ export default function App() {
         </div>
       </nav>
     </div>
+  )
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route
+        path="/"
+        element={
+          <PublicOnlyGate>
+            <LandingPage />
+          </PublicOnlyGate>
+        }
+      />
+      <Route
+        path="/login"
+        element={
+          <PublicOnlyGate>
+            <LoginPage />
+          </PublicOnlyGate>
+        }
+      />
+      <Route
+        path="/app"
+        element={
+          <AuthGate>
+            <AuthenticatedShell />
+          </AuthGate>
+        }
+      >
+        <Route index element={<Navigate to="home" replace />} />
+        <Route path="home" element={<HomePage />} />
+        <Route path="scans" element={<ScansPage />} />
+        <Route path="library" element={<LibraryPage />} />
+        <Route path="settings" element={<SettingsPage />} />
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   )
 }
