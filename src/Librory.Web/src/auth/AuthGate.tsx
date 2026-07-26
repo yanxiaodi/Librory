@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
+import { AuthLoading } from './AuthLoading'
 import { useAuthSession } from './AuthSessionContext'
 
 export function AuthGate({ children }: { children: ReactNode }) {
@@ -7,11 +8,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const location = useLocation()
 
   if (status === 'loading') {
-    return (
-      <div aria-live="polite" role="status" className="p-4 text-sm text-[var(--text-secondary)]">
-        Loading...
-      </div>
-    )
+    return <AuthLoading />
   }
 
   if (status === 'anonymous') {

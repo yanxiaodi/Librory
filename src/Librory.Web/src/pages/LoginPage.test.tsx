@@ -86,7 +86,5 @@ describe('LoginPage', () => {
         method: 'POST',
       }),
     )
-
-    vi.unstubAllGlobals()
   })
 })

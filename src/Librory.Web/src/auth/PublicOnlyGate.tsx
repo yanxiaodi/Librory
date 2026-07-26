@@ -1,16 +1,13 @@
 import type { ReactNode } from 'react'
 import { Navigate } from 'react-router-dom'
+import { AuthLoading } from './AuthLoading'
 import { useAuthSession } from './AuthSessionContext'
 
 export function PublicOnlyGate({ children }: { children: ReactNode }) {
   const { status } = useAuthSession()
 
   if (status === 'loading') {
-    return (
-      <div aria-live="polite" role="status" className="p-4 text-sm text-[var(--text-secondary)]">
-        Loading...
-      </div>
-    )
+    return <AuthLoading />
   }
 
   if (status === 'authenticated') {

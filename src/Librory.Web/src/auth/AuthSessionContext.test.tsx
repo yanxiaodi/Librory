@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { AuthSessionProvider, useAuthSession, useAuthSessionActions } from './AuthSessionContext'
 
 function AuthSessionProbe() {
@@ -40,10 +40,6 @@ function renderProbe(initialSession?: Parameters<typeof AuthSessionProvider>[0][
     </AuthSessionProvider>,
   )
 }
-
-afterEach(() => {
-  vi.unstubAllGlobals()
-})
 
 describe('AuthSessionContext', () => {
   it('refreshes the current family session from the API', async () => {
