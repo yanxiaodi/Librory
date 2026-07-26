@@ -1,15 +1,53 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { BookOpen, Landmark, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
+import { useAuthSessionActions } from '@/auth/AuthSessionContext'
 
 const providers = [
-  { label: 'Google', icon: BookOpen },
-  { label: 'Microsoft', icon: Landmark },
-  { label: 'Email', icon: Mail },
+  {
+    label: 'Google',
+    icon: BookOpen,
+    familyName: 'Google Family',
+    memberDisplayName: 'Google Admin',
+  },
+  {
+    label: 'Microsoft',
+    icon: Landmark,
+    familyName: 'Microsoft Family',
+    memberDisplayName: 'Microsoft Admin',
+  },
+  {
+    label: 'Email',
+    icon: Mail,
+    familyName: 'Email Family',
+    memberDisplayName: 'Email Admin',
+  },
 ] as const
 
 export default function LoginPage() {
+  const { signInWithDevLogin } = useAuthSessionActions()
+  const [activeProvider, setActiveProvider] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleSignIn = async (provider: (typeof providers)[number]) => {
+    setActiveProvider(provider.label)
+    setError(null)
+
+    try {
+      await signInWithDevLogin({
+        familyName: provider.familyName,
+        memberDisplayName: provider.memberDisplayName,
+        preferredLanguage: 0,
+      })
+    } catch {
+      setError(`Could not start the ${provider.label} login flow.`)
+    } finally {
+      setActiveProvider(null)
+    }
+  }
+
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,_var(--page-bg)_0%,_#f7f2ee_100%)] px-5 py-6 text-[var(--text-primary)]">
       <div className="mx-auto flex min-h-[calc(100vh-3rem)] max-w-md items-center">
@@ -26,18 +64,26 @@ export default function LoginPage() {
           </CardHeader>
 
           <CardContent className="grid gap-3">
-            {providers.map(({ label, icon: Icon }) => (
+            {providers.map((provider) => {
+              const { label, icon: Icon } = provider
+
+              return (
               <Button
                 key={label}
                 type="button"
                 variant="outline"
                 size="lg"
                 className="justify-start border-[var(--border-subtle)] bg-white px-4 text-[var(--text-primary)] hover:bg-[var(--surface-sunken)]"
+                onClick={() => void handleSignIn(provider)}
+                disabled={activeProvider !== null}
               >
                 <Icon className="h-4 w-4" />
-                Continue with {label}
+                {activeProvider === label ? `Signing in with ${label}...` : `Continue with ${label}`}
               </Button>
-            ))}
+              )
+            })}
+
+            {error ? <p className="text-sm leading-6 text-[var(--status-alert)]">{error}</p> : null}
 
             <p className="pt-2 text-sm leading-6 text-[var(--text-secondary)]">
               By continuing, you agree to use Librory as a private app for your own books or family library.
