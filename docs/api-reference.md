@@ -9,7 +9,7 @@ This page documents the current developer-facing API slice that is available in 
 - Books: book work create and read
 - Books: manual intake create and read
 - Recommendations: current member profile read and update
-- Wishlist: paged list and create
+- Wishlist: paged list, create, and fetch
 
 ## Docs And Auth
 
@@ -324,3 +324,26 @@ Returns:
 - `400 Bad Request` when the title is missing or the requested work/edition combination is invalid.
 - `401 Unauthorized` when the caller is not signed in.
 - `404 Not Found` when the referenced work or edition does not exist.
+
+### `GET /api/family/current/wishlist/{wishlistItemId}`
+
+Returns a single wishlist item for the current family.
+
+Returns:
+
+- `200 OK` with the wishlist item payload.
+- `401 Unauthorized` when the caller is not signed in.
+- `404 Not Found` when the item does not exist for the current family.
+
+## Pending API Slices
+
+These backend story slices still need dedicated API work before the frontend can rely on them directly:
+
+- `story-12` External metadata providers and canonical import
+
+Planned capabilities for that slice:
+
+- lookup by ISBN
+- lookup by title
+- canonical import or promotion of confirmed external metadata
+- provider selection when multiple metadata sources are enabled

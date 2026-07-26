@@ -12,6 +12,22 @@ The stories are derived from:
 
 The backend should be implemented as an ASP.NET Core API, with AI orchestration kept inside the API project rather than split into a separate service.
 
+## Delivery Status
+
+Delivered:
+
+- story-03b Manual Intake API
+- story-04d Scan Session API
+- story-06b Recommendation Profile API
+- story-07b Wishlist API
+- story-10 API and Persistence Foundation
+- story-11 PostgreSQL Test Infrastructure
+
+Still open:
+
+- story-09 AI Orchestration
+- story-12 External Metadata Providers and Canonical Import
+
 ## Story Order
 
 | ID | Story | Purpose | MVP Phase | Depends On |
@@ -324,6 +340,18 @@ Acceptance criteria:
 - The API can retain a session for a short, configurable retention window.
 - The API can continue to return partial results when not every item is recognized perfectly.
 
+#### story-04d: Scan Session API
+
+Expose the temporary scan session workflow as a family-scoped API so the frontend can create, review, correct, resolve, and discard scan data without duplicating domain rules.
+
+Acceptance criteria:
+
+- The API can create a scan session for the current family.
+- The API can return the stored scan session and candidates by id for the current family.
+- The API can update a single candidate in place.
+- The API can promote a candidate into canonical catalog data.
+- The API can discard a candidate from the temporary session.
+
 ## Story-05: Duplicate Detection
 
 ### Goal
@@ -387,8 +415,7 @@ Acceptance criteria:
 
 Let users save books they want to buy later without marking them as owned.
 
-This implementation slice covers the domain and application layers only.
-API endpoints and persistence wiring will be added in a later story slice.
+This implementation slice covers the domain and application layers only. The API slice is already delivered in `story-07b`.
 
 ### User Stories
 
@@ -402,6 +429,17 @@ API endpoints and persistence wiring will be added in a later story slice.
 - The application layer can add and map wishlist items for a family context.
 - Converting wishlist items into owned copies remains available for a later API/persistence slice.
 - Wishlist items should reference canonical or temporarily resolved book data rather than raw provider payloads.
+
+#### story-07b: Wishlist API
+
+Expose wishlist CRUD and paging as a family-scoped API so the frontend can list, create, and fetch wishlist items without duplicating domain rules.
+
+Acceptance criteria:
+
+- The API can return a paged newest-first wishlist for the current family.
+- The API can create a wishlist item for the current family.
+- The API can fetch a wishlist item back by id for the current family.
+- The API keeps wishlist items scoped to the current family and member context.
 
 ## Story-08: Localization-Aware Shaping
 
@@ -526,6 +564,17 @@ Normalize book metadata from external providers into Librory's canonical catalog
 - The backend can promote confirmed metadata into canonical catalog records when a purchase or wishlist flow requires it.
 - The backend uses an abstraction such as `IBookMetadataProvider` or equivalent so new providers can be added without changing core business rules.
 - The backend does not treat external metadata as authoritative until it has been confirmed or reconciled with existing canonical records.
+
+### Open API Work
+
+This story still needs a dedicated API slice before the frontend can use external provider lookups directly.
+
+Planned API capabilities:
+
+- lookup by ISBN
+- lookup by title
+- canonical import or promotion of a confirmed external result
+- provider selection or routing when multiple providers are enabled
 
 ## Priority Summary
 
