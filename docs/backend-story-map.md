@@ -250,6 +250,17 @@ Version parsing and canonical edition import belong to later metadata work, not 
 - Optional fields such as condition, price, store, shelf location, purchase date, and notes can be added later.
 - The saved record belongs to the current family scope.
 
+#### story-03b: Manual Intake API
+
+Expose the resolved-edition intake flow as a family-scoped API so the frontend can create a `BookCopy` without duplicating domain rules.
+
+Acceptance criteria:
+
+- The API can create a book copy for the current family and member context.
+- The API can return the created copy together with the duplicate detection warning summary.
+- The API can fetch the created copy back by id for the current family.
+- The API keeps ISBN/title lookup out of the intake slice.
+
 ## Story-04: Shelf Scan Sessions
 
 ### Goal
@@ -358,6 +369,17 @@ Store manual reading preferences and return recommendation inputs that the UI an
 - The domain exposes a small curated set of default genres and styles for quick selection.
 - The API can produce recommendation inputs that combine rules with AI-assisted reasoning later.
 - Recommendation output remains separate from duplicate warnings.
+
+#### story-06b: Recommendation Profile API
+
+Expose the current member's recommendation profile as a family-scoped API so preference edits can be persisted and read back.
+
+Acceptance criteria:
+
+- The API can create or update the current member's recommendation profile.
+- The API can read the current member's recommendation profile when one exists.
+- Partial updates preserve existing saved values.
+- Invalid age ranges are rejected through the existing domain validation.
 
 ## Story-07: Wishlist
 
