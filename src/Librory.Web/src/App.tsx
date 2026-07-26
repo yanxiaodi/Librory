@@ -1,6 +1,8 @@
 import { NavLink, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { BookOpen, ScanSearch, LibraryBig, Settings2 } from 'lucide-react'
 import { HomePage } from '@/pages/HomePage'
+import { LandingPage } from '@/pages/LandingPage'
+import LoginPage from '@/pages/LoginPage'
 import { ScansPage } from '@/pages/ScansPage'
 import { LibraryPage } from '@/pages/LibraryPage'
 import SettingsPage from '@/pages/SettingsPage'
@@ -20,34 +22,6 @@ const pageTitles: Record<string, string> = {
   '/app/scans': 'Scans',
   '/app/library': 'Library',
   '/app/settings': 'Settings',
-}
-
-function LandingPlaceholder() {
-  return (
-    <main className="px-5 py-8">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--text-tertiary)]">Librory</p>
-      <h1 className="mt-3 font-[family-name:var(--font-display)] text-[2rem] font-normal italic tracking-[-0.01em] text-[var(--text-primary)]">
-        Librory
-      </h1>
-      <p className="mt-3 max-w-sm text-sm leading-6 text-[var(--text-secondary)]">
-        Scan bookshop shelves fast, then decide what is worth buying.
-      </p>
-    </main>
-  )
-}
-
-function LoginPlaceholder() {
-  return (
-    <main className="px-5 py-8">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--text-tertiary)]">Librory</p>
-      <h1 className="mt-3 font-[family-name:var(--font-display)] text-[2rem] font-normal italic tracking-[-0.01em] text-[var(--text-primary)]">
-        Sign in
-      </h1>
-      <p className="mt-3 max-w-sm text-sm leading-6 text-[var(--text-secondary)]">
-        Continue with Google, Microsoft, or email to enter your family space.
-      </p>
-    </main>
-  )
 }
 
 function AuthenticatedShell() {
@@ -103,7 +77,7 @@ export default function App() {
         path="/"
         element={
           <PublicOnlyGate>
-            <LandingPlaceholder />
+            <LandingPage />
           </PublicOnlyGate>
         }
       />
@@ -111,7 +85,7 @@ export default function App() {
         path="/login"
         element={
           <PublicOnlyGate>
-            <LoginPlaceholder />
+            <LoginPage />
           </PublicOnlyGate>
         }
       />
