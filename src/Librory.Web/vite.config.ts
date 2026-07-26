@@ -22,6 +22,21 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/auth': {
+        target: process.env.LIBRORY_API_URL ?? 'http://localhost:5178',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/signin-google': {
+        target: process.env.LIBRORY_API_URL ?? 'http://localhost:5178',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/signin-microsoft': {
+        target: process.env.LIBRORY_API_URL ?? 'http://localhost:5178',
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
 })
