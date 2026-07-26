@@ -13,6 +13,7 @@ public sealed class LibroryDbContext(DbContextOptions<LibroryDbContext> options)
     public DbSet<WishlistItem> WishlistItems => Set<WishlistItem>();
     public DbSet<ScanSession> ScanSessions => Set<ScanSession>();
     public DbSet<ScanCandidate> ScanCandidates => Set<ScanCandidate>();
+    public DbSet<RecommendationProfile> RecommendationProfiles => Set<RecommendationProfile>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

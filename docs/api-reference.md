@@ -2,12 +2,16 @@
 
 This page documents the current developer-facing API slice that is available in `story-10`.
 
+For front-end integration planning, see `[docs/frontend-integration-guide.md](/D:/dev/Librory/docs/frontend-integration-guide.md)`.
+
 ## Quick Map
 
 - Development: login, logout, and bootstrap
 - Family: current family summary
 - Books: book work create and read
-- Wishlist: paged list and create
+- Books: manual intake create and read
+- Recommendations: current member profile read and update
+- Wishlist: paged list, create, and fetch
 
 ## Docs And Auth
 
@@ -130,6 +134,62 @@ Returns:
 
 - `200 OK` with the work payload.
 - `404 Not Found` when the work id does not exist.
+
+### `POST /api/family/current/book-copies`
+
+Creates a book copy for the current family using a resolved edition.
+
+Behavior:
+
+- Attaches the copy to the current signed-in member.
+- Accepts optional purchase metadata and intake notes.
+- Returns the duplicate warning summary alongside the created copy.
+
+Returns:
+
+- `201 Created` with the created copy payload and duplicate summary.
+- `400 Bad Request` when the intake data is invalid.
+- `401 Unauthorized` when the caller is not signed in.
+- `404 Not Found` when the referenced edition does not exist.
+
+### `GET /api/family/current/book-copies/{bookCopyId}`
+
+Returns a single book copy for the current family.
+
+Returns:
+
+- `200 OK` with the copy payload.
+- `401 Unauthorized` when the caller is not signed in.
+- `404 Not Found` when the copy does not exist for the current family.
+
+## Recommendations
+
+### `GET /api/family/current/recommendation-profile`
+
+Returns the current member's recommendation profile when one exists.
+
+Returns:
+
+- `200 OK` with the profile payload.
+- `401 Unauthorized` when the caller is not signed in.
+- `404 Not Found` when the current member has not created a recommendation profile yet.
+
+### `PUT /api/family/current/recommendation-profile`
+
+Creates or updates the current member's recommendation profile.
+
+Behavior:
+
+- Creates the profile when it does not already exist.
+- Preserves existing values when fields are omitted.
+- `null` request fields preserve existing values; there is no explicit clear operation in this slice.
+- Lets the domain continue enforcing age-range validation and preference normalization.
+
+Returns:
+
+- `200 OK` with the saved profile payload.
+- `400 Bad Request` when the profile data is invalid.
+- `401 Unauthorized` when the caller is not signed in.
 
 ## Scan Sessions
 
@@ -266,3 +326,26 @@ Returns:
 - `400 Bad Request` when the title is missing or the requested work/edition combination is invalid.
 - `401 Unauthorized` when the caller is not signed in.
 - `404 Not Found` when the referenced work or edition does not exist.
+
+### `GET /api/family/current/wishlist/{wishlistItemId}`
+
+Returns a single wishlist item for the current family.
+
+Returns:
+
+- `200 OK` with the wishlist item payload.
+- `401 Unauthorized` when the caller is not signed in.
+- `404 Not Found` when the item does not exist for the current family.
+
+## Pending API Slices
+
+These backend story slices still need dedicated API work before the frontend can rely on them directly:
+
+- `story-12` External metadata providers and canonical import
+
+Planned capabilities for that slice:
+
+- lookup by ISBN
+- lookup by title
+- canonical import or promotion of confirmed external metadata
+- provider selection when multiple metadata sources are enabled

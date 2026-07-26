@@ -1,0 +1,170 @@
+# Frontend Integration Guide
+
+This guide summarizes the API surface that the frontend can integrate against now, grouped by user flow instead of by backend story.
+
+## What Is Ready
+
+Ready for frontend integration:
+
+- Development login / logout / bootstrap
+- Current family summary
+- Book work create and read
+- Manual intake create and read
+- Recommendation profile read and update
+- Scan session create, read, correct, resolve, and discard
+- Wishlist list, create, and fetch
+
+Still pending:
+
+- External metadata provider lookup and canonical import
+
+## Global Rules
+
+- Auth uses the development cookie in local environments.
+- All family-scoped endpoints require the current family context to be present.
+- `401 Unauthorized` means there is no usable auth context.
+- `404 Not Found` on family-scoped resources usually means the item does not belong to the current family.
+- Recommendation profile updates preserve existing values when request fields are omitted or set to `null`.
+- Wishlist list endpoints are paged and newest-first.
+
+## Recommended Frontend Sequence
+
+1. Sign in with `POST /dev/bootstrap` or `POST /dev/auth/login`.
+2. Load `GET /api/family/current` to prime the shell.
+3. Route to the relevant work area:
+   - manual intake
+   - recommendation profile
+   - wishlist
+   - scan sessions
+
+## Current Family Shell
+
+Use this first after login to get the active family/member context.
+
+- `GET /api/family/current`
+
+Use the response to populate:
+
+- family name
+- member display name
+- role
+- preferred language
+- counters for books and wishlist items
+
+## Manual Intake Flow
+
+Use this when the user already knows the edition they want to record.
+
+Recommended sequence:
+
+1. Resolve or choose a `bookEditionId`.
+2. Call `POST /api/family/current/book-copies`.
+3. Use the returned created copy payload to navigate to the copy detail view if needed.
+4. Call `GET /api/family/current/book-copies/{bookCopyId}` when you need to re-fetch the created record.
+
+Endpoints:
+
+- `POST /api/family/current/book-copies`
+- `GET /api/family/current/book-copies/{bookCopyId}`
+
+Notes:
+
+- The slice does not do ISBN lookup.
+- Duplicate detection is warning-only, not a hard block.
+- Optional intake metadata can be added at create time.
+
+## Recommendation Profile Flow
+
+Use this for per-member reading preferences.
+
+Recommended sequence:
+
+1. Call `GET /api/family/current/recommendation-profile`.
+2. If not found, show an empty form.
+3. On save, call `PUT /api/family/current/recommendation-profile`.
+4. Reuse the returned profile payload as the canonical form state.
+
+Endpoints:
+
+- `GET /api/family/current/recommendation-profile`
+- `PUT /api/family/current/recommendation-profile`
+
+Notes:
+
+- Partial updates preserve existing values.
+- Empty fields are not treated as explicit clears in this API slice.
+- Invalid age ranges are rejected by the domain.
+
+## Scan Session Flow
+
+Use this for shelf-photo review and candidate correction.
+
+Recommended sequence:
+
+1. Create a temporary session with `POST /api/family/current/scan-sessions`.
+2. Load or refresh the session with `GET /api/family/current/scan-sessions/{scanSessionId}`.
+3. Correct a single candidate with `PUT /api/family/current/scan-sessions/{scanSessionId}/candidates/{candidateId}`.
+4. Promote a candidate into canonical catalog data with `POST /api/family/current/scan-sessions/{scanSessionId}/candidates/{candidateId}/resolve`.
+5. Discard a candidate with `DELETE /api/family/current/scan-sessions/{scanSessionId}/candidates/{candidateId}`.
+
+Endpoints:
+
+- `POST /api/family/current/scan-sessions`
+- `GET /api/family/current/scan-sessions/{scanSessionId}`
+- `PUT /api/family/current/scan-sessions/{scanSessionId}/candidates/{candidateId}`
+- `POST /api/family/current/scan-sessions/{scanSessionId}/candidates/{candidateId}/resolve`
+- `DELETE /api/family/current/scan-sessions/{scanSessionId}/candidates/{candidateId}`
+
+Notes:
+
+- Treat scan sessions as temporary UI state backed by the backend.
+- The session shape is likely to change sooner than the family or book-copy resources.
+- Downstream duplicate/recommendation refresh is not owned by this API slice.
+
+## Wishlist Flow
+
+Use this for future-to-buy books.
+
+Recommended sequence:
+
+1. Load the wishlist with `GET /api/family/current/wishlist`.
+2. Page through results using `page` and `pageSize`.
+3. Create a wishlist item with `POST /api/family/current/wishlist`.
+4. Fetch an item by id with `GET /api/family/current/wishlist/{wishlistItemId}`.
+
+Endpoints:
+
+- `GET /api/family/current/wishlist`
+- `POST /api/family/current/wishlist`
+- `GET /api/family/current/wishlist/{wishlistItemId}`
+
+Notes:
+
+- Default pagination is `page=1` and `pageSize=20`.
+- Valid `pageSize` values are `1` through `100`.
+- Items are returned newest-first.
+
+## What Is Still Missing
+
+The remaining story slice that does not yet have frontend-facing API support is:
+
+- `story-12` External metadata providers and canonical import
+
+That work is expected to add:
+
+- ISBN lookup
+- title lookup
+- external provider selection
+- canonical import or promotion of confirmed metadata
+
+## Suggested Frontend Order
+
+If you want to start UI integration immediately, the best order is:
+
+1. Current family shell
+2. Wishlist list/create/detail
+3. Recommendation profile
+4. Manual intake
+5. Scan sessions
+
+That order gives you a usable shell and a low-risk data loop before you touch the more temporary scan/session flows.

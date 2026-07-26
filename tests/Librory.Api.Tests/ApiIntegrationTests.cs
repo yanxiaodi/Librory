@@ -587,6 +587,269 @@ public sealed class ApiIntegrationTests
         Assert.Empty(work!.Editions);
     }
 
+    [Fact]
+    public async Task Manual_intake_can_create_a_book_copy_and_return_duplicate_summary()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var loginResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        await AssertSuccessAsync(loginResponse);
+
+        var login = await loginResponse.Content.ReadFromJsonAsync<DevLoginResponse>();
+        Assert.NotNull(login);
+
+        var workResponse = await client.PostAsJsonAsync(
+            "/api/book-works",
+            new CreateBookWorkRequest(
+                "Charlotte's Web",
+                "E. B. White",
+                "978-0-06-112495-2",
+                "Hardcover",
+                2006));
+
+        await AssertSuccessAsync(workResponse);
+
+        var work = await workResponse.Content.ReadFromJsonAsync<BookWorkResponse>();
+        Assert.NotNull(work);
+        Assert.Single(work!.Editions);
+
+        var intakeResponse = await client.PostAsJsonAsync(
+            "/api/family/current/book-copies",
+            new CreateBookCopyRequest(
+                work.Editions[0].BookEditionId,
+                BookCopyDuplicateStatus.ConfirmedUnique,
+                "Good",
+                "Thrift Shop",
+                12.5m,
+                "Kids shelf",
+                new DateTimeOffset(2026, 7, 24, 12, 0, 0, TimeSpan.Zero),
+                "First copy after review"));
+
+        Assert.Equal(System.Net.HttpStatusCode.Created, intakeResponse.StatusCode);
+        Assert.NotNull(intakeResponse.Headers.Location);
+
+        var intake = await intakeResponse.Content.ReadFromJsonAsync<ManualBookIntakeResponse>();
+        Assert.NotNull(intake);
+        Assert.NotNull(intake!.Copy);
+        Assert.Equal(work.Editions[0].BookEditionId, intake.Copy.BookEditionId);
+        Assert.Equal(login.MemberId, intake.Copy.MemberId);
+        Assert.Equal(login.FamilyId, intake.Copy.FamilyId);
+        Assert.Equal(BookCopyDuplicateStatus.ConfirmedUnique, intake.Copy.DuplicateStatus);
+        Assert.Equal("Good", intake.Copy.Condition);
+        Assert.Equal("Thrift Shop", intake.Copy.PurchaseStore);
+        Assert.Equal(12.5m, intake.Copy.PurchasePrice);
+        Assert.Equal("Kids shelf", intake.Copy.ShelfLocation);
+        Assert.Equal(new DateTimeOffset(2026, 7, 24, 12, 0, 0, TimeSpan.Zero), intake.Copy.PurchasedAt);
+        Assert.Equal("First copy after review", intake.Copy.IntakeNotes);
+        Assert.False(intake.HasPotentialDuplicate);
+        Assert.Null(intake.DuplicateWarning);
+
+        var fetchedResponse = await client.GetAsync(intakeResponse.Headers.Location);
+        await AssertSuccessAsync(fetchedResponse);
+
+        var fetched = await fetchedResponse.Content.ReadFromJsonAsync<BookCopyResponse>();
+        Assert.NotNull(fetched);
+        Assert.Equal(intake.Copy.BookCopyId, fetched!.BookCopyId);
+        Assert.Equal(intake.Copy.BookEditionId, fetched.BookEditionId);
+        Assert.Equal(intake.Copy.DuplicateStatus, fetched.DuplicateStatus);
+        Assert.Equal(intake.Copy.Condition, fetched.Condition);
+    }
+
+    [Fact]
+    public async Task Manual_intake_reports_duplicates_when_the_family_already_owns_the_title()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var loginResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        await AssertSuccessAsync(loginResponse);
+
+        var workResponse = await client.PostAsJsonAsync(
+            "/api/book-works",
+            new CreateBookWorkRequest(
+                "Charlotte's Web",
+                "E. B. White",
+                "978-0-06-112495-2",
+                "Hardcover",
+                2006));
+
+        await AssertSuccessAsync(workResponse);
+
+        var work = await workResponse.Content.ReadFromJsonAsync<BookWorkResponse>();
+        Assert.NotNull(work);
+
+        var firstIntakeResponse = await client.PostAsJsonAsync(
+            "/api/family/current/book-copies",
+            new CreateBookCopyRequest(work!.Editions[0].BookEditionId));
+
+        await AssertSuccessAsync(firstIntakeResponse);
+
+        var secondIntakeResponse = await client.PostAsJsonAsync(
+            "/api/family/current/book-copies",
+            new CreateBookCopyRequest(work.Editions[0].BookEditionId));
+
+        await AssertSuccessAsync(secondIntakeResponse);
+
+        var secondIntake = await secondIntakeResponse.Content.ReadFromJsonAsync<ManualBookIntakeResponse>();
+        Assert.NotNull(secondIntake);
+        Assert.True(secondIntake!.HasPotentialDuplicate);
+        Assert.Equal("Capture ISBN or barcode information to confirm the edition.", secondIntake.DuplicateWarning);
+    }
+
+    [Fact]
+    public async Task Manual_intake_returns_not_found_for_missing_edition()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var loginResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        await AssertSuccessAsync(loginResponse);
+
+        var response = await client.PostAsJsonAsync(
+            "/api/family/current/book-copies",
+            new CreateBookCopyRequest(Guid.NewGuid()));
+
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Manual_intake_copy_is_not_visible_to_another_family()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var firstClient = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var firstLoginResponse = await firstClient.PostAsync("/dev/bootstrap", content: null);
+        await AssertSuccessAsync(firstLoginResponse);
+
+        var workResponse = await firstClient.PostAsJsonAsync(
+            "/api/book-works",
+            new CreateBookWorkRequest("Charlotte's Web", "E. B. White", "978-0-06-112495-2", "Hardcover", 2006));
+
+        await AssertSuccessAsync(workResponse);
+
+        var work = await workResponse.Content.ReadFromJsonAsync<BookWorkResponse>();
+        Assert.NotNull(work);
+
+        var intakeResponse = await firstClient.PostAsJsonAsync(
+            "/api/family/current/book-copies",
+            new CreateBookCopyRequest(work!.Editions[0].BookEditionId));
+
+        await AssertSuccessAsync(intakeResponse);
+
+        var created = await intakeResponse.Content.ReadFromJsonAsync<ManualBookIntakeResponse>();
+        Assert.NotNull(created);
+
+        using var secondClient = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var secondLoginResponse = await secondClient.PostAsJsonAsync(
+            "/dev/auth/login",
+            new DevLoginRequest("Other Family", "Other Admin", PreferredLanguage.English));
+
+        await AssertSuccessAsync(secondLoginResponse);
+
+        var getResponse = await secondClient.GetAsync($"/api/family/current/book-copies/{created!.Copy.BookCopyId}");
+
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, getResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task Recommendation_profile_can_be_created_read_back_and_partially_updated()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var bootstrapResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        await AssertSuccessAsync(bootstrapResponse);
+
+        var createResponse = await client.PutAsJsonAsync(
+            "/api/family/current/recommendation-profile",
+            new UpsertRecommendationProfileRequest(
+                8,
+                12,
+                ["Roald Dahl"],
+                ["Fantasy"],
+                ["Reflective"]));
+
+        await AssertSuccessAsync(createResponse);
+
+        var created = await createResponse.Content.ReadFromJsonAsync<RecommendationProfileResponse>();
+        Assert.NotNull(created);
+        Assert.Equal(8, created!.MinimumAge);
+        Assert.Equal(12, created.MaximumAge);
+        Assert.Equal(["Roald Dahl"], created.FavoriteAuthors);
+        Assert.Equal(["Fantasy"], created.FavoriteGenres);
+        Assert.Equal(["Reflective"], created.FavoriteStyles);
+
+        var getResponse = await client.GetAsync("/api/family/current/recommendation-profile");
+        await AssertSuccessAsync(getResponse);
+
+        var fetched = await getResponse.Content.ReadFromJsonAsync<RecommendationProfileResponse>();
+        Assert.NotNull(fetched);
+        Assert.Equal(created.MemberId, fetched!.MemberId);
+        Assert.Equal(created.MinimumAge, fetched.MinimumAge);
+        Assert.Equal(created.MaximumAge, fetched.MaximumAge);
+        Assert.Equal(created.FavoriteAuthors, fetched.FavoriteAuthors);
+        Assert.Equal(created.FavoriteGenres, fetched.FavoriteGenres);
+        Assert.Equal(created.FavoriteStyles, fetched.FavoriteStyles);
+
+        var updateResponse = await client.PutAsJsonAsync(
+            "/api/family/current/recommendation-profile",
+            new UpsertRecommendationProfileRequest(
+                5,
+                null,
+                null,
+                ["Adventure", "adventure", " "],
+                null));
+
+        await AssertSuccessAsync(updateResponse);
+
+        var updated = await updateResponse.Content.ReadFromJsonAsync<RecommendationProfileResponse>();
+        Assert.NotNull(updated);
+        Assert.Equal(5, updated!.MinimumAge);
+        Assert.Equal(12, updated.MaximumAge);
+        Assert.Equal(["Roald Dahl"], updated.FavoriteAuthors);
+        Assert.Equal(["Adventure"], updated.FavoriteGenres);
+        Assert.Equal(["Reflective"], updated.FavoriteStyles);
+    }
+
+    [Fact]
+    public async Task Recommendation_profile_returns_bad_request_for_invalid_age_range()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var bootstrapResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        await AssertSuccessAsync(bootstrapResponse);
+
+        var response = await client.PutAsJsonAsync(
+            "/api/family/current/recommendation-profile",
+            new UpsertRecommendationProfileRequest(12, 8));
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     private static async Task AssertSuccessAsync(HttpResponseMessage response)
     {
         if (response.IsSuccessStatusCode)
