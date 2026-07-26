@@ -75,7 +75,7 @@ internal static class BookCopyEndpoints
             return Results.NotFound();
         }
 
-        var member = await LoadCurrentMemberAsync(db, current.FamilyId, current.MemberId, cancellationToken);
+        var member = family.Members.SingleOrDefault(x => x.Id == current.MemberId);
         if (member is null)
         {
             return Results.Unauthorized();
@@ -113,8 +113,9 @@ internal static class BookCopyEndpoints
         await db.SaveChangesAsync(cancellationToken);
 
         var response = ManualBookIntakeResponseFactory.Create(intakeResult);
-        return Results.Created(
-            $"/api/family/current/book-copies/{response.Copy.BookCopyId}",
+        return Results.CreatedAtRoute(
+            "GetBookCopy",
+            new { bookCopyId = response.Copy.BookCopyId },
             response);
     }
 
@@ -144,20 +145,11 @@ internal static class BookCopyEndpoints
         CancellationToken cancellationToken)
     {
         return db.Families
+            .Include(x => x.Members)
             .Include(x => x.BookCopies)
                 .ThenInclude(x => x.BookEdition)
                     .ThenInclude(x => x.BookWork)
             .SingleOrDefaultAsync(x => x.Id == familyId, cancellationToken);
-    }
-
-    private static Task<Member?> LoadCurrentMemberAsync(
-        LibroryDbContext db,
-        Guid familyId,
-        Guid memberId,
-        CancellationToken cancellationToken)
-    {
-        return db.Members
-            .SingleOrDefaultAsync(x => x.FamilyId == familyId && x.Id == memberId, cancellationToken);
     }
 
     private static Task<BookEdition?> LoadBookEditionAsync(

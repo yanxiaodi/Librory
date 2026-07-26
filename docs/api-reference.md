@@ -180,6 +180,7 @@ Behavior:
 
 - Creates the profile when it does not already exist.
 - Preserves existing values when fields are omitted.
+- `null` request fields preserve existing values; there is no explicit clear operation in this slice.
 - Lets the domain continue enforcing age-range validation and preference normalization.
 
 Returns:

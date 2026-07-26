@@ -47,14 +47,7 @@ internal static class RecommendationProfileEndpoints
             return Results.Unauthorized();
         }
 
-        var member = await LoadCurrentMemberAsync(db, current.FamilyId, current.MemberId, cancellationToken);
-        if (member is null)
-        {
-            return Results.Unauthorized();
-        }
-
-        var profile = await db.RecommendationProfiles
-            .SingleOrDefaultAsync(x => x.MemberId == member.Id, cancellationToken);
+        var profile = await LoadCurrentRecommendationProfileAsync(db, current.FamilyId, current.MemberId, cancellationToken);
 
         return profile is null
             ? Results.NotFound()
@@ -75,18 +68,16 @@ internal static class RecommendationProfileEndpoints
             return Results.Unauthorized();
         }
 
-        var member = await LoadCurrentMemberAsync(db, current.FamilyId, current.MemberId, cancellationToken);
-        if (member is null)
+        var profile = await LoadCurrentRecommendationProfileAsync(db, current.FamilyId, current.MemberId, cancellationToken);
+        if (profile is null)
         {
-            return Results.Unauthorized();
-        }
+            var member = await LoadCurrentMemberAsync(db, current.FamilyId, current.MemberId, cancellationToken);
+            if (member is null)
+            {
+                return Results.Unauthorized();
+            }
 
-        try
-        {
-            var profile = await db.RecommendationProfiles
-                .SingleOrDefaultAsync(x => x.MemberId == member.Id, cancellationToken);
-
-            if (profile is null)
+            try
             {
                 profile = RecommendationProfile.Create(
                     member,
@@ -95,10 +86,19 @@ internal static class RecommendationProfileEndpoints
                     request.FavoriteAuthors,
                     request.FavoriteGenres,
                     request.FavoriteStyles);
-
-                db.RecommendationProfiles.Add(profile);
             }
-            else
+            catch (Exception exception) when (exception is InvalidOperationException or ArgumentOutOfRangeException or ArgumentException)
+            {
+                return Results.Problem(
+                    detail: exception.Message,
+                    statusCode: StatusCodes.Status400BadRequest);
+            }
+
+            db.RecommendationProfiles.Add(profile);
+        }
+        else
+        {
+            try
             {
                 profile.UpdatePreferences(
                     request.MinimumAge,
@@ -107,17 +107,17 @@ internal static class RecommendationProfileEndpoints
                     request.FavoriteGenres,
                     request.FavoriteStyles);
             }
-
-            await db.SaveChangesAsync(cancellationToken);
-
-            return Results.Ok(RecommendationProfileResponseFactory.Create(profile));
+            catch (Exception exception) when (exception is InvalidOperationException or ArgumentOutOfRangeException or ArgumentException)
+            {
+                return Results.Problem(
+                    detail: exception.Message,
+                    statusCode: StatusCodes.Status400BadRequest);
+            }
         }
-        catch (Exception exception) when (exception is InvalidOperationException or ArgumentOutOfRangeException or ArgumentException)
-        {
-            return Results.Problem(
-                detail: exception.Message,
-                statusCode: StatusCodes.Status400BadRequest);
-        }
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        return Results.Ok(RecommendationProfileResponseFactory.Create(profile));
     }
 
     private static Task<Member?> LoadCurrentMemberAsync(
@@ -128,5 +128,18 @@ internal static class RecommendationProfileEndpoints
     {
         return db.Members
             .SingleOrDefaultAsync(x => x.Id == memberId && x.FamilyId == familyId, cancellationToken);
+    }
+
+    private static Task<RecommendationProfile?> LoadCurrentRecommendationProfileAsync(
+        LibroryDbContext db,
+        Guid familyId,
+        Guid memberId,
+        CancellationToken cancellationToken)
+    {
+        return db.RecommendationProfiles
+            .Include(x => x.Member)
+            .SingleOrDefaultAsync(
+                x => x.MemberId == memberId && x.Member.FamilyId == familyId,
+                cancellationToken);
     }
 }

@@ -723,6 +723,52 @@ public sealed class ApiIntegrationTests
     }
 
     [Fact]
+    public async Task Manual_intake_copy_is_not_visible_to_another_family()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var firstClient = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var firstLoginResponse = await firstClient.PostAsync("/dev/bootstrap", content: null);
+        await AssertSuccessAsync(firstLoginResponse);
+
+        var workResponse = await firstClient.PostAsJsonAsync(
+            "/api/book-works",
+            new CreateBookWorkRequest("Charlotte's Web", "E. B. White", "978-0-06-112495-2", "Hardcover", 2006));
+
+        await AssertSuccessAsync(workResponse);
+
+        var work = await workResponse.Content.ReadFromJsonAsync<BookWorkResponse>();
+        Assert.NotNull(work);
+
+        var intakeResponse = await firstClient.PostAsJsonAsync(
+            "/api/family/current/book-copies",
+            new CreateBookCopyRequest(work!.Editions[0].BookEditionId));
+
+        await AssertSuccessAsync(intakeResponse);
+
+        var created = await intakeResponse.Content.ReadFromJsonAsync<ManualBookIntakeResponse>();
+        Assert.NotNull(created);
+
+        using var secondClient = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var secondLoginResponse = await secondClient.PostAsJsonAsync(
+            "/dev/auth/login",
+            new DevLoginRequest("Other Family", "Other Admin", PreferredLanguage.English));
+
+        await AssertSuccessAsync(secondLoginResponse);
+
+        var getResponse = await secondClient.GetAsync($"/api/family/current/book-copies/{created!.Copy.BookCopyId}");
+
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, getResponse.StatusCode);
+    }
+
+    [Fact]
     public async Task Recommendation_profile_can_be_created_read_back_and_partially_updated()
     {
         await using var factory = await ApiFactory.CreateAsync();
