@@ -26,5 +26,6 @@ describe('App shell', () => {
     expect(screen.getByRole('link', { name: /home/i })).toBeVisible()
     expect(screen.getByRole('link', { name: /scans/i })).toBeVisible()
     expect(screen.getByRole('link', { name: /library/i })).toBeVisible()
+    expect(screen.getByRole('link', { name: /settings/i })).toHaveAttribute('aria-current', 'page')
   })
 })
