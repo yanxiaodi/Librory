@@ -1,69 +1,74 @@
-import { BookOpen, ScanSearch, Languages, LibraryBig } from 'lucide-react'
-import { Button } from './components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card'
+import { NavLink, Route, Routes, useLocation } from 'react-router-dom'
+import { BookOpen, ScanSearch, LibraryBig, Settings2 } from 'lucide-react'
+import { HomePage } from '@/pages/HomePage'
+import { ScansPage } from '@/pages/ScansPage'
+import { LibraryPage } from '@/pages/LibraryPage'
+import SettingsPage from '@/pages/SettingsPage'
+import { cn } from '@/lib/utils'
 
-const highlights = [
-  {
-    icon: ScanSearch,
-    title: 'Shelf scan',
-    description: 'Capture a shelf and get book candidates fast.',
-  },
-  {
-    icon: LibraryBig,
-    title: 'Family library',
-    description: 'Track ownership across the whole household.',
-  },
-  {
-    icon: Languages,
-    title: 'Bilingual UI',
-    description: 'English and Chinese from day one.',
-  },
-]
+const navigationItems = [
+  { to: '/', label: 'Home', icon: BookOpen },
+  { to: '/scans', label: 'Scans', icon: ScanSearch },
+  { to: '/library', label: 'Library', icon: LibraryBig },
+  { to: '/settings', label: 'Settings', icon: Settings2 },
+] as const
+
+const pageTitles: Record<string, string> = {
+  '/': 'Home',
+  '/scans': 'Scans',
+  '/library': 'Library',
+  '/settings': 'Settings',
+}
 
 export default function App() {
+  const location = useLocation()
+  const title = pageTitles[location.pathname] ?? 'Librory'
+
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(113,82,255,0.14),_transparent_38%),linear-gradient(180deg,#f7f6f1_0%,#fffdf8_48%,#f1efe7_100%)] text-slate-900">
-      <main className="mx-auto flex min-h-screen max-w-6xl flex-col justify-center px-6 py-12">
-        <section className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
-          <div className="space-y-6">
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-sm font-medium shadow-sm backdrop-blur">
-              <BookOpen className="h-4 w-4" />
-              Librory
-            </div>
-            <div className="space-y-4">
-              <h1 className="max-w-2xl text-5xl font-semibold tracking-tight text-slate-950 sm:text-6xl">
-                The second-hand book scout for families.
-              </h1>
-              <p className="max-w-2xl text-lg leading-8 text-slate-600">
-                Scan a shelf, spot duplicates, and decide what to buy in seconds. Built for English and Chinese households.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Button size="lg">Start scanning</Button>
-              <Button size="lg" variant="outline">View library</Button>
-            </div>
-          </div>
-          <Card className="border-slate-200/80 bg-white/85 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur">
-            <CardHeader>
-              <CardTitle>Today’s shelf</CardTitle>
-              <CardDescription>Recommendation and duplicate detection appear together.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {highlights.map(({ icon: Icon, title, description }) => (
-                <div key={title} className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <div className="mt-0.5 rounded-xl bg-white p-2 shadow-sm">
-                    <Icon className="h-5 w-5 text-slate-900" />
-                  </div>
-                  <div>
-                    <div className="font-medium text-slate-900">{title}</div>
-                    <div className="text-sm text-slate-600">{description}</div>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </section>
+    <div className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col bg-[var(--page-bg)] text-[var(--text-primary)] shadow-[0_0_0_1px_var(--border-subtle),0_20px_64px_rgba(58,48,42,0.14)] sm:max-w-[460px] md:my-4 md:min-h-[calc(100vh-2rem)] md:rounded-[36px]">
+      <header className="px-5 pb-5 pt-6">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--text-tertiary)]">Librory</p>
+        <h1 className="mt-2 font-[family-name:var(--font-display)] text-[2rem] font-normal italic tracking-[-0.01em] text-[var(--text-primary)]">
+          {title}
+        </h1>
+      </header>
+
+      <main className="flex-1 px-4 pb-24">
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/scans" element={<ScansPage />} />
+          <Route path="/library" element={<LibraryPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+        </Routes>
       </main>
+
+      <nav
+        aria-label="Primary"
+        className="border-t border-[var(--border-subtle)] bg-[var(--page-bg)] px-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2"
+      >
+        <div className="grid grid-cols-4">
+          {navigationItems.map(({ to, label, icon: Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) =>
+                cn(
+                  'flex flex-col items-center gap-1 px-2 py-2 text-[11px] font-medium transition',
+                  isActive
+                    ? 'text-[var(--accent)]'
+                    : 'text-[var(--text-secondary)]',
+                )
+              }
+            >
+              <Icon className="h-5 w-5" />
+              <span>{label}</span>
+            </NavLink>
+          ))}
+        </div>
+        <div className="mt-1 flex justify-center">
+          <div className="h-1.5 w-32 rounded-full bg-[var(--text-primary)]/85" />
+        </div>
+      </nav>
     </div>
   )
 }
