@@ -123,11 +123,11 @@ describe('AuthSessionContext', () => {
     )
   })
 
-  it('signs out through the dev logout endpoint', async () => {
+  it('signs out through the backend logout endpoint', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      expect(String(input)).toBe('/dev/auth/logout')
+      expect(String(input)).toBe('/auth/logout')
 
-      return new Response('', { status: 200 })
+      return new Response(null, { status: 204 })
     })
 
     vi.stubGlobal('fetch', fetchMock)
@@ -142,9 +142,10 @@ describe('AuthSessionContext', () => {
     await user.click(screen.getByRole('button', { name: /sign out/i }))
 
     expect(fetchMock).toHaveBeenCalledWith(
-      '/dev/auth/logout',
+      '/auth/logout',
       expect.objectContaining({
         method: 'POST',
+        credentials: 'include',
       }),
     )
     expect(await screen.findByText('anonymous')).toBeVisible()

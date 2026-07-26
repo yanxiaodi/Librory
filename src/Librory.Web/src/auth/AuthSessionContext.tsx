@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
+import { authEndpoints } from './authEndpoints'
 import type { AuthSession } from './authSessionTypes'
 
 type DevLoginRequest = {
@@ -31,7 +32,7 @@ type AuthSessionContextValue = {
   session: AuthSession
   refreshSession: () => Promise<void>
   signInWithDevLogin: (request: DevLoginRequest) => Promise<void>
-  signOut: () => Promise<void>
+  signOut: (options?: { afterSignOut?: () => void }) => Promise<void>
 }
 
 const AuthSessionContext = createContext<AuthSessionContextValue | null>(null)
@@ -96,12 +97,16 @@ export function AuthSessionProvider({
     await refreshSession()
   }, [refreshSession])
 
-  const signOut = useCallback(async () => {
-    await fetch('/dev/auth/logout', {
+  const signOut = useCallback(async (options?: { afterSignOut?: () => void }) => {
+    setSession(loadingSession)
+
+    await fetch(authEndpoints.logout, {
       method: 'POST',
       credentials: 'include',
     })
 
+    options?.afterSignOut?.()
+    await Promise.resolve()
     setSession(anonymousSession)
   }, [])
 

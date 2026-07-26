@@ -35,13 +35,15 @@ Still pending:
 
 1. Visit `/` for the public landing page.
 2. Sign in at `/login`.
-3. Land on `/app/home`.
-4. Load `GET /api/family/current` to prime the shell.
-5. Route to the relevant work area:
+3. Click Google or Microsoft.
+4. Land on `/app/home`.
+5. Load `GET /api/family/current` to prime the shell.
+6. Route to the relevant work area:
    - manual intake
    - recommendation profile
    - wishlist
    - scan sessions
+7. Use sign out from settings to return to `/login`.
 
 ## Current Family Shell
 
