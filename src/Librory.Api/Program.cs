@@ -2,7 +2,9 @@ using Librory.Api.Endpoints;
 using Librory.Application;
 using Librory.Application.Families;
 using Librory.Infrastructure;
+using Librory.Infrastructure.Persistence;
 using Librory.ServiceDefaults;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
@@ -56,6 +58,13 @@ builder.Services.AddAuthorization();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var db = scope.ServiceProvider.GetRequiredService<LibroryDbContext>();
+    await db.Database.MigrateAsync();
+}
 
 app.UseAuthentication();
 app.UseMiddleware<CurrentFamilyContextMiddleware>();

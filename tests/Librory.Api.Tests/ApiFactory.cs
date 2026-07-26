@@ -53,11 +53,6 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncDisposabl
             {
                 options.UseNpgsql(_connectionString);
             });
-
-            using var provider = services.BuildServiceProvider();
-            using var scope = provider.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<LibroryDbContext>();
-            db.Database.Migrate();
         });
     }
 

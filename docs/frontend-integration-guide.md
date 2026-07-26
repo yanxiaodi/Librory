@@ -25,6 +25,7 @@ Still pending:
 
 - The user-facing login flow should use `/auth/google/start` or `/auth/microsoft/start`.
 - Auth uses the development cookie in local environments.
+- In Development, the API applies EF Core migrations on startup, so local Aspire runs should not require a separate manual migration step.
 - All family-scoped endpoints require the current family context to be present.
 - `401 Unauthorized` means there is no usable auth context.
 - `404 Not Found` on family-scoped resources usually means the item does not belong to the current family.
