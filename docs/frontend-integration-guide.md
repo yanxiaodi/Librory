@@ -29,9 +29,11 @@ Still pending:
 
 ## Recommended Frontend Sequence
 
-1. Sign in with `POST /dev/bootstrap` or `POST /dev/auth/login`.
-2. Load `GET /api/family/current` to prime the shell.
-3. Route to the relevant work area:
+1. Visit `/` for the public landing page.
+2. Sign in at `/login`.
+3. Land on `/app/home`.
+4. Load `GET /api/family/current` to prime the shell.
+5. Route to the relevant work area:
    - manual intake
    - recommendation profile
    - wishlist
@@ -39,7 +41,7 @@ Still pending:
 
 ## Current Family Shell
 
-Use this first after login to get the active family/member context.
+Use this first after login to get the active family/member context and the scan-first home summary.
 
 - `GET /api/family/current`
 
