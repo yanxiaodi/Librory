@@ -28,8 +28,8 @@ export default function LoginPage() {
               Sign in
             </h1>
             <CardDescription className="text-[var(--text-secondary)]">
-              Use Google, Microsoft, or email to enter your family space. If you have not created one yet, the app
-              will treat you as a family of one.
+              Use Google or Microsoft to enter your family space. If you have not created one yet, the app will treat
+              you as a family of one.
             </CardDescription>
           </CardHeader>
 

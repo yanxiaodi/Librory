@@ -83,4 +83,23 @@ public sealed class AuthEndpointsTests
         var response = await client.GetAsync("/api/family/current");
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
+
+    [Fact]
+    public async Task Callback_without_provider_subject_returns_unauthorized()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+            AllowAutoRedirect = false,
+        });
+
+        var callbackRequest = new HttpRequestMessage(HttpMethod.Get, "/auth/google/callback");
+        callbackRequest.Headers.Add("X-Test-Provider-Email", "alice@example.com");
+        callbackRequest.Headers.Add("X-Test-Provider-Name", "Alice");
+
+        var callback = await client.SendAsync(callbackRequest);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, callback.StatusCode);
+    }
 }

@@ -60,7 +60,7 @@ Logout should call the backend logout endpoint:
 
 - `POST /auth/logout`
 
-After a successful logout, the frontend should clear its local session state and route the user back to `/`.
+After a successful logout, the frontend should clear its local session state and route the user back to `/login`.
 
 ### Routes
 

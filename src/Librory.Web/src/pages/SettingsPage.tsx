@@ -1,4 +1,3 @@
-import { flushSync } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { PageFrame } from '@/components/shell/PageFrame'
@@ -10,13 +9,8 @@ export default function SettingsPage() {
   const { signOut } = useAuthSessionActions()
 
   const handleSignOut = async () => {
-    await signOut({
-      afterSignOut: () => {
-        flushSync(() => {
-          navigate('/login', { replace: true })
-        })
-      },
-    })
+    await signOut()
+    navigate('/login', { replace: true })
   }
 
   return (

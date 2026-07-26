@@ -54,20 +54,31 @@ internal static class AuthEndpoints
 
     private static async Task HandleCallbackAsync(HttpContext context, ExternalIdentityProvider provider)
     {
-        var loginRequest = await ResolveLoginRequestAsync(context, provider);
-        if (loginRequest is null)
+        try
+        {
+            var loginRequest = await ResolveLoginRequestAsync(context, provider);
+            if (loginRequest is null)
+            {
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return;
+            }
+
+            var loginService = context.RequestServices.GetRequiredService<IExternalLoginService>();
+            var result = await loginService.SignInAsync(loginRequest, context.RequestAborted);
+
+            await context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, AuthenticationSessionFactory.CreatePrincipal(result));
+            await context.SignOutAsync("External");
+
+            context.Response.Redirect("/app/home");
+        }
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
         {
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            return;
         }
-
-        var loginService = context.RequestServices.GetRequiredService<IExternalLoginService>();
-        var result = await loginService.SignInAsync(loginRequest, context.RequestAborted);
-
-        await context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, AuthenticationSessionFactory.CreatePrincipal(result));
-        await context.SignOutAsync("External");
-
-        context.Response.Redirect("/app/home");
     }
 
     private static async Task<ExternalLoginRequest?> ResolveLoginRequestAsync(
@@ -109,12 +120,16 @@ internal static class AuthEndpoints
             preferredLanguage);
     }
 
-    private static ExternalLoginRequest BuildLoginRequest(ExternalIdentityProvider provider, ClaimsPrincipal principal)
+    private static ExternalLoginRequest? BuildLoginRequest(ExternalIdentityProvider provider, ClaimsPrincipal principal)
     {
         var subject =
             principal.FindFirstValue(ClaimTypes.NameIdentifier) ??
-            principal.FindFirstValue("sub") ??
-            throw new InvalidOperationException("External identity is missing a provider subject.");
+            principal.FindFirstValue("sub");
+
+        if (string.IsNullOrWhiteSpace(subject))
+        {
+            return null;
+        }
 
         var email = principal.FindFirstValue(ClaimTypes.Email);
         var displayName = principal.FindFirstValue(ClaimTypes.Name);
