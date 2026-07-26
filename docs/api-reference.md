@@ -2,6 +2,8 @@
 
 This page documents the current developer-facing API slice that is available in `story-10`.
 
+For front-end integration planning, see `[docs/frontend-integration-guide.md](/D:/dev/Librory/docs/frontend-integration-guide.md)`.
+
 ## Quick Map
 
 - Development: login, logout, and bootstrap
