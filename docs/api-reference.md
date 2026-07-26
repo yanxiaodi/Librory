@@ -1,11 +1,12 @@
 # Librory API Reference
 
-This page documents the current developer-facing API slice that is available in `story-10`.
+This page documents the current developer-facing API slice that is available in `story-10` and the login/auth slice added for `story-01`.
 
 For front-end integration planning, see `[docs/frontend-integration-guide.md](/D:/dev/Librory/docs/frontend-integration-guide.md)`.
 
 ## Quick Map
 
+- Authentication: Google and Microsoft login plus logout
 - Development: login, logout, and bootstrap
 - Family: current family summary
 - Books: book work create and read
@@ -17,8 +18,62 @@ For front-end integration planning, see `[docs/frontend-integration-guide.md](/D
 
 - Scalar is enabled in development only.
 - Protected endpoints use cookie authentication.
-- Use `POST /dev/auth/login` or `POST /dev/bootstrap` in local development, then reuse the authenticated cookie in Scalar with persistent auth enabled.
+- Use `GET /auth/google/start` or `GET /auth/microsoft/start` for the real login flow, then reuse the authenticated cookie in Scalar with persistent auth enabled.
+- Use `POST /dev/auth/login` or `POST /dev/bootstrap` in local development when you want to bypass provider sign-in.
+- `POST /auth/logout` clears the app auth cookie and the external auth cookie.
 - `POST /dev/auth/logout` clears the development auth cookie.
+
+## Authentication
+
+### `GET /auth/google/start`
+
+Starts the Google sign-in flow.
+
+Behavior:
+
+- Redirects to the configured Google auth challenge.
+- Returns to `/auth/google/callback` after the provider finishes the sign-in round trip.
+
+### `GET /auth/google/callback`
+
+Completes the Google sign-in flow.
+
+Behavior:
+
+- Exchanges the provider response for an external identity.
+- Creates or resolves the linked member.
+- Bootstraps the first singleton family and member on first login.
+- Issues the app cookie and redirects to `/app/home`.
+
+### `GET /auth/microsoft/start`
+
+Starts the Microsoft sign-in flow.
+
+Behavior:
+
+- Redirects to the configured Microsoft auth challenge.
+- Returns to `/auth/microsoft/callback` after the provider finishes the sign-in round trip.
+
+### `GET /auth/microsoft/callback`
+
+Completes the Microsoft sign-in flow.
+
+Behavior:
+
+- Exchanges the provider response for an external identity.
+- Creates or resolves the linked member.
+- Bootstraps the first singleton family and member on first login.
+- Issues the app cookie and redirects to `/app/home`.
+
+### `POST /auth/logout`
+
+Clears the current authenticated session.
+
+Behavior:
+
+- Signs out the app cookie.
+- Signs out the external auth cookie.
+- Returns `204 No Content` on success.
 
 ## Development
 

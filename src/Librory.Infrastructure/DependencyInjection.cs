@@ -1,4 +1,6 @@
 using Librory.Application.Scanning;
+using Librory.Application.Identity;
+using Librory.Infrastructure.Identity;
 using Librory.Infrastructure.Persistence;
 using Librory.Infrastructure.Scanning;
 using Microsoft.EntityFrameworkCore;
@@ -22,6 +24,7 @@ public static class DependencyInjection
         });
 
         services.AddScoped<IScanSessionService, ScanSessionService>();
+        services.AddScoped<IExternalLoginService, ExternalLoginService>();
 
         return services;
     }

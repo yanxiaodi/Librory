@@ -46,4 +46,21 @@ public sealed class LibroryDbContextModelTests
         Assert.Contains(memberType!.GetIndexes(), index =>
             index.IsUnique && index.Properties.Select(property => property.Name).SequenceEqual(["FamilyId", "DisplayName"]));
     }
+
+    [Fact]
+    public void Model_persists_member_external_identities()
+    {
+        var options = new DbContextOptionsBuilder<LibroryDbContext>()
+            .UseInMemoryDatabase(nameof(Model_persists_member_external_identities))
+            .Options;
+
+        using var db = new LibroryDbContext(options);
+
+        var externalIdentityType = db.Model.GetEntityTypes()
+            .Single(entity => entity.GetTableName() == "member_external_identities");
+
+        Assert.Contains(externalIdentityType.GetIndexes(), index =>
+            index.IsUnique &&
+            index.Properties.Select(property => property.Name).SequenceEqual(["Provider", "ProviderSubject"]));
+    }
 }

@@ -6,6 +6,9 @@ This guide summarizes the API surface that the frontend can integrate against no
 
 Ready for frontend integration:
 
+- Google sign-in
+- Microsoft sign-in
+- Logout
 - Development login / logout / bootstrap
 - Current family summary
 - Book work create and read
@@ -20,6 +23,7 @@ Still pending:
 
 ## Global Rules
 
+- The user-facing login flow should use `/auth/google/start` or `/auth/microsoft/start`.
 - Auth uses the development cookie in local environments.
 - All family-scoped endpoints require the current family context to be present.
 - `401 Unauthorized` means there is no usable auth context.
@@ -44,6 +48,16 @@ Still pending:
 Use this first after login to get the active family/member context and the scan-first home summary.
 
 - `GET /api/family/current`
+
+If you need to test the backend auth slice directly, start login with:
+
+- `GET /auth/google/start`
+- `GET /auth/microsoft/start`
+
+For local debug bypasses, you can still use:
+
+- `POST /dev/auth/login`
+- `POST /dev/bootstrap`
 
 Use the response to populate:
 
