@@ -18,7 +18,7 @@ const navigationItems = [
 ] as const
 
 const pageTitles: Record<string, string> = {
-  '/app/home': 'Home',
+  '/app/home': 'Today’s shelf',
   '/app/scans': 'Scans',
   '/app/library': 'Library',
   '/app/settings': 'Settings',
