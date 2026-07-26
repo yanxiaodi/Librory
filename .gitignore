@@ -9,6 +9,7 @@ obj/
 .env.local
 .env.*.local
 .claude/
+.superpowers/
 
 node_modules/
 dist/
