@@ -72,3 +72,4 @@ Add API integration coverage for:
 
 - The profile lists need a stable EF conversion so changes persist correctly.
 - The API should stay member-scoped; adding family-shared recommendation settings later would need a separate model.
+- JSON-friendly list columns are fine for this slice, but they are not ideal if future work needs server-side author or genre filtering. Revisit the storage type if those queries become important.

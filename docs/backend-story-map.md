@@ -397,6 +397,7 @@ Store manual reading preferences and return recommendation inputs that the UI an
 - The domain exposes a small curated set of default genres and styles for quick selection.
 - The API can produce recommendation inputs that combine rules with AI-assisted reasoning later.
 - Recommendation output remains separate from duplicate warnings.
+- Favorite lists are currently persisted in JSON-friendly columns. If future work needs author or genre search inside the database, revisit the storage shape and consider `jsonb` or native array columns.
 
 #### story-06b: Recommendation Profile API
 
