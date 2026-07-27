@@ -40,6 +40,13 @@ export function ScansPage() {
     inputRef.current?.click()
   }
 
+  const handlePickerKeyDown = (event: React.KeyboardEvent<HTMLLabelElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      openPicker()
+    }
+  }
+
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     event.target.value = ''
@@ -82,6 +89,7 @@ export function ScansPage() {
           </CardHeader>
           <CardContent className="grid gap-4">
             <input
+              id="shelf-photo-input"
               ref={inputRef}
               aria-label="Shelf photo"
               accept="image/*"
@@ -92,9 +100,20 @@ export function ScansPage() {
               type="file"
             />
 
-            <Button type="button" size="lg" onClick={openPicker} disabled={state === 'uploading'}>
-              <ScanSearch className="h-[18px] w-[18px]" strokeWidth={1.5} />
-              {state === 'uploading' ? 'Uploading...' : 'Scan a Shelf'}
+            <Button asChild size="lg">
+              <label
+                htmlFor="shelf-photo-input"
+                role="button"
+                tabIndex={0}
+                onKeyDown={handlePickerKeyDown}
+                aria-disabled={state === 'uploading'}
+                className={state === 'uploading' ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+              >
+                <>
+                  <ScanSearch className="h-[18px] w-[18px]" strokeWidth={1.5} />
+                  {state === 'uploading' ? 'Uploading...' : 'Scan a Shelf'}
+                </>
+              </label>
             </Button>
 
             <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-sunken)] px-4 py-3">
