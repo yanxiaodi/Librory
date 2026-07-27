@@ -19,6 +19,7 @@
 
 - Add PostgreSQL persistence through EF Core
 - Add a design-time DbContext and generated migrations
+- Apply EF Core migrations automatically on API startup in Development
 - Add Scalar API docs
 - Add local development auth support for debugging
 - Add PostgreSQL-backed test infrastructure for API integration coverage

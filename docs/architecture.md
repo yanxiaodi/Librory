@@ -52,6 +52,11 @@ The API will own:
 - Recommendation requests
 - Localization-aware book data shaping
 
+Development startup behavior:
+
+- In Development, the API applies EF Core migrations on startup before handling requests.
+- This keeps local Aspire runs aligned with the current schema without a separate manual migration step.
+
 ### AI Layer
 
 Microsoft Agent Framework will be used for AI orchestration inside the main API project.

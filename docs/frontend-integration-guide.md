@@ -6,6 +6,9 @@ This guide summarizes the API surface that the frontend can integrate against no
 
 Ready for frontend integration:
 
+- Google sign-in
+- Microsoft sign-in
+- Logout
 - Development login / logout / bootstrap
 - Current family summary
 - Book work create and read
@@ -20,7 +23,9 @@ Still pending:
 
 ## Global Rules
 
+- The user-facing login flow should use `/auth/google/start` or `/auth/microsoft/start`.
 - Auth uses the development cookie in local environments.
+- In Development, the API applies EF Core migrations on startup, so local Aspire runs should not require a separate manual migration step.
 - All family-scoped endpoints require the current family context to be present.
 - `401 Unauthorized` means there is no usable auth context.
 - `404 Not Found` on family-scoped resources usually means the item does not belong to the current family.
@@ -31,19 +36,31 @@ Still pending:
 
 1. Visit `/` for the public landing page.
 2. Sign in at `/login`.
-3. Land on `/app/home`.
-4. Load `GET /api/family/current` to prime the shell.
-5. Route to the relevant work area:
+3. Click Google or Microsoft.
+4. Land on `/app/home`.
+5. Load `GET /api/family/current` to prime the shell.
+6. Route to the relevant work area:
    - manual intake
    - recommendation profile
    - wishlist
    - scan sessions
+7. Use sign out from settings to return to `/login`.
 
 ## Current Family Shell
 
 Use this first after login to get the active family/member context and the scan-first home summary.
 
 - `GET /api/family/current`
+
+If you need to test the backend auth slice directly, start login with:
+
+- `GET /auth/google/start`
+- `GET /auth/microsoft/start`
+
+For local debug bypasses, you can still use:
+
+- `POST /dev/auth/login`
+- `POST /dev/bootstrap`
 
 Use the response to populate:
 

@@ -2,8 +2,12 @@ using Librory.Api.Endpoints;
 using Librory.Application;
 using Librory.Application.Families;
 using Librory.Infrastructure;
+using Librory.Infrastructure.Persistence;
 using Librory.ServiceDefaults;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
 using Microsoft.AspNetCore.OpenApi;
 using Scalar.AspNetCore;
 
@@ -12,10 +16,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 builder.Services.AddLibroryApplication();
 builder.Services.AddLibroryInfrastructure();
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie(options =>
+builder.Services.AddAuthentication(options =>
     {
-        options.Cookie.Name = ".Librory.DevAuth";
+        options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    })
+    .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
+    {
+        options.Cookie.Name = ".Librory.Auth";
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
         options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
@@ -31,11 +38,33 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
             return Task.CompletedTask;
         };
+    })
+    .AddCookie("External")
+    .AddGoogle("Google", options =>
+    {
+        options.SignInScheme = "External";
+        options.ClientId = builder.Configuration["Authentication:Google:ClientId"] ?? string.Empty;
+        options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? string.Empty;
+        options.CallbackPath = "/signin-google";
+    })
+    .AddMicrosoftAccount("Microsoft", options =>
+    {
+        options.SignInScheme = "External";
+        options.ClientId = builder.Configuration["Authentication:Microsoft:ClientId"] ?? string.Empty;
+        options.ClientSecret = builder.Configuration["Authentication:Microsoft:ClientSecret"] ?? string.Empty;
+        options.CallbackPath = "/signin-microsoft";
     });
 builder.Services.AddAuthorization();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var db = scope.ServiceProvider.GetRequiredService<LibroryDbContext>();
+    await db.Database.MigrateAsync();
+}
 
 app.UseAuthentication();
 app.UseMiddleware<CurrentFamilyContextMiddleware>();
@@ -63,6 +92,7 @@ if (app.Environment.IsDevelopment())
     app.MapDevAuthEndpoints();
 }
 
+app.MapAuthEndpoints();
 app.MapFamilyEndpoints();
 app.MapBookWorkEndpoints();
 app.MapBookCopyEndpoints();

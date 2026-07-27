@@ -36,6 +36,10 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncDisposabl
             configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["ConnectionStrings:LibroryDb"] = _connectionString,
+                ["Authentication:Google:ClientId"] = "google-client-id",
+                ["Authentication:Google:ClientSecret"] = "google-client-secret",
+                ["Authentication:Microsoft:ClientId"] = "microsoft-client-id",
+                ["Authentication:Microsoft:ClientSecret"] = "microsoft-client-secret",
             });
         });
 
@@ -49,11 +53,6 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncDisposabl
             {
                 options.UseNpgsql(_connectionString);
             });
-
-            using var provider = services.BuildServiceProvider();
-            using var scope = provider.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<LibroryDbContext>();
-            db.Database.Migrate();
         });
     }
 
