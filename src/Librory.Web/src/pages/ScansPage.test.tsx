@@ -23,6 +23,8 @@ describe('ScansPage', () => {
 
     render(<ScansPage />)
 
+    expect(screen.getByRole('button', { name: /scan a shelf/i })).toBeVisible()
+
     const file = new File(['fake image'], 'shelf.jpg', { type: 'image/jpeg' })
     await user.upload(screen.getByLabelText(/shelf photo/i), file)
 
@@ -75,6 +77,8 @@ describe('ScansPage', () => {
     )
 
     render(<ScansPage />)
+
+    expect(screen.getByRole('button', { name: /scan a shelf/i })).toBeVisible()
 
     await user.upload(screen.getByLabelText(/shelf photo/i), new File(['fake'], 'shelf.jpg', { type: 'image/jpeg' }))
 

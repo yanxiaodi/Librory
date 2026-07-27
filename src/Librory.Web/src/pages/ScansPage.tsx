@@ -93,7 +93,8 @@ export function ScansPage() {
             />
 
             <Button type="button" size="lg" onClick={openPicker} disabled={state === 'uploading'}>
-              {state === 'uploading' ? 'Uploading...' : 'Scan shelf photo'}
+              <ScanSearch className="h-[18px] w-[18px]" strokeWidth={1.5} />
+              {state === 'uploading' ? 'Uploading...' : 'Scan a Shelf'}
             </Button>
 
             <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-sunken)] px-4 py-3">
