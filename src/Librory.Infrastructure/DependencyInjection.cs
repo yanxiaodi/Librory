@@ -24,6 +24,7 @@ public static class DependencyInjection
         });
 
         services.AddScoped<IScanSessionService, ScanSessionService>();
+        services.AddSingleton<IScanPhotoStorage, LocalScanPhotoStorage>();
         services.AddScoped<IExternalLoginService, ExternalLoginService>();
 
         return services;

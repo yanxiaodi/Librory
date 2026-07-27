@@ -11,6 +11,16 @@ namespace Librory.Api.Endpoints;
 internal static class ScanSessionEndpoints
 {
     private const int MaxShelfPhotoPathLength = 400;
+    private const long MaxShelfPhotoUploadBytes = 10 * 1024 * 1024;
+    private static readonly HashSet<string> AllowedImageContentTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/webp",
+        "image/heic",
+        "image/heif",
+    };
 
     public static IEndpointRouteBuilder MapScanSessionEndpoints(this IEndpointRouteBuilder app)
     {
@@ -26,6 +36,15 @@ internal static class ScanSessionEndpoints
             .WithDescription("Creates a temporary shelf scan session and stores any initial recognized candidates.")
             .Produces<ScanSessionResponse>(StatusCodes.Status201Created)
             .ProducesValidationProblem()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status404NotFound);
+
+        group.MapPost("uploads", UploadShelfPhotoAsync)
+            .WithName("UploadShelfPhoto")
+            .WithSummary("Upload a shelf photo.")
+            .WithDescription("Stores a temporary shelf photo and creates a scan session for downstream processing.")
+            .Produces<ScanSessionResponse>(StatusCodes.Status201Created)
+            .Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status404NotFound);
 
@@ -64,6 +83,127 @@ internal static class ScanSessionEndpoints
             .Produces(StatusCodes.Status404NotFound);
 
         return app;
+    }
+
+    private static async Task<IResult> UploadShelfPhotoAsync(
+        HttpRequest request,
+        ICurrentFamilyContextAccessor accessor,
+        IScanPhotoStorage photoStorage,
+        IScanSessionService scanSessionService,
+        CancellationToken cancellationToken)
+    {
+        var current = accessor.Current;
+        if (current is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        if (request.ContentLength is null || request.ContentLength == 0 || !request.HasFormContentType)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["photo"] = ["Shelf photo is required."],
+            });
+        }
+
+        var form = await request.ReadFormAsync(cancellationToken);
+        var photo = form.Files.GetFile("photo");
+        if (photo is null || photo.Length <= 0)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["photo"] = ["Shelf photo is required."],
+            });
+        }
+
+        if (!IsSupportedImage(photo))
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["photo"] = ["Shelf photo must be a supported image file."],
+            });
+        }
+
+        if (photo.Length > MaxShelfPhotoUploadBytes)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["photo"] = ["Shelf photo is too large."],
+            });
+        }
+
+        string storedPhotoPath;
+        try
+        {
+            await using var source = photo.OpenReadStream();
+            storedPhotoPath = await photoStorage.StoreTemporaryAsync(
+                source,
+                photo.FileName,
+                photo.ContentType ?? string.Empty,
+                cancellationToken);
+        }
+        catch (ArgumentOutOfRangeException exception)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["photo"] = [exception.Message],
+            });
+        }
+        catch (ArgumentException exception)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["photo"] = [exception.Message],
+            });
+        }
+
+        try
+        {
+            var dto = await scanSessionService.StartShelfScanAsync(
+                new ScanShelfRequest(
+                    current.FamilyId,
+                    ToLanguageCode(current.PreferredLanguage),
+                    storedPhotoPath,
+                    TimeSpan.FromDays(1)),
+                cancellationToken);
+
+            return Results.Created(
+                $"/api/family/current/scan-sessions/{dto.ScanSessionId}",
+                ToResponse(dto));
+        }
+        catch (ArgumentOutOfRangeException exception)
+        {
+            await photoStorage.DeleteAsync(storedPhotoPath, cancellationToken);
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["photo"] = [exception.Message],
+            });
+        }
+        catch (ArgumentException exception)
+        {
+            await photoStorage.DeleteAsync(storedPhotoPath, cancellationToken);
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["photo"] = [exception.Message],
+            });
+        }
+        catch (Exception exception) when (exception is UnauthorizedAccessException or KeyNotFoundException or InvalidOperationException)
+        {
+            await photoStorage.DeleteAsync(storedPhotoPath, cancellationToken);
+            return exception switch
+            {
+                UnauthorizedAccessException => Results.Unauthorized(),
+                KeyNotFoundException => Results.NotFound(),
+                _ => Results.Problem(
+                    detail: exception.Message,
+                    statusCode: StatusCodes.Status400BadRequest),
+            };
+        }
+        catch
+        {
+            await photoStorage.DeleteAsync(storedPhotoPath, cancellationToken);
+            throw;
+        }
     }
 
     private static async Task<IResult> CreateScanSessionAsync(
@@ -152,6 +292,11 @@ internal static class ScanSessionEndpoints
             PreferredLanguage.Chinese => "zh",
             _ => "en",
         };
+    }
+
+    private static bool IsSupportedImage(IFormFile photo)
+    {
+        return photo.ContentType is not null && AllowedImageContentTypes.Contains(photo.ContentType);
     }
 
     private static async Task<IResult> GetScanSessionAsync(
