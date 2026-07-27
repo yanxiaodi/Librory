@@ -2,21 +2,29 @@ import * as React from 'react'
 import { cn } from '@/lib/utils'
 
 export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('rounded-3xl border border-slate-200 bg-white shadow-sm', className)} {...props} />
+  return <div className={cn('rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] shadow-none transition-all duration-[var(--duration-normal)] ease-out active:scale-[0.985] active:bg-[var(--surface-sunken)]', className)} {...props} />
 }
 
 export function CardHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('flex flex-col gap-1.5 p-6', className)} {...props} />
+  return <div className={cn('flex flex-col gap-2 p-4', className)} {...props} />
 }
 
 export function CardTitle({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('text-xl font-semibold tracking-tight text-slate-950', className)} {...props} />
+  return (
+    <div
+      className={cn(
+        'font-[family-name:var(--font-display)] text-[1.15rem] font-normal italic tracking-[-0.01em] text-[var(--text-primary)]',
+        className,
+      )}
+      {...props}
+    />
+  )
 }
 
 export function CardDescription({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('text-sm text-slate-600', className)} {...props} />
+  return <div className={cn('text-sm leading-6 text-[var(--text-secondary)]', className)} {...props} />
 }
 
 export function CardContent({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('p-6 pt-0', className)} {...props} />
+  return <div className={cn('p-4', className)} {...props} />
 }
