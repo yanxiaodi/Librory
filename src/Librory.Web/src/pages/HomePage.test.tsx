@@ -19,10 +19,9 @@ describe('HomePage', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByRole('button', { name: /scan a shelf/i })).toBeVisible()
-    expect(screen.getByText(/books saved/i)).toBeVisible()
+    expect(screen.getByRole('link', { name: /scan a shelf/i })).toBeVisible()
+    expect(screen.getByRole('link', { name: /browse library/i })).toBeVisible()
     expect(screen.getByText(/^recent scans$/i)).toBeVisible()
-    expect(screen.getByText(/^family size$/i)).toBeVisible()
-    expect(screen.getByText(/^scan history$/i)).toBeVisible()
+    expect(screen.getByText(/your family's reading companion/i)).toBeVisible()
   })
 })

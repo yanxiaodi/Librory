@@ -1,40 +1,74 @@
+import { BookOpen, ScanSearch } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
 import { useAuthSession } from '@/auth/AuthSessionContext'
-import { HomeSummaryStrip } from '@/components/home/HomeSummaryStrip'
-import { PrimaryScanAction } from '@/components/home/PrimaryScanAction'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
+/* TODO: wire Books and Scans to API once data layer is available */
 export function HomePage() {
   const { family } = useAuthSession()
   const familySize = family?.memberCount ?? 1
 
   return (
-    <section className="grid gap-5">
-      <div className="rounded-[28px] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-5 py-5 shadow-none">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--text-tertiary)]">Today</p>
-        <h2 className="mt-2 font-[family-name:var(--font-display)] text-[1.7rem] font-normal italic tracking-[-0.01em] text-[var(--text-primary)]">
-          Today&apos;s shelf
-        </h2>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
-          Start with the camera action. Everything else stays small enough to scan at a glance.
+    <section className="grid gap-6 pb-6">
+      {/* Hero */}
+      <div className="pt-2 text-center">
+        <BookOpen
+          className="mx-auto mb-4 h-12 w-12 text-[var(--accent)]"
+          strokeWidth={1.5}
+        />
+        <p className="font-[family-name:var(--font-display)] text-[1.7rem] font-normal italic tracking-[-0.01em] text-[var(--text-primary)]">
+          Librory
+        </p>
+        <p className="mx-auto mt-2 max-w-[280px] text-[15px] leading-relaxed text-[var(--text-secondary)]">
+          Your family's reading companion, refined for the bookshop floor.
         </p>
       </div>
 
-      <PrimaryScanAction />
+      {/* Quick stats */}
+      <div className="flex border-t border-b border-[var(--border-subtle)] py-5">
+        <div className="flex-1 px-3 text-center">
+          <p className="font-[family-name:var(--font-display)] text-[1.7rem] font-normal italic leading-none text-[var(--text-primary)]">0</p>
+          <p className="mt-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-[var(--text-tertiary)]">Books</p>
+        </div>
+        <div className="w-px self-stretch bg-[var(--border-subtle)]" />
+        <div className="flex-1 px-3 text-center">
+          <p className="font-[family-name:var(--font-display)] text-[1.7rem] font-normal italic leading-none text-[var(--text-primary)]">{familySize}</p>
+          <p className="mt-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-[var(--text-tertiary)]">Members</p>
+        </div>
+        <div className="w-px self-stretch bg-[var(--border-subtle)]" />
+        <div className="flex-1 px-3 text-center">
+          <p className="font-[family-name:var(--font-display)] text-[1.7rem] font-normal italic leading-none text-[var(--text-primary)]">0</p>
+          <p className="mt-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-[var(--text-tertiary)]">Scans</p>
+        </div>
+      </div>
 
-      <HomeSummaryStrip summary={{ bookCount: 0, scanCount: 0, familySize }} />
+      {/* Actions */}
+      <div className="grid gap-3">
+        <Button size="lg" asChild>
+          <Link to="/app/scans">
+            <ScanSearch className="h-[18px] w-[18px]" strokeWidth={1.5} />
+            Scan a Shelf
+          </Link>
+        </Button>
 
-        <Card className="border-[var(--border-subtle)] bg-[var(--surface-elevated)] shadow-none">
-          <CardHeader className="p-4 pb-0">
-            <CardTitle className="font-[family-name:var(--font-display)] text-[1.15rem] font-normal italic text-[var(--text-primary)]">
-            Scan history
-            </CardTitle>
-          </CardHeader>
-        <CardContent className="grid gap-3 p-4">
-          <div className="rounded-[18px] border border-dashed border-[var(--border-subtle)] bg-[var(--accent-muted)] px-4 py-4 text-sm leading-6 text-[var(--text-secondary)]">
-            No scans yet. The first shelf photo you take will appear here.
-          </div>
-        </CardContent>
-      </Card>
+        <Button size="lg" variant="outline" asChild>
+          <Link to="/app/library">
+            <BookOpen className="h-[18px] w-[18px]" strokeWidth={1.5} />
+            Browse Library
+          </Link>
+        </Button>
+      </div>
+
+      {/* Recent Scans */}
+      <div>
+        <div className="mb-4 text-center font-[family-name:var(--font-display)] text-[1.15rem] font-normal italic text-[var(--text-primary)]">
+          Recent Scans
+        </div>
+
+        <p className="py-8 text-center font-[family-name:var(--font-display)] text-sm italic text-[var(--text-tertiary)]">
+          Start with your first shelf scan.
+        </p>
+      </div>
     </section>
   )
 }

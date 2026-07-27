@@ -4,16 +4,24 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  [
+    'inline-flex items-center justify-center gap-2.5 whitespace-nowrap',
+    'rounded-[var(--radius-md)]',
+    'font-[family-name:var(--font-display)] font-normal italic',
+    'transition-all duration-[var(--duration-normal)] ease-out',
+    'active:scale-[0.985]',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-subtle)]',
+    'disabled:pointer-events-none disabled:opacity-50',
+  ].join(' '),
   {
     variants: {
       variant: {
-        default: 'bg-slate-900 text-white hover:bg-slate-800',
-        outline: 'border border-slate-200 bg-white text-slate-900 hover:bg-slate-50',
+        default: 'bg-[var(--accent)] text-[var(--accent-on-accent)] hover:bg-[color-mix(in_srgb,var(--accent)_90%,black)]',
+        outline: 'border border-[var(--border-subtle)] bg-[var(--surface-elevated)] text-[var(--text-primary)] hover:bg-[var(--surface-sunken)] active:bg-[var(--surface-sunken)]',
       },
       size: {
-        default: 'h-10 px-4 py-2',
-        lg: 'h-12 px-6',
+        default: 'h-12 px-4 text-[15px]',
+        lg: 'h-[52px] w-full justify-center px-5 text-[17px]',
       },
     },
     defaultVariants: {

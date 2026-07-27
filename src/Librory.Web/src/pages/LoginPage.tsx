@@ -19,12 +19,12 @@ const providers = [
 
 export default function LoginPage() {
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,_var(--page-bg)_0%,_#f7f2ee_100%)] px-5 py-6 text-[var(--text-primary)]">
+    <main className="min-h-screen bg-[var(--page-bg)] px-5 py-6 text-[var(--text-primary)]">
       <div className="mx-auto flex min-h-[calc(100vh-3rem)] max-w-md items-center">
-        <Card className="w-full border-[var(--border-subtle)] bg-[var(--surface-elevated)] shadow-[0_18px_48px_rgba(58,48,42,0.08)]">
+        <Card className="w-full shadow-[0_12px_32px_rgba(58,48,42,0.05)]">
           <CardHeader>
             <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--text-tertiary)]">Librory</p>
-            <h1 className="mt-2 font-[family-name:var(--font-display)] text-[2rem] font-normal italic text-[var(--text-primary)]">
+            <h1 className="mt-2 font-[family-name:var(--font-display)] text-[1.8rem] font-normal italic text-[var(--text-primary)]">
               Sign in
             </h1>
             <CardDescription className="text-[var(--text-secondary)]">
@@ -43,7 +43,7 @@ export default function LoginPage() {
                   asChild
                   variant="outline"
                   size="lg"
-                  className="justify-start border-[var(--border-subtle)] bg-white px-4 text-[var(--text-primary)] hover:bg-[var(--surface-sunken)]"
+                  className="justify-start px-4 text-[var(--text-primary)]"
                 >
                   <a href={href}>
                     <Icon className="h-4 w-4" />
@@ -57,7 +57,7 @@ export default function LoginPage() {
               By continuing, you agree to use Librory as a private app for your own books or family library.
             </p>
 
-            <Button asChild variant="outline" className="mt-1 border-[var(--border-subtle)] bg-transparent text-[var(--text-primary)]">
+            <Button asChild variant="outline" className="mt-1 text-[var(--text-primary)]">
               <Link to="/">Back to landing</Link>
             </Button>
           </CardContent>

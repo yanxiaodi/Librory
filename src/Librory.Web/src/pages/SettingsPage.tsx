@@ -21,13 +21,13 @@ export default function SettingsPage() {
     >
       <div className="grid gap-4">
         <ThemeSelect />
-        <div className="rounded-[14px] border border-dashed border-[var(--border-subtle)] bg-[var(--accent-muted)] px-4 py-4 font-[family-name:var(--font-body)] text-sm text-[var(--text-secondary)]">
+        <div className="rounded-[var(--radius-md)] border border-dashed border-[var(--border-subtle)] bg-[var(--accent-muted)] px-4 py-4 font-[family-name:var(--font-body)] text-sm text-[var(--text-secondary)]">
           Language preferences and family-level settings will be added here later.
         </div>
         <Button
           type="button"
           variant="outline"
-          className="justify-start border-[var(--border-subtle)] bg-white text-[var(--text-primary)] hover:bg-[var(--surface-sunken)]"
+          className="justify-start text-[var(--text-primary)]"
           onClick={() => void handleSignOut()}
         >
           Sign out

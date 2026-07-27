@@ -49,7 +49,7 @@ export function ThemeSelect() {
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-controls={listId}
-        className="flex h-12 w-full items-center justify-between rounded-[16px] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-4 text-left font-[family-name:var(--font-body)] text-sm text-[var(--text-primary)] transition hover:border-[var(--border-strong)] hover:bg-[color:color-mix(in_srgb,var(--surface-elevated)_86%,white)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-subtle)]"
+        className="flex h-12 w-full items-center justify-between rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-4 text-left font-[family-name:var(--font-body)] text-sm text-[var(--text-primary)] transition hover:border-[var(--border-strong)] hover:bg-[var(--surface-sunken)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-subtle)]"
         onClick={() => setIsOpen((value) => !value)}
       >
         <span className="font-medium">{themeRegistry[themeName].label}</span>
@@ -57,7 +57,7 @@ export function ThemeSelect() {
       </button>
 
       {isOpen ? (
-        <div className="rounded-[18px] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] p-1 shadow-[0_16px_36px_rgba(58,48,42,0.12)]">
+        <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] p-1 shadow-[0_12px_24px_rgba(58,48,42,0.08)]">
           <div
             id={listId}
             role="listbox"
@@ -74,7 +74,7 @@ export function ThemeSelect() {
                   role="option"
                   aria-selected={active}
                   className={[
-                    'flex items-center justify-between rounded-[14px] px-3 py-2.5 text-left font-[family-name:var(--font-body)] text-sm transition',
+                    'flex items-center justify-between rounded-[var(--radius-md)] px-3 py-2.5 text-left font-[family-name:var(--font-body)] text-sm transition',
                     active
                       ? 'bg-[var(--accent-subtle)] text-[var(--text-primary)]'
                       : 'text-[var(--text-secondary)] hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)]',
