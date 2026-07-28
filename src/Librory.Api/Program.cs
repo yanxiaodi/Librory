@@ -24,6 +24,10 @@ builder.Services.AddOptions<ScanSessionOptions>()
     .Validate(options => options.PhotoRetentionDays > 0 && options.PhotoRetentionDays <= 3650, "Scanning:PhotoRetentionDays must be between 1 and 3650.")
     .Validate(options => options.CleanupIntervalHours > 0 && options.CleanupIntervalHours <= 168, "Scanning:CleanupIntervalHours must be between 1 and 168.")
     .ValidateOnStart();
+builder.Services.AddOptions<ScanStorageOptions>()
+    .BindConfiguration("ScanStorage")
+    .Validate(options => !string.IsNullOrWhiteSpace(options.TemporaryRoot), "ScanStorage:TemporaryRoot is required.")
+    .ValidateOnStart();
 builder.Services.AddAuthentication(options =>
     {
         options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
@@ -64,15 +68,20 @@ builder.Services.AddAuthentication(options =>
     });
 builder.Services.AddAuthorization();
 builder.Services.AddOpenApi();
-builder.Services.Configure<ForwardedHeadersOptions>(options =>
+if (builder.Environment.IsDevelopment())
 {
-    options.ForwardedHeaders =
-        ForwardedHeaders.XForwardedFor |
-        ForwardedHeaders.XForwardedHost |
-        ForwardedHeaders.XForwardedProto;
-    options.KnownIPNetworks.Clear();
-    options.KnownProxies.Clear();
-});
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders =
+            ForwardedHeaders.XForwardedFor |
+            ForwardedHeaders.XForwardedHost |
+            ForwardedHeaders.XForwardedProto;
+
+        // WARNING: Only safe behind a trusted development tunnel or proxy.
+        options.KnownIPNetworks.Clear();
+        options.KnownProxies.Clear();
+    });
+}
 
 var app = builder.Build();
 
@@ -83,7 +92,10 @@ if (app.Environment.IsDevelopment())
     await db.Database.MigrateAsync();
 }
 
-app.UseForwardedHeaders();
+if (app.Environment.IsDevelopment())
+{
+    app.UseForwardedHeaders();
+}
 app.UseAuthentication();
 app.UseMiddleware<CurrentFamilyContextMiddleware>();
 app.UseAuthorization();

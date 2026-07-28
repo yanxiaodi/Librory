@@ -46,14 +46,11 @@ public sealed class ScanUploadEndpointsTests
 
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<LibroryDbContext>();
-        var hostEnvironment = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
+        var storageRoot = ScanStorageTestPaths.GetTemporaryRoot(scope.ServiceProvider);
 
         var session = await db.ScanSessions.SingleAsync(x => x.Id == created.ScanSessionId);
         Assert.Equal(created.ShelfPhotoPath, session.ShelfPhotoPath);
-        Assert.Contains(
-            Path.GetFullPath(Path.Combine(hostEnvironment.ContentRootPath, "..", "..", "scan-uploads")),
-            created.ShelfPhotoPath,
-            StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(storageRoot, Path.GetDirectoryName(created.ShelfPhotoPath));
         Assert.True(session.ExpiresAt > DateTimeOffset.UtcNow.AddDays(6).AddHours(23));
     }
 
