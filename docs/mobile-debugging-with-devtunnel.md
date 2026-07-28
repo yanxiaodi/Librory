@@ -60,6 +60,7 @@ scan-uploads
 ```
 
 The location comes from `ScanStorage:TemporaryRoot` in `src/Librory.Api/appsettings.Development.json`, so you can override it per environment if needed.
+For production deployments, set the same `ScanStorage:TemporaryRoot` key through `appsettings.json` or environment variables before startup.
 
 Each upload gets a timestamped file name, and the cleanup job deletes expired files later.
 
