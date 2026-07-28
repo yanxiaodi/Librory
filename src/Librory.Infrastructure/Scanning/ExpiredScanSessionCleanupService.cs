@@ -52,9 +52,9 @@ public sealed class ExpiredScanSessionCleanupService : IScanSessionCleanupServic
                 }
                 catch (Exception exception)
                 {
-                    _logger.LogWarning(
+                    _logger.LogError(
                         exception,
-                        "Failed to delete scan photo for expired session {ScanSessionId} at {ShelfPhotoPath}.",
+                        "Failed to delete scan photo for expired session {ScanSessionId} at {ShelfPhotoPath}; the database row will still be removed and the file may become orphaned.",
                         session.Id,
                         session.ShelfPhotoPath);
                 }

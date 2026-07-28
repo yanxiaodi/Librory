@@ -41,6 +41,10 @@ export function ScansPage() {
   }
 
   const handlePickerKeyDown = (event: React.KeyboardEvent<HTMLLabelElement>) => {
+    if (state === 'uploading') {
+      return
+    }
+
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
       openPicker()
@@ -109,10 +113,8 @@ export function ScansPage() {
                 aria-disabled={state === 'uploading'}
                 className={state === 'uploading' ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
               >
-                <>
-                  <ScanSearch className="h-[18px] w-[18px]" strokeWidth={1.5} />
-                  {state === 'uploading' ? 'Uploading...' : 'Scan a Shelf'}
-                </>
+                <ScanSearch className="h-[18px] w-[18px]" strokeWidth={1.5} />
+                {state === 'uploading' ? 'Uploading...' : 'Scan a Shelf'}
               </label>
             </Button>
 

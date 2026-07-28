@@ -85,4 +85,50 @@ describe('ScansPage', () => {
     expect(await screen.findByText(/^upload failed$/i)).toBeVisible()
     expect(screen.getByText(/try the shelf photo again/i)).toBeVisible()
   })
+
+  it('does not reopen the picker while uploading', async () => {
+    const user = userEvent.setup()
+    let resolveFetch: ((response: Response) => void) | undefined
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        () =>
+          new Promise<Response>(resolve => {
+            resolveFetch = resolve
+          }),
+      ),
+    )
+
+    render(<ScansPage />)
+
+    const file = new File(['fake image'], 'shelf.jpg', { type: 'image/jpeg' })
+    await user.upload(screen.getByLabelText(/shelf photo/i), file)
+
+    expect(await screen.findByText(/uploading photo/i)).toBeVisible()
+
+    const button = screen.getByRole('button', { name: /uploading/i })
+    button.focus()
+    await user.keyboard('{Enter}')
+
+    expect(fetch).toHaveBeenCalledTimes(1)
+
+    resolveFetch?.(
+      new Response(
+        JSON.stringify({
+          scanSessionId: 'scan-1',
+          familyId: 'family-1',
+          shelfPhotoPath: '/tmp/Librory/scan-uploads/shelf.jpg',
+          candidates: [],
+          expiresAt: '2026-07-28T00:00:00Z',
+        }),
+        {
+          status: 201,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      ),
+    )
+  })
 })

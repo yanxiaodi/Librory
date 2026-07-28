@@ -21,6 +21,7 @@ builder.Services.AddLibroryInfrastructure();
 builder.Services.AddOptions<ScanSessionOptions>()
     .BindConfiguration("Scanning")
     .Validate(options => options.PhotoRetentionDays > 0 && options.PhotoRetentionDays <= 3650, "Scanning:PhotoRetentionDays must be between 1 and 3650.")
+    .Validate(options => options.CleanupIntervalHours > 0 && options.CleanupIntervalHours <= 168, "Scanning:CleanupIntervalHours must be between 1 and 168.")
     .ValidateOnStart();
 builder.Services.AddAuthentication(options =>
     {
