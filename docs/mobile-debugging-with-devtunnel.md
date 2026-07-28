@@ -51,13 +51,15 @@ The phone should load the Librory web app through the tunnel, while the browser-
 
 ## Where Uploaded Photos Go
 
-Shelf photos are stored under the API project root in a local `scan-uploads` folder.
+Shelf photos are stored under the API project root in a local `scan-uploads` folder during development.
 
 On this repo, that is under:
 
 ```text
 scan-uploads
 ```
+
+The location comes from `ScanStorage:TemporaryRoot` in `src/Librory.Api/appsettings.Development.json`, so you can override it per environment if needed.
 
 Each upload gets a timestamped file name, and the cleanup job deletes expired files later.
 
@@ -91,3 +93,4 @@ That keeps tunnel-based login on the tunnel URL while still allowing normal loca
 - Dev tunnels are private by default, so `--allow-anonymous` is the simplest choice when you want a phone browser to open the link directly.
 - If the phone cannot open the tunnel URL, verify the tunnel is still hosted and that the phone is online.
 - Direct local development on `localhost` still works because forwarded headers only matter when a proxy or tunnel adds them.
+- The scan upload storage path is intended for local development only; production deployments should set an explicit storage root.
