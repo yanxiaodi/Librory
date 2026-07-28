@@ -1,6 +1,7 @@
 using Librory.Api.Endpoints;
 using Librory.Application;
 using Librory.Application.Families;
+using Librory.Application.Scanning;
 using Librory.Infrastructure;
 using Librory.Infrastructure.Persistence;
 using Librory.ServiceDefaults;
@@ -9,6 +10,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
 using Microsoft.AspNetCore.OpenApi;
+using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,6 +18,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 builder.Services.AddLibroryApplication();
 builder.Services.AddLibroryInfrastructure();
+builder.Services.AddOptions<ScanSessionOptions>()
+    .BindConfiguration("Scanning")
+    .Validate(options => options.PhotoRetentionDays > 0 && options.PhotoRetentionDays <= 3650, "Scanning:PhotoRetentionDays must be between 1 and 3650.")
+    .ValidateOnStart();
 builder.Services.AddAuthentication(options =>
     {
         options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;

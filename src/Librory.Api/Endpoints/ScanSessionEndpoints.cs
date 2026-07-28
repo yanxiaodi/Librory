@@ -11,16 +11,6 @@ namespace Librory.Api.Endpoints;
 internal static class ScanSessionEndpoints
 {
     private const int MaxShelfPhotoPathLength = 400;
-    private const long MaxShelfPhotoUploadBytes = 10 * 1024 * 1024;
-    private static readonly HashSet<string> AllowedImageContentTypes = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "image/jpeg",
-        "image/jpg",
-        "image/png",
-        "image/webp",
-        "image/heic",
-        "image/heif",
-    };
 
     public static IEndpointRouteBuilder MapScanSessionEndpoints(this IEndpointRouteBuilder app)
     {
@@ -124,7 +114,7 @@ internal static class ScanSessionEndpoints
             });
         }
 
-        if (photo.Length > MaxShelfPhotoUploadBytes)
+        if (photo.Length > ScanPhotoUploadPolicy.MaxUploadBytes)
         {
             return Results.ValidationProblem(new Dictionary<string, string[]>
             {
@@ -164,7 +154,7 @@ internal static class ScanSessionEndpoints
                     current.FamilyId,
                     ToLanguageCode(current.PreferredLanguage),
                     storedPhotoPath,
-                    TimeSpan.FromDays(1)),
+                    null),
                 cancellationToken);
 
             return Results.Created(
@@ -296,7 +286,7 @@ internal static class ScanSessionEndpoints
 
     private static bool IsSupportedImage(IFormFile photo)
     {
-        return photo.ContentType is not null && AllowedImageContentTypes.Contains(photo.ContentType);
+        return photo.ContentType is not null && ScanPhotoUploadPolicy.AllowedImageContentTypes.Contains(photo.ContentType);
     }
 
     private static async Task<IResult> GetScanSessionAsync(

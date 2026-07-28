@@ -17,7 +17,7 @@ export async function uploadShelfPhoto(file: File): Promise<ScanSessionResponse>
   })
 
   if (!response.ok) {
-    throw new Error('Shelf photo upload failed.')
+    throw new Error(`Shelf photo upload failed (${response.status}).`)
   }
 
   return response.json() as Promise<ScanSessionResponse>

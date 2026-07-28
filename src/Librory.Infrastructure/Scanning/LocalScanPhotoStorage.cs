@@ -4,17 +4,6 @@ namespace Librory.Infrastructure.Scanning;
 
 public sealed class LocalScanPhotoStorage : IScanPhotoStorage
 {
-    private const long MaxUploadBytes = 10 * 1024 * 1024;
-    private static readonly HashSet<string> SupportedContentTypes = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "image/jpeg",
-        "image/jpg",
-        "image/png",
-        "image/webp",
-        "image/heic",
-        "image/heif",
-    };
-
     private static readonly IReadOnlyDictionary<string, string> ContentTypeExtensions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
         ["image/jpeg"] = ".jpg",
@@ -40,12 +29,12 @@ public sealed class LocalScanPhotoStorage : IScanPhotoStorage
     {
         ArgumentNullException.ThrowIfNull(content);
 
-        if (contentType is null || !SupportedContentTypes.Contains(contentType))
+        if (contentType is null || !ScanPhotoUploadPolicy.AllowedImageContentTypes.Contains(contentType))
         {
             throw new ArgumentException("Uploaded shelf photo must be an image.", nameof(contentType));
         }
 
-        if (content.CanSeek && content.Length > MaxUploadBytes)
+        if (content.CanSeek && content.Length > ScanPhotoUploadPolicy.MaxUploadBytes)
         {
             throw new ArgumentOutOfRangeException(nameof(content), "Uploaded shelf photo is too large.");
         }
