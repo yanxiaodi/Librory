@@ -27,9 +27,10 @@ public sealed class ScanCleanupTests
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<LibroryDbContext>();
         var cleanup = scope.ServiceProvider.GetRequiredService<IScanSessionCleanupService>();
+        var storageRoot = scope.ServiceProvider.GetRequiredService<LocalScanPhotoStorage>().RootDirectory;
 
         var family = await db.Families.SingleAsync();
-        var tempFilePath = Path.Combine(Path.GetTempPath(), "Librory", "scan-uploads", $"{Guid.NewGuid():N}.jpg");
+        var tempFilePath = Path.Combine(storageRoot, $"{Guid.NewGuid():N}.jpg");
         Directory.CreateDirectory(Path.GetDirectoryName(tempFilePath)!);
         await File.WriteAllBytesAsync(tempFilePath, [0x01, 0x02, 0x03]);
 

@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
@@ -22,6 +23,11 @@ builder.Services.AddOptions<ScanSessionOptions>()
     .BindConfiguration("Scanning")
     .Validate(options => options.PhotoRetentionDays > 0 && options.PhotoRetentionDays <= 3650, "Scanning:PhotoRetentionDays must be between 1 and 3650.")
     .Validate(options => options.CleanupIntervalHours > 0 && options.CleanupIntervalHours <= 168, "Scanning:CleanupIntervalHours must be between 1 and 168.")
+    .ValidateOnStart();
+// ScanStorage defaults to the local repo-root folder and can be overridden per environment.
+builder.Services.AddOptions<ScanStorageOptions>()
+    .BindConfiguration("ScanStorage")
+    .Validate(options => !string.IsNullOrWhiteSpace(options.TemporaryRoot), "ScanStorage:TemporaryRoot is required.")
     .ValidateOnStart();
 builder.Services.AddAuthentication(options =>
     {
@@ -63,6 +69,20 @@ builder.Services.AddAuthentication(options =>
     });
 builder.Services.AddAuthorization();
 builder.Services.AddOpenApi();
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders =
+            ForwardedHeaders.XForwardedFor |
+            ForwardedHeaders.XForwardedHost |
+            ForwardedHeaders.XForwardedProto;
+
+        // WARNING: Only safe behind a trusted development tunnel or proxy.
+        options.KnownIPNetworks.Clear();
+        options.KnownProxies.Clear();
+    });
+}
 
 var app = builder.Build();
 
@@ -73,6 +93,10 @@ if (app.Environment.IsDevelopment())
     await db.Database.MigrateAsync();
 }
 
+if (app.Environment.IsDevelopment())
+{
+    app.UseForwardedHeaders();
+}
 app.UseAuthentication();
 app.UseMiddleware<CurrentFamilyContextMiddleware>();
 app.UseAuthorization();

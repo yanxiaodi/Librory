@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using Librory.Api.Contracts;
 using Librory.Application.Scanning;
 using Librory.Infrastructure.Persistence;
+using Librory.Infrastructure.Scanning;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -45,9 +46,11 @@ public sealed class ScanUploadEndpointsTests
 
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<LibroryDbContext>();
+        var storageRoot = scope.ServiceProvider.GetRequiredService<LocalScanPhotoStorage>().RootDirectory;
 
         var session = await db.ScanSessions.SingleAsync(x => x.Id == created.ScanSessionId);
         Assert.Equal(created.ShelfPhotoPath, session.ShelfPhotoPath);
+        Assert.Equal(storageRoot, Path.GetDirectoryName(created.ShelfPhotoPath));
         Assert.True(session.ExpiresAt > DateTimeOffset.UtcNow.AddDays(6).AddHours(23));
     }
 

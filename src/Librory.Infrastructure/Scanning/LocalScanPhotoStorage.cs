@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Librory.Application.Scanning;
 
 namespace Librory.Infrastructure.Scanning;
@@ -16,9 +18,19 @@ public sealed class LocalScanPhotoStorage : IScanPhotoStorage
 
     private readonly string _rootDirectory;
 
-    public LocalScanPhotoStorage()
+    public string RootDirectory => _rootDirectory;
+
+    public LocalScanPhotoStorage(
+        IHostEnvironment hostEnvironment,
+        IOptions<ScanStorageOptions> options)
     {
-        _rootDirectory = Path.Combine(Path.GetTempPath(), "Librory", "scan-uploads");
+        ArgumentNullException.ThrowIfNull(hostEnvironment);
+        ArgumentNullException.ThrowIfNull(options);
+
+        var configuredRoot = options.Value.TemporaryRoot.Trim();
+        _rootDirectory = Path.IsPathRooted(configuredRoot)
+            ? Path.GetFullPath(configuredRoot)
+            : Path.GetFullPath(Path.Combine(hostEnvironment.ContentRootPath, configuredRoot));
     }
 
     public async Task<string> StoreTemporaryAsync(
