@@ -7,6 +7,7 @@ namespace Librory.Infrastructure.Scanning;
 
 public sealed class ExpiredScanSessionCleanupService : IScanSessionCleanupService
 {
+    private static readonly EventId OrphanedFileDeleteFailedEventId = new(1001, nameof(OrphanedFileDeleteFailedEventId));
     private readonly LibroryDbContext _db;
     private readonly IScanPhotoStorage _photoStorage;
     private readonly ILogger<ExpiredScanSessionCleanupService> _logger;
@@ -53,6 +54,7 @@ public sealed class ExpiredScanSessionCleanupService : IScanSessionCleanupServic
                 catch (Exception exception)
                 {
                     _logger.LogError(
+                        OrphanedFileDeleteFailedEventId,
                         exception,
                         "Failed to delete scan photo for expired session {ScanSessionId} at {ShelfPhotoPath}; the database row will still be removed and the file may become orphaned.",
                         session.Id,

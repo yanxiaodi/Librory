@@ -24,6 +24,7 @@ public sealed class ScanCleanupHostedService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Run once on startup so already-expired scan data is reclaimed immediately.
         // Each app instance runs this hosted service. If the API scales horizontally,
         // cleanup can overlap across instances until we add distributed coordination.
         await RunCleanupAsync(stoppingToken);
