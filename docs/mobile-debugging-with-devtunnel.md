@@ -60,7 +60,6 @@ scan-uploads
 ```
 
 The location comes from `ScanStorage:TemporaryRoot` in `src/Librory.Api/appsettings.Development.json`, so you can override it per environment if needed.
-For production deployments, set the same `ScanStorage:TemporaryRoot` key through `appsettings.json` or environment variables before startup.
 
 Each upload gets a timestamped file name, and the cleanup job deletes expired files later.
 
@@ -96,31 +95,4 @@ That keeps tunnel-based login on the tunnel URL while still allowing normal loca
 - Direct local development on `localhost` still works because forwarded headers only matter when a proxy or tunnel adds them.
 - The scan upload storage path is intended for local development only; production deployments should set an explicit storage root.
 
-## Production Deployment
-
-If you deploy Librory outside local development, make sure these settings are provided before startup:
-
-- `ScanStorage:TemporaryRoot`: a writable, persistent directory for uploaded scan photos.
-- `Scanning:PhotoRetentionDays`: how long temporary scan photos should be kept.
-- `Scanning:CleanupIntervalHours`: how often the cleanup job runs.
-- `Authentication:Google:ClientId` and `Authentication:Google:ClientSecret`: required if Google login is enabled.
-- `Authentication:Microsoft:ClientId` and `Authentication:Microsoft:ClientSecret`: required if Microsoft login is enabled.
-
-Recommended storage examples:
-
-- Windows: `C:\Librory\scan-uploads`
-- Linux: `/var/lib/librory/scan-uploads`
-
-For Google sign-in, register the public callback URL that matches your deployment host:
-
-```text
-https://<your-public-host>/signin-google
-```
-
-If you expose Microsoft sign-in, register the matching callback:
-
-```text
-https://<your-public-host>/signin-microsoft
-```
-
-The production app does not trust forwarded headers by default, so it should be reached at its real public URL rather than through the dev tunnel workflow described above.
+For deployment configuration, see [Deployment](./deployment.md).
