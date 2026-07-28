@@ -4,6 +4,7 @@ using Librory.Domain.Models;
 using Librory.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using System.Data;
+using Microsoft.Extensions.Options;
 
 namespace Librory.Infrastructure.Scanning;
 
@@ -11,13 +12,16 @@ public sealed class ScanSessionService : IScanSessionService
 {
     private readonly LibroryDbContext _db;
     private readonly ICurrentFamilyContextAccessor _currentFamilyContextAccessor;
+    private readonly IOptions<ScanSessionOptions> _options;
 
     public ScanSessionService(
         LibroryDbContext db,
-        ICurrentFamilyContextAccessor currentFamilyContextAccessor)
+        ICurrentFamilyContextAccessor currentFamilyContextAccessor,
+        IOptions<ScanSessionOptions> options)
     {
         _db = db;
         _currentFamilyContextAccessor = currentFamilyContextAccessor;
+        _options = options;
     }
 
     public async Task<ScanSessionDto> StartShelfScanAsync(
@@ -38,7 +42,16 @@ public sealed class ScanSessionService : IScanSessionService
             throw new KeyNotFoundException("Family not found.");
         }
 
-        var session = ScanSessionRecorder.Record(family, request);
+        var retentionWindow = request.RetentionWindow ?? TimeSpan.FromDays(_options.Value.PhotoRetentionDays);
+        if (retentionWindow <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(request),
+                retentionWindow,
+                "Scan photo retention window must be positive.");
+        }
+
+        var session = ScanSessionRecorder.Record(family, request with { RetentionWindow = retentionWindow });
         _db.ScanSessions.Add(session);
         await _db.SaveChangesAsync(cancellationToken);
 

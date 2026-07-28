@@ -10,7 +10,7 @@ Build a fast, family-aware second-hand book hunting assistant.
 - Book title recognition from shelf photos
 - AI-assisted recommendation
 - Duplicate detection across the family library
-- Temporary scan results retained for 7 days
+- Temporary scan results retained for 7 days by default, configurable via `Scanning:PhotoRetentionDays`
 - Re-scan flow for purchased books
 - Basic family accounts
 - Ownership assignment to a family member

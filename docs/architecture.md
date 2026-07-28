@@ -195,11 +195,13 @@ Purpose:
 
 1. User captures a shelf photo.
 2. API creates a temporary scan session.
-3. Agent Framework workflow extracts candidate titles from the image.
-4. Metadata is resolved from book data sources.
-5. Recommendation logic scores each candidate.
-6. Duplicate detection checks the family library by normalized title and surfaces a warning when the same title appears, even if spacing, punctuation, or capitalization differs.
-7. API returns a structured result list.
+3. Temporary scan photos are retained for a configurable number of days, defaulting to 7 via `Scanning:PhotoRetentionDays`.
+4. Temporary cleanup runs on a configurable cadence, defaulting to every 24 hours via `Scanning:CleanupIntervalHours`.
+5. Agent Framework workflow extracts candidate titles from the image.
+6. Metadata is resolved from book data sources.
+7. Recommendation logic scores each candidate.
+8. Duplicate detection checks the family library by normalized title and surfaces a warning when the same title appears, even if spacing, punctuation, or capitalization differs.
+9. API returns a structured result list.
 
 ### Home Intake Flow
 
