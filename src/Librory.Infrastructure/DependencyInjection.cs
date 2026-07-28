@@ -25,7 +25,8 @@ public static class DependencyInjection
 
         services.AddScoped<IScanSessionService, ScanSessionService>();
         services.AddScoped<IScanSessionCleanupService, ExpiredScanSessionCleanupService>();
-        services.AddSingleton<IScanPhotoStorage, LocalScanPhotoStorage>();
+        services.AddSingleton<LocalScanPhotoStorage>();
+        services.AddSingleton<IScanPhotoStorage>(serviceProvider => serviceProvider.GetRequiredService<LocalScanPhotoStorage>());
         services.AddHostedService<ScanCleanupHostedService>();
         services.AddScoped<IExternalLoginService, ExternalLoginService>();
 

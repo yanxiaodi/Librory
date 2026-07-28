@@ -18,6 +18,8 @@ public sealed class LocalScanPhotoStorage : IScanPhotoStorage
 
     private readonly string _rootDirectory;
 
+    public string RootDirectory => _rootDirectory;
+
     public LocalScanPhotoStorage(
         IHostEnvironment hostEnvironment,
         IOptions<ScanStorageOptions> options)

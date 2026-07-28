@@ -24,6 +24,7 @@ builder.Services.AddOptions<ScanSessionOptions>()
     .Validate(options => options.PhotoRetentionDays > 0 && options.PhotoRetentionDays <= 3650, "Scanning:PhotoRetentionDays must be between 1 and 3650.")
     .Validate(options => options.CleanupIntervalHours > 0 && options.CleanupIntervalHours <= 168, "Scanning:CleanupIntervalHours must be between 1 and 168.")
     .ValidateOnStart();
+// ScanStorage defaults to the local repo-root folder and can be overridden per environment.
 builder.Services.AddOptions<ScanStorageOptions>()
     .BindConfiguration("ScanStorage")
     .Validate(options => !string.IsNullOrWhiteSpace(options.TemporaryRoot), "ScanStorage:TemporaryRoot is required.")

@@ -27,7 +27,7 @@ public sealed class ScanCleanupTests
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<LibroryDbContext>();
         var cleanup = scope.ServiceProvider.GetRequiredService<IScanSessionCleanupService>();
-        var storageRoot = ScanStorageTestPaths.GetTemporaryRoot(scope.ServiceProvider);
+        var storageRoot = scope.ServiceProvider.GetRequiredService<LocalScanPhotoStorage>().RootDirectory;
 
         var family = await db.Families.SingleAsync();
         var tempFilePath = Path.Combine(storageRoot, $"{Guid.NewGuid():N}.jpg");
