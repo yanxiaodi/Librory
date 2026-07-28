@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
@@ -63,6 +64,15 @@ builder.Services.AddAuthentication(options =>
     });
 builder.Services.AddAuthorization();
 builder.Services.AddOpenApi();
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders =
+        ForwardedHeaders.XForwardedFor |
+        ForwardedHeaders.XForwardedHost |
+        ForwardedHeaders.XForwardedProto;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 var app = builder.Build();
 
@@ -73,6 +83,7 @@ if (app.Environment.IsDevelopment())
     await db.Database.MigrateAsync();
 }
 
+app.UseForwardedHeaders();
 app.UseAuthentication();
 app.UseMiddleware<CurrentFamilyContextMiddleware>();
 app.UseAuthorization();

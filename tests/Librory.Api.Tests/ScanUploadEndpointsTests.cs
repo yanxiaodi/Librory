@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Xunit;
 
 namespace Librory.Api.Tests;
@@ -45,9 +46,14 @@ public sealed class ScanUploadEndpointsTests
 
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<LibroryDbContext>();
+        var hostEnvironment = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
 
         var session = await db.ScanSessions.SingleAsync(x => x.Id == created.ScanSessionId);
         Assert.Equal(created.ShelfPhotoPath, session.ShelfPhotoPath);
+        Assert.Contains(
+            Path.GetFullPath(Path.Combine(hostEnvironment.ContentRootPath, "..", "..", "scan-uploads")),
+            created.ShelfPhotoPath,
+            StringComparison.OrdinalIgnoreCase);
         Assert.True(session.ExpiresAt > DateTimeOffset.UtcNow.AddDays(6).AddHours(23));
     }
 
