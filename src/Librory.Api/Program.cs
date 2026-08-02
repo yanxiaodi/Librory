@@ -127,6 +127,7 @@ app.MapAuthEndpoints();
 app.MapFamilyEndpoints();
 app.MapBookWorkEndpoints();
 app.MapBookCopyEndpoints();
+app.MapBookMetadataEndpoints();
 app.MapRecommendationProfileEndpoints();
 app.MapScanSessionEndpoints();
 app.MapWishlistEndpoints();

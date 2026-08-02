@@ -217,6 +217,29 @@ Returns:
 - `401 Unauthorized` when the caller is not signed in.
 - `404 Not Found` when the copy does not exist for the current family.
 
+## Metadata
+
+### `GET /api/book-metadata/search`
+
+Searches external book metadata by title.
+
+Query parameters:
+
+- `title` is required
+- `language` is optional and passes through to the metadata provider
+- `maxResults` defaults to `10` and must stay between `1` and `40`
+
+Behavior:
+
+- Searches the configured metadata provider for matching books.
+- Returns normalized book metadata instead of raw provider JSON.
+- Uses the provider result order as the default relevance order.
+
+Returns:
+
+- `200 OK` with normalized search results.
+- `400 Bad Request` when `title` is missing or `maxResults` is invalid.
+
 ## Recommendations
 
 ### `GET /api/family/current/recommendation-profile`
@@ -401,6 +424,5 @@ These backend story slices still need dedicated API work before the frontend can
 Planned capabilities for that slice:
 
 - lookup by ISBN
-- lookup by title
 - canonical import or promotion of confirmed external metadata
 - provider selection when multiple metadata sources are enabled
