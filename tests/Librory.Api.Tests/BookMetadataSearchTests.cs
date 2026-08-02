@@ -87,6 +87,27 @@ public sealed class BookMetadataSearchTests
         Assert.Contains("fields=", handler.LastRequestUri.Query);
     }
 
+    [Fact]
+    public async Task Search_endpoint_returns_bad_gateway_when_provider_returns_invalid_json()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+
+        using var configuredFactory = factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureServices(services =>
+            {
+                services.RemoveAll<IBookMetadataSearchService>();
+                services.AddSingleton<IBookMetadataSearchService>(new BrokenJsonBookMetadataSearchService());
+            });
+        });
+
+        using var client = configuredFactory.CreateClient();
+
+        var response = await client.GetAsync("/api/book-metadata/search?title=The%20Hobbit");
+
+        Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+    }
+
     private static ServiceProvider BuildProvider(string apiKey)
     {
         var services = new ServiceCollection();
@@ -131,6 +152,18 @@ public sealed class BookMetadataSearchTests
             };
 
             return Task.FromResult(new BookMetadataSearchResult(title, 1, candidates));
+        }
+    }
+
+    private sealed class BrokenJsonBookMetadataSearchService : IBookMetadataSearchService
+    {
+        public Task<BookMetadataSearchResult> SearchByTitleAsync(
+            string title,
+            string? language,
+            int maxResults,
+            CancellationToken cancellationToken)
+        {
+            throw new JsonException("Malformed Google Books response.");
         }
     }
 

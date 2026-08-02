@@ -1,6 +1,7 @@
 using Librory.Api.Contracts;
 using Librory.Api.Validation;
 using Librory.Application.Metadata;
+using System.Text.Json;
 
 namespace Librory.Api.Endpoints;
 
@@ -41,15 +42,6 @@ internal static class BookMetadataEndpoints
             return validationProblem;
         }
 
-        var trimmedTitle = title.Trim();
-        if (trimmedTitle.Length == 0)
-        {
-            return Results.ValidationProblem(new Dictionary<string, string[]>
-            {
-                ["title"] = ["Title is required."],
-            });
-        }
-
         var results = maxResults ?? DefaultMaxResults;
         if (results <= 0 || results > MaxAllowedResults)
         {
@@ -61,7 +53,7 @@ internal static class BookMetadataEndpoints
 
         try
         {
-            var result = await searchService.SearchByTitleAsync(trimmedTitle, language, results, cancellationToken);
+            var result = await searchService.SearchByTitleAsync(title.Trim(), language, results, cancellationToken);
             return Results.Ok(BookMetadataResponseFactory.Create(result));
         }
         catch (ArgumentException exception)
@@ -70,6 +62,12 @@ internal static class BookMetadataEndpoints
             {
                 [exception.ParamName ?? "title"] = [exception.Message],
             });
+        }
+        catch (JsonException exception)
+        {
+            return Results.Problem(
+                detail: exception.Message,
+                statusCode: StatusCodes.Status502BadGateway);
         }
         catch (HttpRequestException exception)
         {
