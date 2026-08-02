@@ -13,6 +13,7 @@ Ready for frontend integration:
 - Current family summary
 - Book work create and read
 - Manual intake create and read
+- Book metadata title search
 - Recommendation profile read and update
 - Scan session create, read, correct, resolve, and discard
 - Wishlist list, create, and fetch
@@ -92,6 +93,26 @@ Notes:
 - Duplicate detection is warning-only, not a hard block.
 - Optional intake metadata can be added at create time.
 
+## Book Metadata Search Flow
+
+Use this when you already have a candidate title from OCR or user input.
+
+Recommended sequence:
+
+1. Call `GET /api/book-metadata/search?title=...`.
+2. Filter or rank the returned candidates in the UI.
+3. Send the chosen metadata to the next scan or recommendation step.
+
+Endpoints:
+
+- `GET /api/book-metadata/search`
+
+Notes:
+
+- The API returns normalized provider data rather than raw Google Books JSON.
+- `language` and `maxResults` are optional query parameters.
+- This is the first slice of the external metadata provider work; ISBN lookup and canonical import are still pending.
+
 ## Recommendation Profile Flow
 
 Use this for per-member reading preferences.
@@ -165,14 +186,13 @@ Notes:
 
 ## What Is Still Missing
 
-The remaining story slice that does not yet have frontend-facing API support is:
+The remaining story slice that does not yet have full frontend-facing API support is:
 
 - `story-12` External metadata providers and canonical import
 
 That work is expected to add:
 
 - ISBN lookup
-- title lookup
 - external provider selection
 - canonical import or promotion of confirmed metadata
 

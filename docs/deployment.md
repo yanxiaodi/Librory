@@ -41,6 +41,14 @@ If Microsoft sign-in is enabled, provide:
 - `Authentication:Microsoft:ClientId`
 - `Authentication:Microsoft:ClientSecret`
 
+### Google Books
+
+If you want the book metadata search endpoint to use Google Books reliably in deployment, provide:
+
+- `GoogleBooks:ApiKey`
+
+If the key is omitted, the app will still start, but the provider may be subject to anonymous request limits or rejection depending on Google Books API policy.
+
 ## Redirect URIs
 
 Register the public callback URLs that match your deployment host:
@@ -71,6 +79,9 @@ Use environment-specific configuration or environment variables to override the 
       "ClientId": "...",
       "ClientSecret": "..."
     }
+  },
+  "GoogleBooks": {
+    "ApiKey": "..."
   }
 }
 ```

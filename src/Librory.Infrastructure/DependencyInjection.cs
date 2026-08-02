@@ -1,11 +1,14 @@
 using Librory.Application.Scanning;
 using Librory.Application.Identity;
+using Librory.Application.Metadata;
 using Librory.Infrastructure.Identity;
+using Librory.Infrastructure.Metadata.GoogleBooks;
 using Librory.Infrastructure.Persistence;
 using Librory.Infrastructure.Scanning;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Librory.Infrastructure;
 
@@ -27,6 +30,13 @@ public static class DependencyInjection
         services.AddScoped<IScanSessionCleanupService, ExpiredScanSessionCleanupService>();
         services.AddSingleton<LocalScanPhotoStorage>();
         services.AddSingleton<IScanPhotoStorage>(serviceProvider => serviceProvider.GetRequiredService<LocalScanPhotoStorage>());
+        services.AddOptions<GoogleBooksOptions>()
+            .BindConfiguration(GoogleBooksOptions.SectionName);
+        services.AddHttpClient<IBookMetadataSearchService, GoogleBooksMetadataSearchService>(client =>
+        {
+            client.BaseAddress = new Uri("https://www.googleapis.com/books/v1/");
+            client.Timeout = TimeSpan.FromSeconds(10);
+        });
         services.AddHostedService<ScanCleanupHostedService>();
         services.AddScoped<IExternalLoginService, ExternalLoginService>();
 
