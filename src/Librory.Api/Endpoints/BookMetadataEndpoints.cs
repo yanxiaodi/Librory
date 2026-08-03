@@ -1,6 +1,7 @@
 using Librory.Api.Contracts;
 using Librory.Api.Validation;
 using Librory.Application.Metadata;
+using Librory.Domain.Models;
 using System.Text.Json;
 
 namespace Librory.Api.Endpoints;
@@ -15,17 +16,79 @@ internal static class BookMetadataEndpoints
         ArgumentNullException.ThrowIfNull(app);
 
         var group = app.MapGroup("/api/book-metadata")
-            .AllowAnonymous()
             .WithTags("Metadata");
 
         group.MapGet("search", SearchByTitleAsync)
+            .AllowAnonymous()
             .WithName("SearchBookMetadata")
             .WithSummary("Search book metadata by title.")
             .WithDescription("Queries a book metadata provider for titles that match the supplied book title.")
             .Produces<BookMetadataSearchResponse>(StatusCodes.Status200OK)
             .ProducesValidationProblem();
 
+        group.MapPost("import", ImportAsync)
+            .RequireAuthorization()
+            .WithName("ImportBookMetadata")
+            .WithSummary("Import canonical book metadata.")
+            .WithDescription("Imports a normalized metadata candidate into the canonical catalog as a book work with an optional first edition.")
+            .Produces<BookWorkResponse>(StatusCodes.Status201Created)
+            .Produces<BookWorkResponse>(StatusCodes.Status200OK)
+            .ProducesValidationProblem();
+
         return app;
+    }
+
+    private static async Task<IResult> ImportAsync(
+        BookMetadataImportRequest? request,
+        IBookMetadataImportService importService,
+        CancellationToken cancellationToken)
+    {
+        if (request?.Candidate is null)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["candidate"] = ["Candidate is required."],
+            });
+        }
+
+        if (ApiValidation.Required(
+                new ValidationField("candidate.source", request.Candidate.Source, "Source is required."),
+                new ValidationField("candidate.sourceId", request.Candidate.SourceId, "Source id is required."),
+                new ValidationField("candidate.title", request.Candidate.Title, "Title is required."))
+            is IResult validationProblem)
+        {
+            return validationProblem;
+        }
+
+        if (request.Candidate.Authors?.Any(string.IsNullOrWhiteSpace) == true)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["candidate.authors"] = ["Author entries must not be blank."],
+            });
+        }
+
+        var candidate = new BookMetadataCandidate(
+            request.Candidate.Source.Trim(),
+            request.Candidate.SourceId.Trim(),
+            request.Candidate.Title.Trim(),
+            TrimToNull(request.Candidate.Subtitle),
+            NormalizeAuthors(request.Candidate.Authors),
+            TrimToNull(request.Candidate.Publisher),
+            TrimToNull(request.Candidate.PublishedDate),
+            TrimToNull(request.Candidate.Language),
+            TrimToNull(request.Candidate.Description),
+            TrimToNull(request.Candidate.Isbn10),
+            TrimToNull(request.Candidate.Isbn13),
+            TrimToNull(request.Candidate.ThumbnailUrl),
+            TrimToNull(request.Candidate.InfoUrl));
+
+        var result = await importService.ImportAsync(candidate, cancellationToken);
+        var payload = BookWorkResponseFactory.Create(result.Work);
+
+        return result.CreatedNew
+            ? Results.Created($"/api/book-works/{result.Work.Id}", payload)
+            : Results.Ok(payload);
     }
 
     private static async Task<IResult> SearchByTitleAsync(
@@ -81,5 +144,18 @@ internal static class BookMetadataEndpoints
                 detail: exception.Message,
                 statusCode: StatusCodes.Status502BadGateway);
         }
+    }
+
+    private static IReadOnlyList<string> NormalizeAuthors(IReadOnlyList<string>? authors)
+    {
+        return (authors ?? [])
+            .Where(author => !string.IsNullOrWhiteSpace(author))
+            .Select(author => author.Trim())
+            .ToList();
+    }
+
+    private static string? TrimToNull(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 }

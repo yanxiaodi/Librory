@@ -4,6 +4,7 @@ using Librory.Application.Metadata;
 using Librory.Application.Recognition;
 using Librory.Infrastructure.Identity;
 using Librory.Infrastructure.Metadata.GoogleBooks;
+using Librory.Infrastructure.Metadata;
 using Librory.Infrastructure.Recognition;
 using Librory.Infrastructure.Persistence;
 using Librory.Infrastructure.Scanning;
@@ -52,6 +53,7 @@ public static class DependencyInjection
             client.BaseAddress = new Uri("https://www.googleapis.com/books/v1/");
             client.Timeout = TimeSpan.FromSeconds(10);
         });
+        services.AddScoped<IBookMetadataImportService, BookMetadataImportService>();
         services.AddHostedService<ScanCleanupHostedService>();
         services.AddHostedService<BookRecognitionJobProcessorHostedService>();
         services.AddScoped<IExternalLoginService, ExternalLoginService>();

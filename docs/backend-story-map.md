@@ -22,11 +22,11 @@ Delivered:
 - story-07b Wishlist API
 - story-10 API and Persistence Foundation
 - story-11 PostgreSQL Test Infrastructure
+- story-12 External Metadata Providers and Canonical Import
 
 Still open:
 
 - story-09 AI Orchestration
-- story-12 External Metadata Providers and Canonical Import
 
 ## Story Order
 
@@ -545,6 +545,8 @@ Give the backend a repeatable integration-test harness that exercises the API ag
 
 ## Story-12: External Metadata Providers and Canonical Import
 
+> Status: delivered via `GET /api/book-metadata/search` and `POST /api/book-metadata/import`.
+
 ### Goal
 
 Normalize book metadata from external providers into Librory's canonical catalog records so later scan, wishlist, and intake flows can reuse the same source of truth.
@@ -594,7 +596,6 @@ Planned API capabilities:
 - story-06 Recommendation profiles
 - story-07 Wishlist
 - story-11 PostgreSQL test infrastructure
-- story-12 External metadata providers and canonical import
 
 ### P2
 
