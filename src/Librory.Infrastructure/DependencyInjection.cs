@@ -1,8 +1,10 @@
 using Librory.Application.Scanning;
 using Librory.Application.Identity;
 using Librory.Application.Metadata;
+using Librory.Application.Recognition;
 using Librory.Infrastructure.Identity;
 using Librory.Infrastructure.Metadata.GoogleBooks;
+using Librory.Infrastructure.Recognition;
 using Librory.Infrastructure.Persistence;
 using Librory.Infrastructure.Scanning;
 using Microsoft.EntityFrameworkCore;
@@ -29,6 +31,20 @@ public static class DependencyInjection
         services.AddScoped<IScanSessionCleanupService, ExpiredScanSessionCleanupService>();
         services.AddSingleton<LocalScanPhotoStorage>();
         services.AddSingleton<IScanPhotoStorage>(serviceProvider => serviceProvider.GetRequiredService<LocalScanPhotoStorage>());
+        services.AddOptions<RecognitionOptions>()
+            .BindConfiguration("Recognition");
+        services.AddSingleton<BookTitleCandidateRanker>();
+        services.AddHttpClient<IOcrTextExtractionService, AzureAiVisionTextExtractionService>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(20);
+        });
+        services.AddHttpClient<IVisionFallbackService, AzureOpenAiVisionFallbackService>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+        services.AddScoped<IBookRecognitionPipeline, BookRecognitionPipeline>();
+        services.AddScoped<IBookRecognitionJobService, BookRecognitionJobService>();
+        services.AddScoped<BookRecognitionJobProcessor>();
         services.AddOptions<GoogleBooksOptions>()
             .BindConfiguration(GoogleBooksOptions.SectionName);
         services.AddHttpClient<IBookMetadataSearchService, GoogleBooksMetadataSearchService>(client =>
@@ -37,6 +53,7 @@ public static class DependencyInjection
             client.Timeout = TimeSpan.FromSeconds(10);
         });
         services.AddHostedService<ScanCleanupHostedService>();
+        services.AddHostedService<BookRecognitionJobProcessorHostedService>();
         services.AddScoped<IExternalLoginService, ExternalLoginService>();
 
         return services;

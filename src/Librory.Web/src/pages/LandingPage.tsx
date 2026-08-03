@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { ArrowRight, BookOpen, ScanSearch, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
 const highlights = [

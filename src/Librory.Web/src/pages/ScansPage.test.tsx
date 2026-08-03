@@ -4,20 +4,48 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ScansPage } from './ScansPage'
 
 afterEach(() => {
+  vi.useRealTimers()
   vi.unstubAllGlobals()
 })
 
 describe('ScansPage', () => {
-  it('uploads a shelf photo and switches to scanning state', async () => {
+  it('uploads a shelf photo and renders recognized candidates after polling', async () => {
     const user = userEvent.setup()
-    let resolveFetch: ((response: Response) => void) | undefined
+    let resolvePoll: ((response: Response) => void) | undefined
 
-    const fetchMock = vi.fn(
-      () =>
-        new Promise<Response>(resolve => {
-          resolveFetch = resolve
-        }),
-    )
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+
+      if (url === '/api/book-recognition-jobs' && init?.method === 'POST') {
+        return new Response(
+          JSON.stringify({
+            jobId: 'job-1',
+            familyId: 'family-1',
+            status: 0,
+            sourcePhotoPath: '/tmp/Librory/scan-uploads/shelf.jpg',
+            candidates: [],
+            warnings: [],
+            failureMessage: null,
+            createdAt: '2026-08-03T00:00:00Z',
+            updatedAt: '2026-08-03T00:00:00Z',
+          }),
+          {
+            status: 202,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          },
+        )
+      }
+
+      if (url === '/api/book-recognition-jobs/job-1' && init?.credentials === 'include') {
+        return new Promise<Response>(resolve => {
+          resolvePoll = resolve
+        })
+      }
+
+      throw new Error(`Unexpected fetch request: ${url}`)
+    })
 
     vi.stubGlobal('fetch', fetchMock)
 
@@ -28,10 +56,9 @@ describe('ScansPage', () => {
     const file = new File(['fake image'], 'shelf.jpg', { type: 'image/jpeg' })
     await user.upload(screen.getByLabelText(/shelf photo/i), file)
 
-    expect(await screen.findByText(/uploading photo/i)).toBeVisible()
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(1)
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/family/current/scan-sessions/uploads',
+      '/api/book-recognition-jobs',
       expect.objectContaining({
         method: 'POST',
         credentials: 'include',
@@ -43,17 +70,47 @@ describe('ScansPage', () => {
     const formData = requestInit.body as FormData
     expect(formData.get('photo')).toBe(file)
 
-    resolveFetch?.(
+    expect(await screen.findByText(/polling recognition job/i)).toBeVisible()
+
+    resolvePoll?.(
       new Response(
         JSON.stringify({
-          scanSessionId: 'scan-1',
+          jobId: 'job-1',
           familyId: 'family-1',
-          shelfPhotoPath: '/tmp/Librory/scan-uploads/shelf.jpg',
-          candidates: [],
-          expiresAt: '2026-07-28T00:00:00Z',
+          status: 2,
+          sourcePhotoPath: '/tmp/Librory/scan-uploads/shelf.jpg',
+          candidates: [
+            {
+              candidateId: 'candidate-1',
+              displayTitle: 'Dune',
+              evidenceText: 'DUNE',
+              rank: 940,
+              metadataMatches: [
+                {
+                  source: 'google-books',
+                  sourceId: 'source-1',
+                  title: 'Dune',
+                  subtitle: null,
+                  authors: ['Frank Herbert'],
+                  publisher: 'Ace',
+                  publishedDate: '1965',
+                  language: 'en',
+                  description: null,
+                  isbn10: '0441013597',
+                  isbn13: '9780441013593',
+                  thumbnailUrl: null,
+                  infoUrl: null,
+                },
+              ],
+            },
+          ],
+          warnings: [],
+          failureMessage: null,
+          createdAt: '2026-08-03T00:00:00Z',
+          updatedAt: '2026-08-03T00:00:05Z',
         }),
         {
-          status: 201,
+          status: 200,
           headers: {
             'Content-Type': 'application/json',
           },
@@ -61,12 +118,12 @@ describe('ScansPage', () => {
       ),
     )
 
-    expect(await screen.findByText(/scanning in progress/i)).toBeVisible()
-    expect(screen.getByText(/scan session:/i)).toBeVisible()
-    expect(screen.getByText(/scan-1/i)).toBeVisible()
+    expect(await screen.findByText(/recognition complete/i)).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Dune' })).toBeVisible()
+    expect(screen.getByText(/Frank Herbert/i, { selector: 'li' })).toBeVisible()
   })
 
-  it('shows an error when the upload fails', async () => {
+  it('shows an error when the recognition upload fails', async () => {
     const user = userEvent.setup()
 
     vi.stubGlobal(
@@ -88,14 +145,14 @@ describe('ScansPage', () => {
 
   it('does not reopen the picker while uploading', async () => {
     const user = userEvent.setup()
-    let resolveFetch: ((response: Response) => void) | undefined
+    let resolvePost: ((response: Response) => void) | undefined
 
     vi.stubGlobal(
       'fetch',
       vi.fn(
         () =>
           new Promise<Response>(resolve => {
-            resolveFetch = resolve
+            resolvePost = resolve
           }),
       ),
     )
@@ -113,17 +170,21 @@ describe('ScansPage', () => {
 
     expect(fetch).toHaveBeenCalledTimes(1)
 
-    resolveFetch?.(
+    resolvePost?.(
       new Response(
         JSON.stringify({
-          scanSessionId: 'scan-1',
+          jobId: 'job-1',
           familyId: 'family-1',
-          shelfPhotoPath: '/tmp/Librory/scan-uploads/shelf.jpg',
+          status: 0,
+          sourcePhotoPath: '/tmp/Librory/scan-uploads/shelf.jpg',
           candidates: [],
-          expiresAt: '2026-07-28T00:00:00Z',
+          warnings: [],
+          failureMessage: null,
+          createdAt: '2026-08-03T00:00:00Z',
+          updatedAt: '2026-08-03T00:00:00Z',
         }),
         {
-          status: 201,
+          status: 202,
           headers: {
             'Content-Type': 'application/json',
           },
