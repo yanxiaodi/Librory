@@ -3,14 +3,20 @@ import { AlertCircle, Camera, CheckCircle2, Loader2, ScanSearch } from 'lucide-r
 import { PageFrame } from '@/components/shell/PageFrame'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { uploadShelfPhoto } from '@/lib/scansApi'
+import { BookRecognitionResults } from '@/components/scans/BookRecognitionResults'
+import {
+  createBookRecognitionJob,
+  getBookRecognitionJob,
+  isRecognitionJobComplete,
+  type BookRecognitionJobResponse,
+} from '@/lib/bookRecognitionApi'
 
-type ScanState = 'idle' | 'uploading' | 'scanning' | 'error'
+type ScanState = 'idle' | 'uploading' | 'polling' | 'ready' | 'error'
 
 const stateCopy: Record<ScanState, { title: string; description: string; tone: string }> = {
   idle: {
     title: 'Ready for a shelf photo',
-    description: 'Tap scan, take a photo, and the app will start a temporary scan session.',
+    description: 'Tap scan, take a photo, and the app will start an async recognition job.',
     tone: 'text-[var(--text-secondary)]',
   },
   uploading: {
@@ -18,14 +24,19 @@ const stateCopy: Record<ScanState, { title: string; description: string; tone: s
     description: 'Sending the image to the server now.',
     tone: 'text-[var(--text-secondary)]',
   },
-  scanning: {
-    title: 'Scanning in progress',
-    description: 'The image is stored. Recognition will continue in the background.',
+  polling: {
+    title: 'Polling recognition job',
+    description: 'The image is stored. The app is checking for recognized book titles.',
+    tone: 'text-[var(--text-secondary)]',
+  },
+  ready: {
+    title: 'Recognition complete',
+    description: 'Review the recognized titles and their metadata matches.',
     tone: 'text-[var(--text-secondary)]',
   },
   error: {
-    title: 'Upload failed',
-    description: 'Try the shelf photo again. The image never made it into the scan flow.',
+    title: 'Recognition failed',
+    description: 'Try the shelf photo again. The job did not complete successfully.',
     tone: 'text-[var(--text-secondary)]',
   },
 }
@@ -34,11 +45,50 @@ export function ScansPage() {
   const inputRef = React.useRef<HTMLInputElement>(null)
   const [state, setState] = React.useState<ScanState>('idle')
   const [fileName, setFileName] = React.useState<string | null>(null)
-  const [sessionId, setSessionId] = React.useState<string | null>(null)
+  const [job, setJob] = React.useState<BookRecognitionJobResponse | null>(null)
+  const pollTimerRef = React.useRef<number | null>(null)
+  const activeJobIdRef = React.useRef<string | null>(null)
 
   const openPicker = () => {
     inputRef.current?.click()
   }
+
+  const clearPollTimer = React.useCallback(() => {
+    if (pollTimerRef.current !== null) {
+      window.clearTimeout(pollTimerRef.current)
+      pollTimerRef.current = null
+    }
+  }, [])
+
+  const schedulePoll = React.useCallback(async (jobId: string) => {
+    try {
+      const current = await getBookRecognitionJob(jobId)
+      if (activeJobIdRef.current !== jobId) {
+        return
+      }
+
+      setJob(current)
+
+      if (isRecognitionJobComplete(current.status)) {
+        setState(current.status === 3 ? 'error' : 'ready')
+        clearPollTimer()
+        return
+      }
+
+      setState('polling')
+      clearPollTimer()
+      pollTimerRef.current = window.setTimeout(() => {
+        void schedulePoll(jobId)
+      }, 1000)
+    } catch {
+      if (activeJobIdRef.current !== jobId) {
+        return
+      }
+
+      setState('error')
+      clearPollTimer()
+    }
+  }, [clearPollTimer])
 
   const handlePickerKeyDown = (event: React.KeyboardEvent<HTMLLabelElement>) => {
     if (state === 'uploading') {
@@ -60,25 +110,42 @@ export function ScansPage() {
     }
 
     setFileName(file.name)
-    setSessionId(null)
+    setJob(null)
+    activeJobIdRef.current = null
     setState('uploading')
 
     try {
-      const response = await uploadShelfPhoto(file)
-      setSessionId(response.scanSessionId)
-      setState('scanning')
+      const response = await createBookRecognitionJob(file)
+      setJob(response)
+      activeJobIdRef.current = response.jobId
+
+      if (isRecognitionJobComplete(response.status)) {
+        setState(response.status === 3 ? 'error' : 'ready')
+        return
+      }
+
+      setState('polling')
+      clearPollTimer()
+      void schedulePoll(response.jobId)
     } catch {
       setState('error')
     }
   }
+
+  React.useEffect(() => {
+    return () => {
+      activeJobIdRef.current = null
+      clearPollTimer()
+    }
+  }, [clearPollTimer])
 
   const status = stateCopy[state]
 
   return (
     <PageFrame
       eyebrow="Scans"
-      title="Shelf scans"
-      description="Take a shelf photo from your phone, upload it, and let the scan pipeline start immediately."
+      title="Shelf recognition"
+      description="Take a shelf photo from your phone, upload it, and let recognition continue asynchronously."
     >
       <div className="grid gap-4">
         <Card>
@@ -114,38 +181,40 @@ export function ScansPage() {
                 className={state === 'uploading' ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
               >
                 <ScanSearch className="h-[18px] w-[18px]" strokeWidth={1.5} />
-                {state === 'uploading' ? 'Uploading...' : 'Scan a Shelf'}
+              {state === 'uploading' ? 'Uploading...' : 'Scan a Shelf'}
               </label>
             </Button>
 
             <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-sunken)] px-4 py-3">
               <div className="flex items-center gap-2 text-sm font-medium text-[var(--text-primary)]">
-                {state === 'scanning' ? (
+                {state === 'polling' || state === 'ready' ? (
                   <CheckCircle2 className="h-4 w-4 text-[var(--accent)]" strokeWidth={1.8} />
                 ) : state === 'error' ? (
                   <AlertCircle className="h-4 w-4 text-[var(--accent)]" strokeWidth={1.8} />
                 ) : (
                   <ScanSearch className="h-4 w-4 text-[var(--accent)]" strokeWidth={1.8} />
                 )}
-                <span>{state === 'idle' ? 'Use the camera on your phone for the fastest capture.' : 'Current upload status'}</span>
+                <span>{state === 'idle' ? 'Use the camera on your phone for the fastest capture.' : 'Current recognition status'}</span>
               </div>
               <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
                 {fileName ? `Selected file: ${fileName}` : 'Take a single shelf photo with the books facing the camera.'}
               </p>
-              {sessionId ? (
+              {job ? (
                 <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
-                  Scan session: <span className="font-medium text-[var(--text-primary)]">{sessionId}</span>
+                  Recognition job: <span className="font-medium text-[var(--text-primary)]">{job.jobId}</span>
                 </p>
               ) : null}
             </div>
 
             {state === 'error' ? (
               <p className="text-sm leading-6 text-[var(--text-secondary)]">
-                The upload failed before the scan session could start. Tap scan again to retry.
+                The recognition job did not complete. Tap scan again to retry.
               </p>
             ) : null}
           </CardContent>
         </Card>
+
+        {job && state !== 'uploading' ? <BookRecognitionResults job={job} /> : null}
       </div>
     </PageFrame>
   )

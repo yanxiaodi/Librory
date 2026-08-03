@@ -128,6 +128,7 @@ app.MapFamilyEndpoints();
 app.MapBookWorkEndpoints();
 app.MapBookCopyEndpoints();
 app.MapBookMetadataEndpoints();
+app.MapBookRecognitionJobEndpoints();
 app.MapRecommendationProfileEndpoints();
 app.MapScanSessionEndpoints();
 app.MapWishlistEndpoints();

@@ -17,10 +17,12 @@ Ready for frontend integration:
 - Recommendation profile read and update
 - Scan session create, read, correct, resolve, and discard
 - Wishlist list, create, and fetch
+- Book recognition job create and poll
 
 Still pending:
 
 - External metadata provider lookup and canonical import
+- Book recognition job result rendering in the scan flow
 
 ## Global Rules
 

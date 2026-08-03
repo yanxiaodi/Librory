@@ -13,6 +13,7 @@ For front-end integration planning, see `[docs/frontend-integration-guide.md](/D
 - Books: manual intake create and read
 - Recommendations: current member profile read and update
 - Wishlist: paged list, create, and fetch
+- Recognition: async book recognition job create and fetch
 
 ## Docs And Auth
 
@@ -239,6 +240,40 @@ Returns:
 
 - `200 OK` with normalized search results.
 - `400 Bad Request` when `title` is missing or `maxResults` is invalid.
+
+## Recognition
+
+### `POST /api/book-recognition-jobs`
+
+Creates an async book recognition job from an uploaded image.
+
+Behavior:
+
+- Accepts a single multipart file field named `photo`.
+- Stores the uploaded image temporarily.
+- Creates a job immediately and returns its id.
+- The job is intended to continue in the background until candidates are ready.
+
+Returns:
+
+- `202 Accepted` with the queued job payload.
+- `400 Bad Request` when the upload is missing, unsupported, or too large.
+- `401 Unauthorized` when the caller is not signed in.
+
+### `GET /api/book-recognition-jobs/{jobId}`
+
+Returns the current state of a recognition job for the current family.
+
+Behavior:
+
+- Returns the job status and any completed candidates.
+- Preserves partial results when metadata lookup fails for some candidates.
+
+Returns:
+
+- `200 OK` with the job payload.
+- `401 Unauthorized` when the caller is not signed in.
+- `404 Not Found` when the job does not exist for the current family.
 
 ## Recommendations
 

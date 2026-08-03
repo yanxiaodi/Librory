@@ -14,6 +14,7 @@ public sealed class LibroryDbContext(DbContextOptions<LibroryDbContext> options)
     public DbSet<ScanSession> ScanSessions => Set<ScanSession>();
     public DbSet<ScanCandidate> ScanCandidates => Set<ScanCandidate>();
     public DbSet<RecommendationProfile> RecommendationProfiles => Set<RecommendationProfile>();
+    public DbSet<BookRecognitionJob> BookRecognitionJobs => Set<BookRecognitionJob>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
