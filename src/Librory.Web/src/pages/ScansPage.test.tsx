@@ -139,8 +139,8 @@ describe('ScansPage', () => {
 
     await user.upload(screen.getByLabelText(/shelf photo/i), new File(['fake'], 'shelf.jpg', { type: 'image/jpeg' }))
 
-    expect(await screen.findByText(/^upload failed$/i)).toBeVisible()
-    expect(screen.getByText(/try the shelf photo again/i)).toBeVisible()
+    expect(await screen.findByText(/^recognition failed$/i)).toBeVisible()
+    expect(screen.getByText(/the recognition job did not complete/i)).toBeVisible()
   })
 
   it('does not reopen the picker while uploading', async () => {

@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Globalization;
 using System.Text.Json;
 using Librory.Application.Recognition;
 using Microsoft.Extensions.Options;
@@ -183,7 +184,7 @@ public sealed class AzureAiVisionTextExtractionService : IOcrTextExtractionServi
         return property.ValueKind switch
         {
             JsonValueKind.Number when property.TryGetDecimal(out var value) => value,
-            JsonValueKind.String when decimal.TryParse(property.GetString(), out var value) => value,
+            JsonValueKind.String when decimal.TryParse(property.GetString(), NumberStyles.Number, CultureInfo.InvariantCulture, out var value) => value,
             _ => null,
         };
     }

@@ -9,6 +9,7 @@ namespace Librory.Infrastructure.Recognition;
 public sealed class BookRecognitionJobProcessor
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private const int MaxFailureMessageLength = 2_000;
     private const int BatchSize = 5;
 
     private readonly LibroryDbContext _db;
@@ -46,7 +47,7 @@ public sealed class BookRecognitionJobProcessor
             }
             catch (Exception exception)
             {
-                job.MarkFailed(exception.Message, DateTimeOffset.UtcNow);
+                job.MarkFailed(CreateFailureMessage(exception), DateTimeOffset.UtcNow);
             }
 
             await _db.SaveChangesAsync(cancellationToken);
@@ -54,5 +55,21 @@ public sealed class BookRecognitionJobProcessor
         }
 
         return processed;
+    }
+
+    private static string CreateFailureMessage(Exception exception)
+    {
+        var message = exception.Message.Trim();
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            return "Recognition failed.";
+        }
+
+        if (message.Length > MaxFailureMessageLength)
+        {
+            return message[..MaxFailureMessageLength].Trim();
+        }
+
+        return message;
     }
 }

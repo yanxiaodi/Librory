@@ -126,7 +126,7 @@ internal static class BookRecognitionJobEndpoints
                     ["photo"] = [exception.Message],
                 }),
                 _ => Results.Problem(
-                    detail: exception.Message,
+                    detail: "An unexpected error occurred while creating the recognition job.",
                     statusCode: StatusCodes.Status500InternalServerError),
             };
         }

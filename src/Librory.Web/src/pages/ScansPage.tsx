@@ -35,8 +35,8 @@ const stateCopy: Record<ScanState, { title: string; description: string; tone: s
     tone: 'text-[var(--text-secondary)]',
   },
   error: {
-    title: 'Upload failed',
-    description: 'Try the shelf photo again. The image never made it into the recognition flow.',
+    title: 'Recognition failed',
+    description: 'Try the shelf photo again. The job did not complete successfully.',
     tone: 'text-[var(--text-secondary)]',
   },
 }
@@ -47,6 +47,7 @@ export function ScansPage() {
   const [fileName, setFileName] = React.useState<string | null>(null)
   const [job, setJob] = React.useState<BookRecognitionJobResponse | null>(null)
   const pollTimerRef = React.useRef<number | null>(null)
+  const activeJobIdRef = React.useRef<string | null>(null)
 
   const openPicker = () => {
     inputRef.current?.click()
@@ -62,6 +63,10 @@ export function ScansPage() {
   const schedulePoll = React.useCallback(async (jobId: string) => {
     try {
       const current = await getBookRecognitionJob(jobId)
+      if (activeJobIdRef.current !== jobId) {
+        return
+      }
+
       setJob(current)
 
       if (isRecognitionJobComplete(current.status)) {
@@ -76,6 +81,10 @@ export function ScansPage() {
         void schedulePoll(jobId)
       }, 1000)
     } catch {
+      if (activeJobIdRef.current !== jobId) {
+        return
+      }
+
       setState('error')
       clearPollTimer()
     }
@@ -102,11 +111,13 @@ export function ScansPage() {
 
     setFileName(file.name)
     setJob(null)
+    activeJobIdRef.current = null
     setState('uploading')
 
     try {
       const response = await createBookRecognitionJob(file)
       setJob(response)
+      activeJobIdRef.current = response.jobId
 
       if (isRecognitionJobComplete(response.status)) {
         setState(response.status === 3 ? 'error' : 'ready')
@@ -123,6 +134,7 @@ export function ScansPage() {
 
   React.useEffect(() => {
     return () => {
+      activeJobIdRef.current = null
       clearPollTimer()
     }
   }, [clearPollTimer])
@@ -196,7 +208,7 @@ export function ScansPage() {
 
             {state === 'error' ? (
               <p className="text-sm leading-6 text-[var(--text-secondary)]">
-                The upload failed before recognition could start. Tap scan again to retry.
+                The recognition job did not complete. Tap scan again to retry.
               </p>
             ) : null}
           </CardContent>

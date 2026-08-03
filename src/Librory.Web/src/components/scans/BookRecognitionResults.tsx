@@ -6,6 +6,8 @@ interface BookRecognitionResultsProps {
 }
 
 export function BookRecognitionResults({ job }: BookRecognitionResultsProps) {
+  const isFailed = job.failureMessage !== null
+
   return (
     <div className="grid gap-4">
       <Card>
@@ -16,7 +18,12 @@ export function BookRecognitionResults({ job }: BookRecognitionResultsProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
-          {job.candidates.length === 0 ? (
+          {isFailed ? (
+            <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-sunken)] px-4 py-3">
+              <p className="text-sm font-medium text-[var(--text-primary)]">Recognition failed</p>
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">{job.failureMessage}</p>
+            </div>
+          ) : job.candidates.length === 0 ? (
             <p className="text-sm text-[var(--text-secondary)]">No candidates were found yet.</p>
           ) : (
             job.candidates.map(candidate => (
