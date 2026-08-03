@@ -37,6 +37,7 @@ The user flow is:
 3. The API creates a recognition job and returns a job id immediately.
 4. The frontend polls the job until the result is ready.
 5. The app shows a list of likely book titles and their matched metadata.
+6. The user picks, trims, or edits the candidate set before moving to the next step.
 
 The backend flow is:
 
@@ -137,6 +138,8 @@ Take the strongest title candidates and query the existing book-metadata search 
 
 The recognition job should return the normalized metadata matches so the frontend can show the user a richer candidate list.
 
+The recognition result should not force an immediate recommendation decision. It should stop at the candidate-and-metadata stage so the user can confirm or narrow down the list before any follow-on workflow runs.
+
 ## Job Model
 
 The job should be asynchronous and pollable.
@@ -192,6 +195,13 @@ Suggested UI states:
 
 The first UI should support a useful number of candidates, not just one or two. The user should be able to review and narrow down a set of roughly 10 to 20 results from a single photo.
 
+After recognition completes, the UI should:
+
+- automatically show metadata-enriched candidates
+- let the user remove obvious false positives
+- let the user edit or retry the search text
+- leave recommendation or intake as a later explicit step
+
 ## Data Flow
 
 1. User uploads a shelf or cover photo.
@@ -202,6 +212,7 @@ The first UI should support a useful number of candidates, not just one or two. 
 6. The top candidates are sent to the existing book-metadata search API.
 7. The job is marked complete.
 8. The frontend polls until the results are ready and then shows the candidate list.
+9. The user confirms or edits the candidates before triggering any later recommendation or intake workflow.
 
 ## Error Handling
 
@@ -250,4 +261,5 @@ This story is complete when:
 - the server creates an async recognition job,
 - OCR extracts a useful set of title candidates,
 - the job can be polled to completion,
-- and the results include normalized metadata lookups for the strongest candidates.
+- the results include normalized metadata lookups for the strongest candidates,
+- and the workflow stops before recommendation so the user can confirm the candidates first.
