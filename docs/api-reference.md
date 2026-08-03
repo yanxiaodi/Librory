@@ -241,6 +241,36 @@ Returns:
 - `200 OK` with normalized search results.
 - `400 Bad Request` when `title` is missing or `maxResults` is invalid.
 
+### `POST /api/book-metadata/import`
+
+Imports one normalized external metadata candidate into the canonical catalog.
+
+Authentication:
+
+- requires sign-in
+
+Request body:
+
+- `candidate.source` is required
+- `candidate.sourceId` is required
+- `candidate.title` is required
+- `candidate.subtitle`, `candidate.authors`, `candidate.publisher`, `candidate.publishedDate`, `candidate.language`, `candidate.description`, `candidate.isbn10`, `candidate.isbn13`, `candidate.thumbnailUrl`, and `candidate.infoUrl` are optional
+
+Behavior:
+
+- Accepts a single normalized candidate inside `BookMetadataImportRequest`.
+- Reuses an existing canonical edition when the preferred ISBN matches an existing edition exactly.
+- Creates a new `BookWork` and an optional first `BookEdition` when no exact ISBN match exists.
+- Preserves source and capture provenance on imported metadata fields.
+- Stops at canonical catalog creation and does not create import sessions.
+
+Returns:
+
+- `201 Created` when the import created a new canonical work.
+- `200 OK` when the import reused an existing canonical work.
+- `400 Bad Request` when required candidate fields are missing.
+- `401 Unauthorized` when the caller is not signed in.
+
 ## Recognition
 
 ### `POST /api/book-recognition-jobs`
