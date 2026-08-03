@@ -23,11 +23,7 @@ public sealed class BookRecognitionJobProcessor
 
     public async Task<int> ProcessQueuedJobsAsync(CancellationToken cancellationToken)
     {
-        var queuedJobs = await _db.BookRecognitionJobs
-            .Where(job => job.Status == BookRecognitionJobStatus.Queued)
-            .OrderBy(job => job.CreatedAt)
-            .Take(BatchSize)
-            .ToListAsync(cancellationToken);
+        var queuedJobs = await ClaimQueuedJobsAsync(cancellationToken);
 
         if (queuedJobs.Count == 0)
         {
@@ -55,6 +51,37 @@ public sealed class BookRecognitionJobProcessor
         }
 
         return processed;
+    }
+
+    private async Task<List<BookRecognitionJob>> ClaimQueuedJobsAsync(CancellationToken cancellationToken)
+    {
+        await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
+
+        var queuedJobs = await _db.BookRecognitionJobs
+            .FromSqlInterpolated($"""
+                SELECT * FROM librory.book_recognition_jobs
+                WHERE "Status" = {(int)BookRecognitionJobStatus.Queued}
+                ORDER BY "CreatedAt"
+                LIMIT {BatchSize}
+                FOR UPDATE SKIP LOCKED
+                """)
+            .ToListAsync(cancellationToken);
+
+        if (queuedJobs.Count == 0)
+        {
+            return queuedJobs;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        foreach (var job in queuedJobs)
+        {
+            job.MarkRunning(now);
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        return queuedJobs;
     }
 
     private static string CreateFailureMessage(Exception exception)

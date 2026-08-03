@@ -128,6 +128,73 @@ public sealed class BookRecognitionJobEndpointsTests
         Assert.Single(completed.Candidates[0].MetadataMatches);
     }
 
+    [Fact]
+    public async Task Concurrent_processor_sweeps_claim_a_job_only_once()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        var pipeline = new BlockingRecognitionPipeline();
+
+        using var configuredFactory = factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureServices(services =>
+            {
+                services.RemoveAll<IBookRecognitionPipeline>();
+                services.AddSingleton<IBookRecognitionPipeline>(pipeline);
+            });
+        });
+
+        using var client = configuredFactory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var bootstrapResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        Assert.True(bootstrapResponse.IsSuccessStatusCode);
+
+        var content = new MultipartFormDataContent();
+        var image = new ByteArrayContent(new byte[] { 0xFF, 0xD8, 0xFF, 0xD9 });
+        image.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
+        content.Add(image, "photo", "shelf.jpg");
+
+        var createResponse = await client.PostAsync("/api/book-recognition-jobs", content);
+        Assert.Equal(HttpStatusCode.Accepted, createResponse.StatusCode);
+
+        var created = await createResponse.Content.ReadFromJsonAsync<BookRecognitionJobResponse>();
+        Assert.NotNull(created);
+
+        var firstProcessorTask = Task.Run(async () =>
+        {
+            using var scope = configuredFactory.Services.CreateScope();
+            var processor = scope.ServiceProvider.GetRequiredService<BookRecognitionJobProcessor>();
+            return await processor.ProcessQueuedJobsAsync(CancellationToken.None);
+        });
+
+        await pipeline.WaitForInvocationAsync();
+
+        var secondProcessorTask = Task.Run(async () =>
+        {
+            using var scope = configuredFactory.Services.CreateScope();
+            var processor = scope.ServiceProvider.GetRequiredService<BookRecognitionJobProcessor>();
+            return await processor.ProcessQueuedJobsAsync(CancellationToken.None);
+        });
+
+        var secondProcessed = await secondProcessorTask;
+        Assert.Equal(0, secondProcessed);
+
+        pipeline.Release();
+
+        var firstProcessed = await firstProcessorTask;
+        Assert.Equal(1, firstProcessed);
+        Assert.Equal(1, pipeline.InvocationCount);
+
+        var response = await client.GetAsync($"/api/book-recognition-jobs/{created.JobId}");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var completed = await response.Content.ReadFromJsonAsync<BookRecognitionJobResponse>();
+        Assert.NotNull(completed);
+        Assert.Equal(BookRecognitionJobStatus.Succeeded, completed!.Status);
+    }
+
     private sealed class FakeRecognitionPipeline : IBookRecognitionPipeline
     {
         public Task<BookRecognitionJobResult> RecognizeAsync(string sourcePhotoPath, string? language, CancellationToken cancellationToken)
@@ -158,6 +225,40 @@ public sealed class BookRecognitionJobEndpointsTests
                         ]),
                 ],
                 []));
+        }
+    }
+
+    private sealed class BlockingRecognitionPipeline : IBookRecognitionPipeline
+    {
+        private readonly TaskCompletionSource _invoked = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public int InvocationCount => Volatile.Read(ref _invocations);
+
+        private int _invocations;
+
+        public Task WaitForInvocationAsync() => _invoked.Task;
+
+        public void Release() => _release.TrySetResult();
+
+        public async Task<BookRecognitionJobResult> RecognizeAsync(string sourcePhotoPath, string? language, CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref _invocations);
+            _invoked.TrySetResult();
+
+            await _release.Task.WaitAsync(cancellationToken);
+
+            return new BookRecognitionJobResult(
+                sourcePhotoPath,
+                [
+                    new BookRecognitionCandidateDto(
+                        Guid.NewGuid(),
+                        "Dune",
+                        "DUNE",
+                        940,
+                        []),
+                ],
+                []);
         }
     }
 }
