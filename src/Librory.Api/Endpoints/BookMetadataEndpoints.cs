@@ -39,12 +39,17 @@ internal static class BookMetadataEndpoints
     }
 
     private static async Task<IResult> ImportAsync(
-        BookMetadataImportRequest request,
+        BookMetadataImportRequest? request,
         IBookMetadataImportService importService,
         CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(request);
-        ArgumentNullException.ThrowIfNull(request.Candidate);
+        if (request?.Candidate is null)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["candidate"] = ["Candidate is required."],
+            });
+        }
 
         if (ApiValidation.Required(
                 new ValidationField("candidate.source", request.Candidate.Source, "Source is required."),
@@ -53,6 +58,14 @@ internal static class BookMetadataEndpoints
             is IResult validationProblem)
         {
             return validationProblem;
+        }
+
+        if (request.Candidate.Authors?.Any(string.IsNullOrWhiteSpace) == true)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["candidate.authors"] = ["Author entries must not be blank."],
+            });
         }
 
         var candidate = new BookMetadataCandidate(

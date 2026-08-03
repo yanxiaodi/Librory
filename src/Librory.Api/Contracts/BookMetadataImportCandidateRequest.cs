@@ -5,7 +5,7 @@ public sealed record BookMetadataImportCandidateRequest(
     string SourceId,
     string Title,
     string? Subtitle,
-    IReadOnlyList<string> Authors,
+    IReadOnlyList<string>? Authors,
     string? Publisher,
     string? PublishedDate,
     string? Language,

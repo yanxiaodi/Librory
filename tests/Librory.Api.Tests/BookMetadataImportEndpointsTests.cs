@@ -125,4 +125,55 @@ public sealed class BookMetadataImportEndpointsTests
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
+
+    [Fact]
+    public async Task Posting_a_request_with_a_null_candidate_returns_validation_problem()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var bootstrapResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        Assert.True(bootstrapResponse.IsSuccessStatusCode);
+
+        var response = await client.PostAsJsonAsync("/api/book-metadata/import", new
+        {
+            candidate = (object?)null,
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Posting_a_candidate_with_blank_authors_returns_validation_problem()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var bootstrapResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        Assert.True(bootstrapResponse.IsSuccessStatusCode);
+
+        var response = await client.PostAsJsonAsync("/api/book-metadata/import", new BookMetadataImportRequest(
+            new BookMetadataImportCandidateRequest(
+                "GoogleBooks",
+                "volume-1",
+                "Dune",
+                null,
+                ["Frank Herbert", "   "],
+                "Ace",
+                "1965",
+                "en",
+                "A science fiction novel.",
+                "0441013597",
+                "9780441013593",
+                null,
+                null)));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
 }

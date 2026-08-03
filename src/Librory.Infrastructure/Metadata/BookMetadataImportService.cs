@@ -47,16 +47,17 @@ public sealed class BookMetadataImportService : IBookMetadataImportService
 
         var canonicalAuthor = NormalizeAuthors(candidate.Authors);
         var work = BookWork.Create(candidate.Title.Trim(), canonicalAuthor);
+        var provenanceCapturedAt = DateTimeOffset.UtcNow;
         if (!string.IsNullOrWhiteSpace(candidate.Description))
         {
             var description = candidate.Description.Trim();
             work.Summary = new LocalizedText(description);
-            work.SummaryProvenance = CreateProvenance(candidate);
+            work.SummaryProvenance = CreateProvenance(candidate, provenanceCapturedAt);
         }
 
         if (canonicalAuthor is not null)
         {
-            work.CanonicalAuthorProvenance = CreateProvenance(candidate);
+            work.CanonicalAuthorProvenance = CreateProvenance(candidate, provenanceCapturedAt);
         }
 
         var publicationYear = ParsePublicationYear(candidate.PublishedDate);
@@ -67,12 +68,12 @@ public sealed class BookMetadataImportService : IBookMetadataImportService
             if (!string.IsNullOrWhiteSpace(candidate.Subtitle))
             {
                 edition.Subtitle = new LocalizedText(candidate.Subtitle.Trim());
-                edition.SubtitleProvenance = CreateProvenance(candidate);
+                edition.SubtitleProvenance = CreateProvenance(candidate, provenanceCapturedAt);
             }
 
             if (publicationYear.HasValue)
             {
-                edition.PublicationYearProvenance = CreateProvenance(candidate);
+                edition.PublicationYearProvenance = CreateProvenance(candidate, provenanceCapturedAt);
             }
         }
 
@@ -126,12 +127,12 @@ public sealed class BookMetadataImportService : IBookMetadataImportService
             : null;
     }
 
-    private static MetadataProvenance CreateProvenance(BookMetadataCandidate candidate)
+    private static MetadataProvenance CreateProvenance(BookMetadataCandidate candidate, DateTimeOffset capturedAt)
     {
         return new MetadataProvenance(
             candidate.Source.Trim(),
             candidate.SourceId.Trim(),
             1m,
-            DateTimeOffset.UtcNow);
+            capturedAt);
     }
 }
