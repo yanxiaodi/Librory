@@ -28,11 +28,10 @@ public sealed class BookMetadataImportService : IBookMetadataImportService
             throw new ArgumentException("Title is required.", nameof(candidate));
         }
 
-        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
-
         var isbn = SelectPreferredIsbn(candidate);
         if (!string.IsNullOrWhiteSpace(isbn))
         {
+            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
             var existingEdition = await _db.BookEditions
                 .Include(x => x.BookWork)
                 .ThenInclude(x => x.Editions)
@@ -43,45 +42,82 @@ public sealed class BookMetadataImportService : IBookMetadataImportService
                 await transaction.CommitAsync(cancellationToken);
                 return new BookMetadataImportResult(existingEdition.BookWork, false);
             }
+
+            var canonicalAuthor = NormalizeAuthors(candidate.Authors);
+            var work = BookWork.Create(candidate.Title.Trim(), canonicalAuthor);
+            var provenanceCapturedAt = DateTimeOffset.UtcNow;
+            if (!string.IsNullOrWhiteSpace(candidate.Description))
+            {
+                var description = candidate.Description.Trim();
+                work.Summary = new LocalizedText(description);
+                work.SummaryProvenance = CreateProvenance(candidate, provenanceCapturedAt);
+            }
+
+            if (canonicalAuthor is not null)
+            {
+                work.CanonicalAuthorProvenance = CreateProvenance(candidate, provenanceCapturedAt);
+            }
+
+            var publicationYear = ParsePublicationYear(candidate.PublishedDate);
+            if (!string.IsNullOrWhiteSpace(isbn) || !string.IsNullOrWhiteSpace(candidate.Subtitle) || publicationYear.HasValue)
+            {
+                var edition = work.AddEdition(isbn, null, publicationYear);
+
+                if (!string.IsNullOrWhiteSpace(candidate.Subtitle))
+                {
+                    edition.Subtitle = new LocalizedText(candidate.Subtitle.Trim());
+                    edition.SubtitleProvenance = CreateProvenance(candidate, provenanceCapturedAt);
+                }
+
+                if (publicationYear.HasValue)
+                {
+                    edition.PublicationYearProvenance = CreateProvenance(candidate, provenanceCapturedAt);
+                }
+            }
+
+            _db.BookWorks.Add(work);
+            await _db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            return new BookMetadataImportResult(work, true);
         }
 
-        var canonicalAuthor = NormalizeAuthors(candidate.Authors);
-        var work = BookWork.Create(candidate.Title.Trim(), canonicalAuthor);
-        var provenanceCapturedAt = DateTimeOffset.UtcNow;
+        var noIsbnCanonicalAuthor = NormalizeAuthors(candidate.Authors);
+        var noIsbnWork = BookWork.Create(candidate.Title.Trim(), noIsbnCanonicalAuthor);
+        var noIsbnProvenanceCapturedAt = DateTimeOffset.UtcNow;
         if (!string.IsNullOrWhiteSpace(candidate.Description))
         {
             var description = candidate.Description.Trim();
-            work.Summary = new LocalizedText(description);
-            work.SummaryProvenance = CreateProvenance(candidate, provenanceCapturedAt);
+            noIsbnWork.Summary = new LocalizedText(description);
+            noIsbnWork.SummaryProvenance = CreateProvenance(candidate, noIsbnProvenanceCapturedAt);
         }
 
-        if (canonicalAuthor is not null)
+        if (noIsbnCanonicalAuthor is not null)
         {
-            work.CanonicalAuthorProvenance = CreateProvenance(candidate, provenanceCapturedAt);
+            noIsbnWork.CanonicalAuthorProvenance = CreateProvenance(candidate, noIsbnProvenanceCapturedAt);
         }
 
-        var publicationYear = ParsePublicationYear(candidate.PublishedDate);
-        if (!string.IsNullOrWhiteSpace(isbn) || !string.IsNullOrWhiteSpace(candidate.Subtitle) || publicationYear.HasValue)
+        var noIsbnPublicationYear = ParsePublicationYear(candidate.PublishedDate);
+        if (!string.IsNullOrWhiteSpace(candidate.Subtitle) || noIsbnPublicationYear.HasValue)
         {
-            var edition = work.AddEdition(isbn, null, publicationYear);
+            var edition = noIsbnWork.AddEdition(null, null, noIsbnPublicationYear);
 
             if (!string.IsNullOrWhiteSpace(candidate.Subtitle))
             {
                 edition.Subtitle = new LocalizedText(candidate.Subtitle.Trim());
-                edition.SubtitleProvenance = CreateProvenance(candidate, provenanceCapturedAt);
+                edition.SubtitleProvenance = CreateProvenance(candidate, noIsbnProvenanceCapturedAt);
             }
 
-            if (publicationYear.HasValue)
+            if (noIsbnPublicationYear.HasValue)
             {
-                edition.PublicationYearProvenance = CreateProvenance(candidate, provenanceCapturedAt);
+                edition.PublicationYearProvenance = CreateProvenance(candidate, noIsbnProvenanceCapturedAt);
             }
         }
 
-        _db.BookWorks.Add(work);
+        _db.BookWorks.Add(noIsbnWork);
         await _db.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
 
-        return new BookMetadataImportResult(work, true);
+        return new BookMetadataImportResult(noIsbnWork, true);
     }
 
     private static string? NormalizeAuthors(IReadOnlyList<string>? authors)

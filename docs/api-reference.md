@@ -255,6 +255,7 @@ Request body:
 - `candidate.sourceId` is required
 - `candidate.title` is required
 - `candidate.subtitle`, `candidate.authors`, `candidate.publisher`, `candidate.publishedDate`, `candidate.language`, `candidate.description`, `candidate.isbn10`, `candidate.isbn13`, `candidate.thumbnailUrl`, and `candidate.infoUrl` are optional
+- `candidate.authors` may be empty, but any blank string entries are rejected
 
 Behavior:
 

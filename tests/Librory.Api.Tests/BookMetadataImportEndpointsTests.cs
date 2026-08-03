@@ -176,4 +176,29 @@ public sealed class BookMetadataImportEndpointsTests
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
+
+    [Fact]
+    public async Task Posting_import_without_authentication_returns_unauthorized()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/book-metadata/import", new BookMetadataImportRequest(
+            new BookMetadataImportCandidateRequest(
+                "GoogleBooks",
+                "volume-1",
+                "Dune",
+                null,
+                ["Frank Herbert"],
+                "Ace",
+                "1965",
+                "en",
+                "A science fiction novel.",
+                "0441013597",
+                "9780441013593",
+                null,
+                null)));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
 }
