@@ -18,11 +18,11 @@ Ready for frontend integration:
 - Scan session create, read, correct, resolve, and discard
 - Wishlist list, create, and fetch
 - Book recognition job create and poll
+- Book recognition job result rendering in the scan flow
 
 Still pending:
 
-- External metadata provider lookup and canonical import
-- Book recognition job result rendering in the scan flow
+None.
 
 ## Global Rules
 
@@ -188,15 +188,7 @@ Notes:
 
 ## What Is Still Missing
 
-The remaining story slice that does not yet have full frontend-facing API support is:
-
-- `story-12` External metadata providers and canonical import
-
-That work is expected to add:
-
-- ISBN lookup
-- external provider selection
-- canonical import or promotion of confirmed metadata
+No backend story slices are currently missing frontend-facing API support, and the scan flow recognition results are now rendered in the web app.
 
 ## Suggested Frontend Order
 

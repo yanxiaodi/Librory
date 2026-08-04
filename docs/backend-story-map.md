@@ -17,12 +17,14 @@ The backend should be implemented as an ASP.NET Core API, with AI orchestration 
 Delivered:
 
 - story-03b Manual Intake API
+- story-04 Shelf Scan Sessions
 - story-04d Scan Session API
 - story-06b Recommendation Profile API
 - story-07b Wishlist API
 - story-10 API and Persistence Foundation
 - story-11 PostgreSQL Test Infrastructure
 - story-12 External Metadata Providers and Canonical Import
+- story-13 Book Recognition Job
 
 Still open:
 
