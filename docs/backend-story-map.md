@@ -44,6 +44,8 @@ Still open:
 | story-08 | Localization-aware shaping | Return bilingual and preferred-language book data | Phase 1 | story-01, story-02 |
 | story-10 | API and persistence foundation | Stand up PostgreSQL, EF Core, design-time migrations, Scalar docs, and dev auth | Phase 1 | story-01, story-02, story-03, story-04, story-05, story-06, story-07, story-08 |
 | story-11 | PostgreSQL test infrastructure | Add a reusable PostgreSQL-backed test harness and real-database integration checks | Phase 1 | story-10 |
+| story-12 | External metadata providers and canonical import | Search trusted providers and promote confirmed metadata into the canonical catalog | Phase 2 | story-02, story-10 |
+| story-13 | Book recognition job | Process shelf or cover photos asynchronously and return metadata-enriched title candidates | Phase 2 | story-04, story-12 |
 | story-09 | AI orchestration | Run recognition, enrichment, recommendation, and duplicate workflows inside the API | Phase 3 | story-04, story-05, story-06 |
 
 ## Story-01: Identity, Family, and Login
@@ -570,16 +572,37 @@ Normalize book metadata from external providers into Librory's canonical catalog
 - The backend uses an abstraction such as `IBookMetadataProvider` or equivalent so new providers can be added without changing core business rules.
 - The backend does not treat external metadata as authoritative until it has been confirmed or reconciled with existing canonical records.
 
-### Open API Work
+### Delivered API Surface
 
-This story still needs a dedicated API slice before the frontend can use external provider lookups directly.
+The API slice is delivered. The frontend can use the provider lookup and canonical import flow directly.
 
-Planned API capabilities:
+Available API capabilities:
 
-- lookup by ISBN
-- lookup by title
-- canonical import or promotion of a confirmed external result
-- provider selection or routing when multiple providers are enabled
+- `GET /api/book-metadata/search` for ISBN or title lookup
+- `POST /api/book-metadata/import` for canonical import of a confirmed result
+- exact-ISBN reuse of existing canonical editions
+- provider provenance and capture metadata on imported records
+
+## Story-13: Book Recognition Job
+
+> Status: delivered via `POST /api/book-recognition-jobs` and `GET /api/book-recognition-jobs/{jobId}`.
+
+### Goal
+
+Accept a shelf or book-cover photo, process recognition asynchronously, and return ranked book-title candidates enriched with external metadata.
+
+### Delivered Scope
+
+- Temporary image storage for uploaded photos.
+- OCR-first title extraction with an optional vision fallback.
+- Candidate ranking and noise reduction.
+- Metadata lookup for the strongest title candidates.
+- Pollable `queued`, `running`, `succeeded`, and `failed` job states.
+- Frontend upload, polling, and candidate-result rendering.
+
+### Explicit Follow-Up Scope
+
+This story stops at candidate and metadata results. Recommendation scoring, candidate correction, canonical import, and manual intake remain explicit follow-on steps.
 
 ## Priority Summary
 
