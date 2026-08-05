@@ -52,8 +52,8 @@ Language is evaluated per candidate from normalized metadata when available. The
 The recognition-job and scan-session create requests should accept an optional `targetMemberId`.
 
 - omitted target: use the current member
-- supplied target: require an active family member with `UseInFamilyRecommendations = true`
-- foreign, inactive, or private/unusable target: reject with a clear validation response
+- supplied target: require an active family member; when the target differs from the caller, require `UseInFamilyRecommendations = true` and either family visibility or administrator authorization
+- foreign, inactive, or unauthorized target: reject with a clear validation response
 
 The response should include target-member context and language-context state without returning private profile notes.
 

@@ -102,6 +102,8 @@ Invitations:
 
 All family-scoped mutations require an active membership and administrator role. Invitation acceptance must validate the signed-in account email against the normalized invitation email and must never trust a member id supplied by the client.
 
+The emailed-link flow keeps the same frontend URL and token route shape used by Koviva. The frontend and API must treat the token as sensitive: application and access logs must redact it, the invitation page must send a restrictive `Referrer-Policy`, and the token must be exchanged only over HTTPS outside local development.
+
 ## Acceptance Criteria
 
 - A direct registration creates one personal family and one admin membership.
@@ -114,7 +116,7 @@ All family-scoped mutations require an active membership and administrator role.
 - Only administrators can create, resend, revoke, deactivate, or reactivate memberships and invitations.
 - New invitations default to `Member`; administrator promotion is a separate operation.
 - Invitation tokens are stored hashed, expire after seven days, and are single-use.
-- Re-sending supersedes the previous pending invitation.
+- Resending supersedes the previous pending invitation.
 - Deactivation preserves books, profiles, and audit history and prevents new scan targeting.
 - Every protected endpoint rejects a caller who is not a member of the selected family.
 

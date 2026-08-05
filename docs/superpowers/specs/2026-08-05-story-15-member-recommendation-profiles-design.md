@@ -61,10 +61,10 @@ Suggested fields:
 Profile visibility and recommendation use are separate:
 
 - `ProfileVisibility = Family`: family members can see structured preferences and use the profile.
-- `ProfileVisibility = Private`: only the profile owner and family administrators can see full profile details.
+- `ProfileVisibility = Private`: only the profile owner and family administrators can see full profile details or use the profile for another member's scan.
 - `UseInFamilyRecommendations = false`: the profile cannot be selected for another member's scan.
 - Profile owners and family administrators can create, update, and clear profiles.
-- Other family members may select an allowed profile for recommendation without gaining edit access.
+- Other family members may select an allowed family-visible profile for recommendation without gaining edit access.
 - `PreferenceNotes` remain visible only to the owner and administrators in this first version.
 
 ## API Direction
@@ -90,7 +90,7 @@ Update semantics:
 - Each family member has at most one recommendation profile.
 - A profile can be created, read, partially updated, and cleared by the owner or an administrator.
 - A normal member cannot edit another member's profile.
-- A normal member can use another member's profile only when it is enabled for family recommendations.
+- A normal member can use another member's profile only when it is family-visible and enabled for family recommendations.
 - UI language and preferred book language are stored and returned independently.
 - Age-range validation and preference normalization remain enforced by the domain.
 - Excluded preferences are persisted separately from positive preferences.
