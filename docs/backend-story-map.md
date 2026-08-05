@@ -46,7 +46,10 @@ Still open:
 | story-11 | PostgreSQL test infrastructure | Add a reusable PostgreSQL-backed test harness and real-database integration checks | Phase 1 | story-10 |
 | story-12 | External metadata providers and canonical import | Search trusted providers and promote confirmed metadata into the canonical catalog | Phase 2 | story-02, story-10 |
 | story-13 | Book recognition job | Process shelf or cover photos asynchronously and return metadata-enriched title candidates | Phase 2 | story-04, story-12 |
-| story-09 | AI orchestration | Run recognition, enrichment, recommendation, and duplicate workflows inside the API | Phase 3 | story-04, story-05, story-06 |
+| story-14 | Family membership and invitations | Support multi-family accounts, placeholder members, and email invitation onboarding | Phase 1 | story-01, story-10 |
+| story-15 | Member recommendation profiles | Store family-scoped, permission-aware reading preferences for each member | Phase 2 | story-06, story-14 |
+| story-16 | Scan recommendation context | Select one target member and infer per-scan language context before recommendation | Phase 2 | story-04, story-13, story-14, story-15 |
+| story-09 | AI orchestration | Run recognition, enrichment, recommendation, and duplicate workflows inside the API | Phase 3 | story-05, story-14, story-15, story-16 |
 
 ## Story-01: Identity, Family, and Login
 
