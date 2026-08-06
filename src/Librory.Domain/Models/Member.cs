@@ -4,34 +4,36 @@ public sealed class Member
 {
     public Guid Id { get; init; } = Guid.NewGuid();
     public Guid FamilyId { get; private set; }
+    public Guid? UserAccountId { get; private set; }
     public string DisplayName { get; set; } = string.Empty;
     public MemberRole Role { get; set; } = MemberRole.Member;
     public PreferredLanguage PreferredLanguage { get; set; } = PreferredLanguage.English;
-    public List<ExternalIdentity> ExternalIdentities { get; } = [];
+    public bool IsActive { get; private set; } = true;
+    public UserAccount? UserAccount { get; private set; }
     public Family Family { get; private set; } = null!;
 
-    public bool TryLinkExternalIdentity(ExternalIdentity identity)
+    public void LinkAccount(UserAccount account)
     {
-        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentNullException.ThrowIfNull(account);
 
-        if (ExternalIdentities.Any(existing =>
-            existing.Provider == identity.Provider &&
-            string.Equals(existing.ProviderSubject, identity.ProviderSubject, StringComparison.Ordinal)))
+        if (UserAccountId is not null && UserAccountId != account.Id)
         {
-            return false;
+            throw new InvalidOperationException("Member is already linked to a different account.");
         }
 
-        ExternalIdentities.Add(identity);
-        return true;
+        UserAccountId = account.Id;
+        UserAccount = account;
+        account.RegisterMembership(this);
     }
 
-    public bool HasExternalIdentity(ExternalIdentityProvider provider, string providerSubject)
+    public void Deactivate()
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(providerSubject);
+        IsActive = false;
+    }
 
-        return ExternalIdentities.Any(identity =>
-            identity.Provider == provider &&
-            string.Equals(identity.ProviderSubject, providerSubject, StringComparison.Ordinal));
+    public void Reactivate()
+    {
+        IsActive = true;
     }
 
     public void AssignToFamily(Family family)
