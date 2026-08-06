@@ -27,6 +27,14 @@ export type FamilyInvitation = {
   invitationUrl?: string | null
 }
 
+export type InvitationPreview = {
+  id: string
+  familyName: string
+  email: string
+  targetMemberId: string | null
+  expiresAt: string
+}
+
 export type CreateMemberInput = {
   displayName: string
   preferredLanguage?: number
@@ -108,3 +116,9 @@ export const resendInvitation = (invitationId: string) =>
 
 export const revokeInvitation = (invitationId: string) =>
   request<FamilyInvitation>(`/api/family/current/invitations/${invitationId}/revoke`, { method: 'POST' })
+
+export const getInvitationPreview = (token: string) =>
+  request<InvitationPreview>(`/api/family-invitations/${encodeURIComponent(token)}`)
+
+export const acceptInvitation = (token: string) =>
+  request<FamilySummary>(`/api/family-invitations/${encodeURIComponent(token)}/accept`, { method: 'POST' })
