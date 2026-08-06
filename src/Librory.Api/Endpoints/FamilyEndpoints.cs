@@ -164,9 +164,9 @@ internal static class FamilyEndpoints
         if (request.TargetMemberId is not null && !await db.Members.AnyAsync(x => x.Id == request.TargetMemberId && x.FamilyId == current.FamilyId && x.UserAccountId == null, ct)) return Results.NotFound();
         var pending = await db.FamilyInvitations.Where(x => x.FamilyId == current.FamilyId && x.Email == email && x.Status == FamilyInvitationStatus.Pending).ToListAsync(ct);
         var now = DateTimeOffset.UtcNow;
-        foreach (var existing in pending) existing.Supersede(Guid.NewGuid());
         var rawToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         var invitation = FamilyInvitation.Create(current.FamilyId, email, HashToken(rawToken), current.MemberId, now.AddDays(7), request.TargetMemberId, now);
+        foreach (var existing in pending) existing.Supersede(invitation.Id);
         db.FamilyInvitations.Add(invitation);
         await db.SaveChangesAsync(ct);
         return Results.Created($"/api/family/current/invitations/{invitation.Id}", ToResponse(invitation));
