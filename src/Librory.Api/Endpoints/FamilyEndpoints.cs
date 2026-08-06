@@ -78,6 +78,7 @@ internal static class FamilyEndpoints
         var current = accessor.Current;
         if (current is null) return Results.Unauthorized();
         var accountId = await ResolveAccountIdAsync(db, current, ct);
+        if (accountId is null) return Results.Unauthorized();
         var member = await db.Members.SingleOrDefaultAsync(x => x.FamilyId == familyId && x.UserAccountId == accountId && x.IsActive, ct);
         if (member is null) return Results.NotFound();
         var family = await db.Families.SingleAsync(x => x.Id == familyId, ct);
@@ -151,7 +152,7 @@ internal static class FamilyEndpoints
         if (current is null) return Results.Unauthorized();
         if (current.MemberRole != MemberRole.Admin) return Results.Forbid();
         var invitations = await db.FamilyInvitations.Where(x => x.FamilyId == current.FamilyId).OrderByDescending(x => x.CreatedAt).ToListAsync(ct);
-        return Results.Ok(invitations.Select(ToResponse));
+        return Results.Ok(invitations.Select(x => ToResponse(x)));
     }
 
     private static async Task<IResult> CreateInvitationAsync(CreateFamilyInvitationRequest request, LibroryDbContext db, ICurrentFamilyContextAccessor accessor, CancellationToken ct)
@@ -161,7 +162,7 @@ internal static class FamilyEndpoints
         if (current.MemberRole != MemberRole.Admin) return Results.Forbid();
         var email = NormalizeEmail(request.Email);
         if (email is null) return Results.ValidationProblem(new Dictionary<string, string[]> { ["email"] = ["Email is required."] });
-        if (request.TargetMemberId is not null && !await db.Members.AnyAsync(x => x.Id == request.TargetMemberId && x.FamilyId == current.FamilyId && x.UserAccountId == null, ct)) return Results.NotFound();
+        if (request.TargetMemberId is not null && !await db.Members.AnyAsync(x => x.Id == request.TargetMemberId && x.FamilyId == current.FamilyId && x.UserAccountId == null && x.IsActive, ct)) return Results.NotFound();
         var pending = await db.FamilyInvitations.Where(x => x.FamilyId == current.FamilyId && x.Email == email && x.Status == FamilyInvitationStatus.Pending).ToListAsync(ct);
         var now = DateTimeOffset.UtcNow;
         var rawToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
@@ -169,7 +170,7 @@ internal static class FamilyEndpoints
         foreach (var existing in pending) existing.Supersede(invitation.Id);
         db.FamilyInvitations.Add(invitation);
         await db.SaveChangesAsync(ct);
-        return Results.Created($"/api/family/current/invitations/{invitation.Id}", ToResponse(invitation));
+        return Results.Created($"/api/family/current/invitations/{invitation.Id}", ToResponse(invitation, rawToken));
     }
 
     private static async Task<IResult> ResendInvitationAsync(Guid invitationId, LibroryDbContext db, ICurrentFamilyContextAccessor accessor, CancellationToken ct)
@@ -187,7 +188,7 @@ internal static class FamilyEndpoints
         old.Supersede(replacement.Id);
         db.FamilyInvitations.Add(replacement);
         await db.SaveChangesAsync(ct);
-        return Results.Ok(ToResponse(replacement));
+        return Results.Ok(ToResponse(replacement, rawToken));
     }
 
     private static async Task<IResult> RevokeInvitationAsync(Guid invitationId, LibroryDbContext db, ICurrentFamilyContextAccessor accessor, CancellationToken ct)
@@ -227,7 +228,7 @@ internal static class FamilyEndpoints
         Member member;
         if (invitation.TargetMemberId is Guid targetId)
         {
-            member = await db.Members.SingleAsync(x => x.Id == targetId && x.FamilyId == invitation.FamilyId, ct);
+            member = await db.Members.SingleAsync(x => x.Id == targetId && x.FamilyId == invitation.FamilyId && x.IsActive, ct);
             if (member.UserAccountId is not null && member.UserAccountId != accountId) return Results.Conflict();
         }
         else
@@ -244,7 +245,15 @@ internal static class FamilyEndpoints
     private static Task<FamilyInvitation?> FindInvitationAsync(string token, LibroryDbContext db, CancellationToken ct) =>
         db.FamilyInvitations.SingleOrDefaultAsync(x => x.TokenHash == HashToken(token), ct);
 
-    private static FamilyInvitationResponse ToResponse(FamilyInvitation x) => new(x.Id, x.FamilyId, x.TargetMemberId, x.Email, x.Status, x.CreatedAt, x.ExpiresAt);
+    private static FamilyInvitationResponse ToResponse(FamilyInvitation x, string? rawToken = null) => new(
+        x.Id,
+        x.FamilyId,
+        x.TargetMemberId,
+        x.Email,
+        x.Status,
+        x.CreatedAt,
+        x.ExpiresAt,
+        rawToken is null ? null : $"/family-invitations/{rawToken}");
     private static string HashToken(string token) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token.Trim())));
     private static string? NormalizeEmail(string? email) => string.IsNullOrWhiteSpace(email) ? null : email.Trim().ToLowerInvariant();
 

@@ -27,7 +27,16 @@ public sealed class ExternalLoginService(LibroryDbContext db) : IExternalLoginSe
 
         if (account is not null)
         {
-            var member = account.Memberships.FirstOrDefault(x => x.IsActive)
+            if (account.Email is null && !string.IsNullOrWhiteSpace(request.Email))
+            {
+                account.SetEmail(request.Email);
+            }
+
+            var member = account.Memberships
+                .Where(x => x.IsActive)
+                .OrderBy(x => x.FamilyId)
+                .ThenBy(x => x.Id)
+                .FirstOrDefault()
                 ?? throw new InvalidOperationException("External identity has no active family membership.");
 
             return new ExternalLoginResult(
