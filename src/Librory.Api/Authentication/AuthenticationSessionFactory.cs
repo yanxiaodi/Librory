@@ -13,7 +13,8 @@ public static class AuthenticationSessionFactory
 
         var claims = new List<Claim>
         {
-            new(ClaimTypes.NameIdentifier, result.MemberId.ToString()),
+            new(ClaimTypes.NameIdentifier, result.AccountId.ToString()),
+            new(CurrentFamilyContextClaimTypes.AccountId, result.AccountId.ToString()),
             new(ClaimTypes.Name, result.MemberDisplayName),
             new(CurrentFamilyContextClaimTypes.FamilyId, result.FamilyId.ToString()),
             new(CurrentFamilyContextClaimTypes.MemberId, result.MemberId.ToString()),

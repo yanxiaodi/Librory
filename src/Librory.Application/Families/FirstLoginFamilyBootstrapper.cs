@@ -14,12 +14,13 @@ public static class FirstLoginFamilyBootstrapper
         ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
         ArgumentNullException.ThrowIfNull(externalIdentity);
 
+        var account = UserAccount.Create(externalIdentity.Email);
+        account.TryLinkExternalIdentity(externalIdentity);
+
         var family = Family.Create(familyName);
         var member = family.AddMember(displayName, MemberRole.Admin, preferredLanguage);
-        // First-login bootstrap expects a brand-new identity; duplicate detection belongs in the
-        // external identity lookup layer, not in this local composition helper.
-        member.TryLinkExternalIdentity(externalIdentity);
+        member.LinkAccount(account);
 
-        return new FamilyBootstrapResult(family, member);
+        return new FamilyBootstrapResult(family, member, account);
     }
 }

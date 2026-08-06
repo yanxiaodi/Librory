@@ -17,16 +17,21 @@ public sealed class ExternalLoginService(LibroryDbContext db) : IExternalLoginSe
         ArgumentException.ThrowIfNullOrWhiteSpace(request.SuggestedFamilyName);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.SuggestedMemberDisplayName);
 
-        var member = await _db.Members
+        var account = await _db.UserAccounts
             .Include(x => x.ExternalIdentities)
-            .Include(x => x.Family)
+            .Include(x => x.Memberships)
+                .ThenInclude(x => x.Family)
             .SingleOrDefaultAsync(x => x.ExternalIdentities.Any(identity =>
                 identity.Provider == request.Provider &&
                 identity.ProviderSubject == request.ProviderSubject), cancellationToken);
 
-        if (member is not null)
+        if (account is not null)
         {
+            var member = account.Memberships.FirstOrDefault(x => x.IsActive)
+                ?? throw new InvalidOperationException("External identity has no active family membership.");
+
             return new ExternalLoginResult(
+                account.Id,
                 member.FamilyId,
                 member.Family.Name,
                 member.Id,
@@ -47,10 +52,13 @@ public sealed class ExternalLoginService(LibroryDbContext db) : IExternalLoginSe
                 DateTimeOffset.UtcNow),
             request.PreferredLanguage);
 
+        _db.UserAccounts.Add(bootstrap.Account
+            ?? throw new InvalidOperationException("First-login bootstrap did not create an account."));
         _db.Families.Add(bootstrap.Family);
         await _db.SaveChangesAsync(cancellationToken);
 
         return new ExternalLoginResult(
+            bootstrap.Account.Id,
             bootstrap.Family.Id,
             bootstrap.Family.Name,
             bootstrap.InitialMember.Id,

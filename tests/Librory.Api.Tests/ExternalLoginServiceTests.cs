@@ -37,12 +37,12 @@ public sealed class ExternalLoginServiceTests
         Assert.Equal(1, await db.Families.CountAsync());
         Assert.Equal(1, await db.Members.CountAsync());
 
-        var member = await db.Members
+        var account = await db.UserAccounts
             .Include(x => x.ExternalIdentities)
             .SingleAsync();
 
-        Assert.Single(member.ExternalIdentities);
-        Assert.True(member.HasExternalIdentity(ExternalIdentityProvider.Google, "google-subject-123"));
+        Assert.Single(account.ExternalIdentities);
+        Assert.True(account.HasExternalIdentity(ExternalIdentityProvider.Google, "google-subject-123"));
     }
 
     [Fact]

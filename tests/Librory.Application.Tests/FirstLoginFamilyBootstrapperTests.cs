@@ -25,7 +25,8 @@ public class FirstLoginFamilyBootstrapperTests
         Assert.Equal(MemberRole.Admin, result.InitialMember.Role);
         Assert.Equal("Alice", result.InitialMember.DisplayName);
         Assert.Equal(PreferredLanguage.Chinese, result.InitialMember.PreferredLanguage);
-        Assert.True(result.InitialMember.HasExternalIdentity(
+        Assert.NotNull(result.Account);
+        Assert.True(result.Account!.HasExternalIdentity(
             ExternalIdentityProvider.Google,
             "google-subject-123"));
     }

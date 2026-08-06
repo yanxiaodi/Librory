@@ -18,6 +18,7 @@ public static class CurrentFamilyContextResolver
 
         var familyIdValue = principal.FindFirst(CurrentFamilyContextClaimTypes.FamilyId)?.Value;
         var memberIdValue = principal.FindFirst(CurrentFamilyContextClaimTypes.MemberId)?.Value;
+        var accountIdValue = principal.FindFirst(CurrentFamilyContextClaimTypes.AccountId)?.Value;
         var roleValue = principal.FindFirst(CurrentFamilyContextClaimTypes.MemberRole)?.Value;
         var languageValue = principal.FindFirst(CurrentFamilyContextClaimTypes.PreferredLanguage)?.Value;
 
@@ -29,7 +30,8 @@ public static class CurrentFamilyContextResolver
             return false;
         }
 
-        context = new CurrentFamilyContext(familyId, memberId, role, preferredLanguage);
+        Guid.TryParse(accountIdValue, out var accountId);
+        context = new CurrentFamilyContext(familyId, memberId, role, preferredLanguage, accountId);
         return true;
     }
 }

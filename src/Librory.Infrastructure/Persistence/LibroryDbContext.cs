@@ -7,6 +7,8 @@ public sealed class LibroryDbContext(DbContextOptions<LibroryDbContext> options)
 {
     public DbSet<Family> Families => Set<Family>();
     public DbSet<Member> Members => Set<Member>();
+    public DbSet<UserAccount> UserAccounts => Set<UserAccount>();
+    public DbSet<FamilyInvitation> FamilyInvitations => Set<FamilyInvitation>();
     public DbSet<BookWork> BookWorks => Set<BookWork>();
     public DbSet<BookEdition> BookEditions => Set<BookEdition>();
     public DbSet<BookCopy> BookCopies => Set<BookCopy>();
