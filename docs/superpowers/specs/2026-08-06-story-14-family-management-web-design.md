@@ -15,7 +15,7 @@ This slice includes:
 - deactivating and reactivating members;
 - listing, creating, resending, and revoking family invitations.
 
-Invitation-link preview, invitation acceptance, and unauthenticated invitation registration are intentionally deferred to a later slice.
+Invitation-link preview and invitation acceptance are intentionally deferred to a later slice. The later flow keeps the simple account rule: first login always creates a personal family, then the user can accept the invitation and join the invited family.
 
 ## Design
 
@@ -49,7 +49,7 @@ The API client treats `InvitationUrl` as an optional response field. It is held 
 
 ## Deferred work
 
-- `/family-invitations/{token}` frontend preview page;
-- unauthenticated invitation registration and account linking;
+- `/family-invitations/{token}` frontend preview page and login return flow;
+- invitation acceptance after login, while preserving the personal family;
 - notification delivery integration;
 - localized UI copy beyond the current English interface.

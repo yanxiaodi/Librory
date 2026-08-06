@@ -174,7 +174,7 @@ Run the existing Vite app and inspect Settings at the existing mobile width and 
 
 - [ ] **Step 3: Add a concise devlog entry**
 
-Record the API boundary, Settings composition, one-time URL handling, and validation commands. Do not claim invitation registration or acceptance UI is complete.
+Record the API boundary, Settings composition, one-time URL handling, and validation commands. Do not claim invitation preview or acceptance UI is complete.
 
 - [ ] **Step 4: Commit the devlog**
 
@@ -187,5 +187,5 @@ git commit -m "docs: record story 14 family management web slice"
 
 ```bash
 git push
-gh pr comment 46 --body "Added the first Story 14 web slice: family switching, member management, and invitation management in Settings. Frontend lint, tests, build, and responsive review completed. Invitation acceptance/onboarding remains deferred."
+gh pr comment 46 --body "Added the first Story 14 web slice: family switching, member management, and invitation management in Settings. Frontend lint, tests, build, and responsive review completed. Invitation preview and acceptance remain deferred. First login continues to create a personal family before joining an invited family."
 ```

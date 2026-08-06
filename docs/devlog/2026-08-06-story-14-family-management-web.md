@@ -15,4 +15,4 @@
 - `npm run build` passed.
 - Playwright browser review was attempted, but the local Vite server could not be reached at `127.0.0.1:5173` in this environment.
 
-Invitation acceptance and unauthenticated invitation registration remain deferred to the next slice.
+Invitation preview and acceptance remain deferred to the next slice. The agreed simple rule is that first login always creates a personal family; accepting an invitation then adds the invited family membership.

@@ -10,8 +10,8 @@
 
 ## Global Constraints
 
-- Direct registration without an invitation creates one personal family and one admin membership.
-- Invitation-based registration does not create an automatic personal family.
+- Every first registration creates one personal family and one admin membership.
+- Every first registration creates a personal family; accepting an invitation adds a second family membership when applicable.
 - One login account may have memberships in multiple families; family data remains isolated by membership.
 - Invitation tokens are hashed at rest, single-use, and expire after seven days.
 - Invitation status values are `Pending`, `Accepted`, `Expired`, `Revoked`, and `Superseded`.
