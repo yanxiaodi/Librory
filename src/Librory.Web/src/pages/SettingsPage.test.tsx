@@ -125,4 +125,34 @@ describe('SettingsPage', () => {
     await user.click(screen.getByRole('button', { name: /add member/i }))
     expect(await screen.findByText('Mia')).toBeVisible()
   })
+
+  it('creates an invitation and displays its one-time URL', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/families') return new Response(JSON.stringify([{ familyId: 'family-1', familyName: 'The Yans', memberId: 'member-1', memberDisplayName: 'Alice', role: 'Admin', isActive: true }]), { status: 200 })
+      if (url === '/api/family/current/members') return new Response(JSON.stringify([]), { status: 200 })
+      if (url === '/api/family/current/invitations' && init?.method === 'POST') return new Response(JSON.stringify({ invitationId: 'invite-1', familyId: 'family-1', targetMemberId: null, email: 'bob@example.com', status: 'Pending', createdAt: '2026-08-06T00:00:00Z', expiresAt: '2026-08-13T00:00:00Z', invitationUrl: '/family-invitations/secret-token' }), { status: 201 })
+      if (url === '/api/family/current/invitations') return new Response(JSON.stringify([]), { status: 200 })
+      throw new Error(`Unexpected fetch request: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn(async () => undefined) } })
+
+    render(
+      <MemoryRouter initialEntries={['/app/settings']}>
+        <ThemeRoot>
+          <AuthSessionProvider initialSession={{ status: 'authenticated', user: { id: 'member-1', displayName: 'Alice', role: 'Admin' }, family: { id: 'family-1', name: 'The Yans', memberCount: 1 } }}>
+            <SettingsPage />
+          </AuthSessionProvider>
+        </ThemeRoot>
+      </MemoryRouter>,
+    )
+
+    await user.type(await screen.findByLabelText(/invitee email/i), 'bob@example.com')
+    await user.click(screen.getByRole('button', { name: /send invitation/i }))
+
+    expect(await screen.findByText('/family-invitations/secret-token')).toBeVisible()
+    expect(screen.getByRole('button', { name: /copy invitation link/i })).toBeVisible()
+  })
 })

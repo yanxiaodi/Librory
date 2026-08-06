@@ -6,6 +6,7 @@ import { useAuthSession, useAuthSessionActions } from '@/auth/AuthSessionContext
 import { ThemeSelect } from '@/components/theme/ThemeSelect'
 import { FamilySection } from '@/components/family/FamilySection'
 import { MembersSection } from '@/components/family/MembersSection'
+import { InvitationsSection } from '@/components/family/InvitationsSection'
 
 export default function SettingsPage() {
   const navigate = useNavigate()
@@ -36,6 +37,7 @@ export default function SettingsPage() {
               }}
             />
             <MembersSection isAdmin={session.user?.role === 'Admin'} refreshKey={familyRefreshKey} />
+            <InvitationsSection isAdmin={session.user?.role === 'Admin'} />
           </>
         ) : null}
         <Button
