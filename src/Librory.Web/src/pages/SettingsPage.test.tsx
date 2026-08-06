@@ -69,4 +69,60 @@ describe('SettingsPage', () => {
       }),
     )
   })
+
+  it('switches families and creates a placeholder member', async () => {
+    const user = userEvent.setup()
+    let memberList = [
+      { memberId: 'member-1', displayName: 'Alice', role: 'Admin', preferredLanguage: 0, isActive: true, hasAccount: true },
+    ]
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/families') {
+        return new Response(JSON.stringify([
+          { familyId: 'family-1', familyName: 'The Yans', memberId: 'member-1', memberDisplayName: 'Alice', role: 'Admin', isActive: true },
+          { familyId: 'family-2', familyName: 'Reading Club', memberId: 'member-2', memberDisplayName: 'Alice', role: 'Admin', isActive: true },
+        ]), { status: 200 })
+      }
+      if (url === '/api/family/current/members' && init?.method === 'POST') {
+        const created = { memberId: 'member-3', displayName: 'Mia', role: 'Member', preferredLanguage: 1, isActive: true, hasAccount: false }
+        memberList = [...memberList, created]
+        return new Response(JSON.stringify(created), { status: 201 })
+      }
+      if (url === '/api/family/current/members') {
+        return new Response(JSON.stringify(memberList), { status: 200 })
+      }
+      if (url === '/api/families/family-2/select') {
+        return new Response(JSON.stringify({ familyId: 'family-2', familyName: 'Reading Club', memberId: 'member-2', memberDisplayName: 'Alice', role: 'Member', isActive: true }), { status: 200 })
+      }
+      if (url === '/api/family/current' && init?.credentials === 'include') {
+        return new Response(JSON.stringify({ familyId: 'family-2', familyName: 'Reading Club', memberId: 'member-2', memberDisplayName: 'Alice', memberRole: 'Admin', memberCount: 1 }), { status: 200 })
+      }
+      throw new Error(`Unexpected fetch request: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <MemoryRouter initialEntries={['/app/settings']}>
+        <ThemeRoot>
+          <AuthSessionProvider
+            initialSession={{
+              status: 'authenticated',
+              user: { id: 'member-1', displayName: 'Alice', role: 'Admin' },
+              family: { id: 'family-1', name: 'The Yans', memberCount: 1 },
+            }}
+          >
+            <SettingsPage />
+          </AuthSessionProvider>
+        </ThemeRoot>
+      </MemoryRouter>,
+    )
+
+    await user.selectOptions(await screen.findByLabelText(/current family/i), 'family-2')
+    expect(fetchMock).toHaveBeenCalledWith('/api/families/family-2/select', expect.objectContaining({ method: 'POST' }))
+    expect(await screen.findByText(/reading club/i)).toBeVisible()
+
+    await user.type(screen.getByLabelText(/add a placeholder member/i), 'Mia')
+    await user.click(screen.getByRole('button', { name: /add member/i }))
+    expect(await screen.findByText('Mia')).toBeVisible()
+  })
 })

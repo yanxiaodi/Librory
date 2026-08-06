@@ -1,12 +1,17 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { PageFrame } from '@/components/shell/PageFrame'
-import { useAuthSessionActions } from '@/auth/AuthSessionContext'
+import { useAuthSession, useAuthSessionActions } from '@/auth/AuthSessionContext'
 import { ThemeSelect } from '@/components/theme/ThemeSelect'
+import { FamilySection } from '@/components/family/FamilySection'
+import { MembersSection } from '@/components/family/MembersSection'
 
 export default function SettingsPage() {
   const navigate = useNavigate()
-  const { signOut } = useAuthSessionActions()
+  const session = useAuthSession()
+  const { signOut, refreshSession } = useAuthSessionActions()
+  const [familyRefreshKey, setFamilyRefreshKey] = useState(0)
 
   const handleSignOut = async () => {
     await signOut()
@@ -21,9 +26,18 @@ export default function SettingsPage() {
     >
       <div className="grid gap-4">
         <ThemeSelect />
-        <div className="rounded-[var(--radius-md)] border border-dashed border-[var(--border-subtle)] bg-[var(--accent-muted)] px-4 py-4 font-[family-name:var(--font-body)] text-sm text-[var(--text-secondary)]">
-          Language preferences and family-level settings will be added here later.
-        </div>
+        {session.status === 'authenticated' ? (
+          <>
+            <FamilySection
+              currentFamilyId={session.family?.id}
+              onFamilySelected={async () => {
+                await refreshSession()
+                setFamilyRefreshKey(value => value + 1)
+              }}
+            />
+            <MembersSection isAdmin={session.user?.role === 'Admin'} refreshKey={familyRefreshKey} />
+          </>
+        ) : null}
         <Button
           type="button"
           variant="outline"
