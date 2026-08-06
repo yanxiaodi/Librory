@@ -72,6 +72,35 @@ public sealed class ApiIntegrationTests
     }
 
     [Fact]
+    public async Task Deactivated_admin_cannot_create_family_members_with_an_existing_cookie()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var loginResponse = await client.PostAsJsonAsync(
+            "/dev/auth/login",
+            new DevLoginRequest("Inactive Admin Family", "Inactive Admin", PreferredLanguage.English));
+        await AssertSuccessAsync(loginResponse);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<LibroryDbContext>();
+            var member = await db.Members.SingleAsync();
+            member.Deactivate();
+            await db.SaveChangesAsync();
+        }
+
+        var response = await client.PostAsJsonAsync(
+            "/api/family/current/members",
+            new CreateMemberRequest("Should not be created", PreferredLanguage.English));
+
+        Assert.Equal(System.Net.HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Bootstrap_creates_a_demo_family_and_is_idempotent()
     {
         await using var factory = await ApiFactory.CreateAsync();

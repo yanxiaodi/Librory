@@ -106,7 +106,8 @@ internal static class FamilyEndpoints
     {
         var current = accessor.Current;
         if (current is null) return Results.Unauthorized();
-        if (current.MemberRole != MemberRole.Admin) return Results.Forbid();
+        var authorization = await RequireActiveAdminAsync(db, current, ct);
+        if (authorization is not null) return authorization;
         var family = await db.Families.Include(x => x.Members).SingleOrDefaultAsync(x => x.Id == current.FamilyId, ct);
         if (family is null) return Results.NotFound();
         var member = family.AddMember(request.DisplayName, MemberRole.Member, request.PreferredLanguage);
@@ -118,7 +119,8 @@ internal static class FamilyEndpoints
     {
         var current = accessor.Current;
         if (current is null) return Results.Unauthorized();
-        if (current.MemberRole != MemberRole.Admin) return Results.Forbid();
+        var authorization = await RequireActiveAdminAsync(db, current, ct);
+        if (authorization is not null) return authorization;
         var member = await db.Members.SingleOrDefaultAsync(x => x.Id == memberId && x.FamilyId == current.FamilyId, ct);
         if (member is null) return Results.NotFound();
         if (request.DisplayName is not null) member.DisplayName = request.DisplayName.Trim();
@@ -132,7 +134,8 @@ internal static class FamilyEndpoints
     {
         var current = accessor.Current;
         if (current is null) return Results.Unauthorized();
-        if (current.MemberRole != MemberRole.Admin) return Results.Forbid();
+        var authorization = await RequireActiveAdminAsync(db, current, ct);
+        if (authorization is not null) return authorization;
         var member = await db.Members.SingleOrDefaultAsync(x => x.Id == memberId && x.FamilyId == current.FamilyId, ct);
         if (member is null) return Results.NotFound();
         if (active) member.Reactivate(); else member.Deactivate();
@@ -150,7 +153,8 @@ internal static class FamilyEndpoints
     {
         var current = accessor.Current;
         if (current is null) return Results.Unauthorized();
-        if (current.MemberRole != MemberRole.Admin) return Results.Forbid();
+        var authorization = await RequireActiveAdminAsync(db, current, ct);
+        if (authorization is not null) return authorization;
         var invitations = await db.FamilyInvitations.Where(x => x.FamilyId == current.FamilyId).OrderByDescending(x => x.CreatedAt).ToListAsync(ct);
         return Results.Ok(invitations.Select(x => ToResponse(x)));
     }
@@ -159,7 +163,8 @@ internal static class FamilyEndpoints
     {
         var current = accessor.Current;
         if (current is null) return Results.Unauthorized();
-        if (current.MemberRole != MemberRole.Admin) return Results.Forbid();
+        var authorization = await RequireActiveAdminAsync(db, current, ct);
+        if (authorization is not null) return authorization;
         var email = NormalizeEmail(request.Email);
         if (email is null) return Results.ValidationProblem(new Dictionary<string, string[]> { ["email"] = ["Email is required."] });
         if (request.TargetMemberId is not null && !await db.Members.AnyAsync(x => x.Id == request.TargetMemberId && x.FamilyId == current.FamilyId && x.UserAccountId == null && x.IsActive, ct)) return Results.NotFound();
@@ -177,7 +182,8 @@ internal static class FamilyEndpoints
     {
         var current = accessor.Current;
         if (current is null) return Results.Unauthorized();
-        if (current.MemberRole != MemberRole.Admin) return Results.Forbid();
+        var authorization = await RequireActiveAdminAsync(db, current, ct);
+        if (authorization is not null) return authorization;
         var old = await db.FamilyInvitations.SingleOrDefaultAsync(x => x.Id == invitationId && x.FamilyId == current.FamilyId, ct);
         if (old is null) return Results.NotFound();
         old.Expire(DateTimeOffset.UtcNow);
@@ -195,7 +201,8 @@ internal static class FamilyEndpoints
     {
         var current = accessor.Current;
         if (current is null) return Results.Unauthorized();
-        if (current.MemberRole != MemberRole.Admin) return Results.Forbid();
+        var authorization = await RequireActiveAdminAsync(db, current, ct);
+        if (authorization is not null) return authorization;
         var invitation = await db.FamilyInvitations.SingleOrDefaultAsync(x => x.Id == invitationId && x.FamilyId == current.FamilyId, ct);
         if (invitation is null) return Results.NotFound();
         try { invitation.Revoke(current.MemberId, DateTimeOffset.UtcNow); } catch (InvalidOperationException) { return Results.Conflict(); }
@@ -238,8 +245,32 @@ internal static class FamilyEndpoints
         }
         member.LinkAccount(account);
         invitation.Accept(accountId.Value, DateTimeOffset.UtcNow);
-        await db.SaveChangesAsync(ct);
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Results.Conflict();
+        }
         return Results.Ok(new FamilySummaryResponse(member.FamilyId, await db.Families.Where(x => x.Id == member.FamilyId).Select(x => x.Name).SingleAsync(ct), member.Id, member.DisplayName, member.Role, member.IsActive));
+    }
+
+    private static async Task<IResult?> RequireActiveAdminAsync(
+        LibroryDbContext db,
+        CurrentFamilyContext? current,
+        CancellationToken ct)
+    {
+        if (current is null) return Results.Unauthorized();
+
+        var isActiveAdmin = await db.Members.AnyAsync(
+            x => x.Id == current.MemberId &&
+                 x.FamilyId == current.FamilyId &&
+                 x.IsActive &&
+                 x.Role == MemberRole.Admin,
+            ct);
+
+        return isActiveAdmin ? null : Results.Forbid();
     }
 
     private static Task<FamilyInvitation?> FindInvitationAsync(string token, LibroryDbContext db, CancellationToken ct) =>

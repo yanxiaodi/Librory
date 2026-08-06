@@ -83,4 +83,21 @@ public sealed class LibroryDbContextModelTests
         Assert.Contains(invitationType.GetIndexes(), index =>
             index.IsUnique && index.Properties.Select(property => property.Name).SequenceEqual(["TokenHash"]));
     }
+
+    [Fact]
+    public void Family_invitation_uses_database_concurrency_control()
+    {
+        var options = new DbContextOptionsBuilder<LibroryDbContext>()
+            .UseInMemoryDatabase(nameof(Family_invitation_uses_database_concurrency_control))
+            .Options;
+
+        using var db = new LibroryDbContext(options);
+
+        var invitationType = db.Model.FindEntityType(typeof(FamilyInvitation));
+        var concurrencyProperty = invitationType?.FindProperty("xmin");
+
+        Assert.NotNull(concurrencyProperty);
+        Assert.True(concurrencyProperty!.IsConcurrencyToken);
+        Assert.True(concurrencyProperty.ValueGenerated == Microsoft.EntityFrameworkCore.Metadata.ValueGenerated.OnAddOrUpdate);
+    }
 }

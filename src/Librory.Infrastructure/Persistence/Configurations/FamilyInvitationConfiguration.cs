@@ -18,6 +18,7 @@ internal sealed class FamilyInvitationConfiguration : IEntityTypeConfiguration<F
         builder.Property(x => x.Status).HasConversion<string>().HasMaxLength(32).IsRequired();
         builder.Property(x => x.CreatedAt).IsRequired();
         builder.Property(x => x.ExpiresAt).IsRequired();
+        builder.Property<uint>("xmin").IsRowVersion();
 
         builder.HasOne<Family>()
             .WithMany()
