@@ -4,15 +4,14 @@ namespace Librory.Application.Identity;
 
 public static class ExternalIdentityResolver
 {
-    public static Member? Resolve(
-        IEnumerable<Member> members,
+    public static UserAccount? Resolve(
+        IEnumerable<UserAccount> accounts,
         ExternalIdentityProvider provider,
         string providerSubject)
     {
-        ArgumentNullException.ThrowIfNull(members);
+        ArgumentNullException.ThrowIfNull(accounts);
         ArgumentException.ThrowIfNullOrWhiteSpace(providerSubject);
 
-        // TODO(story-01b or later): replace this in-memory lookup with a repository query.
-        return members.FirstOrDefault(member => member.HasExternalIdentity(provider, providerSubject));
+        return accounts.FirstOrDefault(account => account.HasExternalIdentity(provider, providerSubject));
     }
 }

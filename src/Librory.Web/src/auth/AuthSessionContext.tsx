@@ -14,6 +14,7 @@ type CurrentFamilyResponse = {
   memberId: string
   memberDisplayName: string
   memberCount: number
+  memberRole?: string
 }
 
 const anonymousSession: AuthSession = {
@@ -65,6 +66,7 @@ export function AuthSessionProvider({
         user: {
           id: currentFamily.memberId,
           displayName: currentFamily.memberDisplayName,
+          role: currentFamily.memberRole,
         },
         family: {
           id: currentFamily.familyId,

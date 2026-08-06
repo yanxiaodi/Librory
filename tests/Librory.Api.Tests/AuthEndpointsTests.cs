@@ -102,4 +102,38 @@ public sealed class AuthEndpointsTests
 
         Assert.Equal(HttpStatusCode.Unauthorized, callback.StatusCode);
     }
+
+    [Fact]
+    public async Task Callback_preserves_a_safe_local_return_url()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var callbackRequest = new HttpRequestMessage(HttpMethod.Get, "/auth/google/callback?returnUrl=%2Ffamily-invitations%2Ftoken");
+        callbackRequest.Headers.Add("X-Test-Provider-Subject", "google-subject-return-url");
+        callbackRequest.Headers.Add("X-Test-Provider-Email", "invitee@example.com");
+        callbackRequest.Headers.Add("X-Test-Provider-Name", "Invitee");
+
+        var callback = await client.SendAsync(callbackRequest);
+
+        Assert.Equal(HttpStatusCode.Redirect, callback.StatusCode);
+        Assert.Equal("/family-invitations/token", callback.Headers.Location!.ToString());
+    }
+
+    [Fact]
+    public async Task Callback_rejects_an_external_return_url()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var callbackRequest = new HttpRequestMessage(HttpMethod.Get, "/auth/google/callback?returnUrl=https%3A%2F%2Fevil.example");
+        callbackRequest.Headers.Add("X-Test-Provider-Subject", "google-subject-unsafe-url");
+        callbackRequest.Headers.Add("X-Test-Provider-Email", "invitee@example.com");
+        callbackRequest.Headers.Add("X-Test-Provider-Name", "Invitee");
+
+        var callback = await client.SendAsync(callbackRequest);
+
+        Assert.Equal(HttpStatusCode.Redirect, callback.StatusCode);
+        Assert.Equal("/app/home", callback.Headers.Location!.ToString());
+    }
 }

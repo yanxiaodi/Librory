@@ -46,9 +46,10 @@ internal static class AuthEndpoints
 
     private static async Task StartAsync(HttpContext context, string scheme, string redirectUri)
     {
+        var returnUrl = GetSafeReturnUrl(context.Request.Query["returnUrl"]);
         await context.ChallengeAsync(scheme, new AuthenticationProperties
         {
-            RedirectUri = redirectUri,
+            RedirectUri = $"{redirectUri}?returnUrl={Uri.EscapeDataString(returnUrl)}",
         });
     }
 
@@ -69,7 +70,7 @@ internal static class AuthEndpoints
             await context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, AuthenticationSessionFactory.CreatePrincipal(result));
             await context.SignOutAsync("External");
 
-            context.Response.Redirect("/app/home");
+            context.Response.Redirect(GetSafeReturnUrl(context.Request.Query["returnUrl"]));
         }
         catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
         {
@@ -167,6 +168,19 @@ internal static class AuthEndpoints
         }
 
         return "Librory Member";
+    }
+
+    private static string GetSafeReturnUrl(string? returnUrl)
+    {
+        if (string.IsNullOrWhiteSpace(returnUrl) ||
+            !returnUrl.StartsWith("/", StringComparison.Ordinal) ||
+            returnUrl.StartsWith("//", StringComparison.Ordinal) ||
+            returnUrl.Contains('\\', StringComparison.Ordinal))
+        {
+            return "/app/home";
+        }
+
+        return returnUrl;
     }
 
     private static async Task LogoutAsync(HttpContext context)

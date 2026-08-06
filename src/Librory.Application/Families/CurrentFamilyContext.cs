@@ -6,4 +6,5 @@ public sealed record CurrentFamilyContext(
     Guid FamilyId,
     Guid MemberId,
     MemberRole MemberRole,
-    PreferredLanguage PreferredLanguage);
+    PreferredLanguage PreferredLanguage,
+    Guid AccountId = default);

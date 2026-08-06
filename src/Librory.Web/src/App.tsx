@@ -6,6 +6,7 @@ import LoginPage from '@/pages/LoginPage'
 import { ScansPage } from '@/pages/ScansPage'
 import { LibraryPage } from '@/pages/LibraryPage'
 import SettingsPage from '@/pages/SettingsPage'
+import InvitationPage from '@/pages/InvitationPage'
 import { cn } from '@/lib/utils'
 import { AuthGate } from '@/auth/AuthGate'
 import { PublicOnlyGate } from '@/auth/PublicOnlyGate'
@@ -108,6 +109,7 @@ export default function App() {
         <Route path="library" element={<LibraryPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
+      <Route path="/family-invitations/:token" element={<InvitationPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

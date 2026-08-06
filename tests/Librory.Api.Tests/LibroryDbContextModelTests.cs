@@ -19,6 +19,8 @@ public sealed class LibroryDbContextModelTests
         Assert.Equal("librory", db.Model.GetDefaultSchema());
         Assert.Equal("families", db.Model.FindEntityType(typeof(Family))!.GetTableName());
         Assert.Equal("members", db.Model.FindEntityType(typeof(Member))!.GetTableName());
+        Assert.Equal("user_accounts", db.Model.FindEntityType(typeof(UserAccount))!.GetTableName());
+        Assert.Equal("family_invitations", db.Model.FindEntityType(typeof(FamilyInvitation))!.GetTableName());
         Assert.Equal("book_works", db.Model.FindEntityType(typeof(BookWork))!.GetTableName());
         Assert.Equal("book_editions", db.Model.FindEntityType(typeof(BookEdition))!.GetTableName());
         Assert.Equal("book_copies", db.Model.FindEntityType(typeof(BookCopy))!.GetTableName());
@@ -57,10 +59,45 @@ public sealed class LibroryDbContextModelTests
         using var db = new LibroryDbContext(options);
 
         var externalIdentityType = db.Model.GetEntityTypes()
-            .Single(entity => entity.GetTableName() == "member_external_identities");
+            .Single(entity => entity.GetTableName() == "user_account_external_identities");
 
         Assert.Contains(externalIdentityType.GetIndexes(), index =>
             index.IsUnique &&
             index.Properties.Select(property => property.Name).SequenceEqual(["Provider", "ProviderSubject"]));
+    }
+
+    [Fact]
+    public void Model_indexes_pending_invitations_by_family_email_and_status()
+    {
+        var options = new DbContextOptionsBuilder<LibroryDbContext>()
+            .UseInMemoryDatabase(nameof(Model_indexes_pending_invitations_by_family_email_and_status))
+            .Options;
+
+        using var db = new LibroryDbContext(options);
+
+        var invitationType = db.Model.FindEntityType(typeof(FamilyInvitation));
+
+        Assert.NotNull(invitationType);
+        Assert.Contains(invitationType!.GetIndexes(), index =>
+            index.Properties.Select(property => property.Name).SequenceEqual(["FamilyId", "Email", "Status"]));
+        Assert.Contains(invitationType.GetIndexes(), index =>
+            index.IsUnique && index.Properties.Select(property => property.Name).SequenceEqual(["TokenHash"]));
+    }
+
+    [Fact]
+    public void Family_invitation_uses_database_concurrency_control()
+    {
+        var options = new DbContextOptionsBuilder<LibroryDbContext>()
+            .UseInMemoryDatabase(nameof(Family_invitation_uses_database_concurrency_control))
+            .Options;
+
+        using var db = new LibroryDbContext(options);
+
+        var invitationType = db.Model.FindEntityType(typeof(FamilyInvitation));
+        var concurrencyProperty = invitationType?.FindProperty("xmin");
+
+        Assert.NotNull(concurrencyProperty);
+        Assert.True(concurrencyProperty!.IsConcurrencyToken);
+        Assert.True(concurrencyProperty.ValueGenerated == Microsoft.EntityFrameworkCore.Metadata.ValueGenerated.OnAddOrUpdate);
     }
 }

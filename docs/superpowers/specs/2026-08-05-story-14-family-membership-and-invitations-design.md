@@ -9,7 +9,7 @@ Allow one login account to participate in multiple families while supporting per
 In scope:
 
 - Separate account identity from family membership.
-- Preserve a personal family for users who register directly.
+- Give every first-time account a personal family, including users who arrived through an invitation link.
 - Allow an account to join multiple families.
 - Create members without external identities for children or other household profiles.
 - Invite a new member by email or bind an existing placeholder member.
@@ -44,10 +44,10 @@ Each membership has a stable member id, family id, display name within that fami
 
 ## Registration Rules
 
-- Direct registration without an invitation creates a personal singleton family and an initial admin membership.
-- Registration through an invitation creates or links only the invited family membership; it does not create a personal family automatically.
+- Every first external registration creates a personal singleton family and an initial admin membership.
+- Accepting an invitation adds a membership in the invited family or links the invited placeholder member; it never removes or merges the personal family.
 - A user who already has a personal family keeps it when accepting another family invitation.
-- A user may create a personal family later through an explicit action.
+- The account can switch between its personal family and invited families; each family remains data-isolated.
 
 ## Invitation Model
 
@@ -106,8 +106,8 @@ The emailed-link flow keeps the same frontend URL and token route shape used by 
 
 ## Acceptance Criteria
 
-- A direct registration creates one personal family and one admin membership.
-- Invitation-based registration does not create an automatic personal family.
+- A first registration creates one personal family and one admin membership, including when the user arrived through an invitation link.
+- Accepting an invitation preserves that personal family and adds the invited family membership.
 - An existing account can accept an invitation and join another family without duplicating its account identity.
 - The same account can list and switch between all families where it has an active membership.
 - Family-scoped data is isolated by active family membership.

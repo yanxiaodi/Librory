@@ -173,6 +173,7 @@ internal static class DevAuthEndpoints
         var claims = new List<Claim>
         {
             new(CurrentFamilyContextClaimTypes.FamilyId, family.Id.ToString()),
+            new(CurrentFamilyContextClaimTypes.AccountId, member.UserAccountId?.ToString() ?? string.Empty),
             new(CurrentFamilyContextClaimTypes.MemberId, member.Id.ToString()),
             new(CurrentFamilyContextClaimTypes.MemberRole, member.Role.ToString()),
             new(CurrentFamilyContextClaimTypes.PreferredLanguage, member.PreferredLanguage.ToString()),

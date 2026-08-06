@@ -4,4 +4,5 @@ namespace Librory.Application.Families;
 
 public sealed record FamilyBootstrapResult(
     Family Family,
-    Member InitialMember);
+    Member InitialMember,
+    UserAccount? Account = null);

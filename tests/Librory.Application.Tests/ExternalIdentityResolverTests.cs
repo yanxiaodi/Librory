@@ -9,10 +9,10 @@ public class ExternalIdentityResolverTests
     [Fact]
     public void Resolve_returns_null_when_no_match()
     {
-        var members = new[] { new Member() };
+        var accounts = new[] { UserAccount.Create() };
 
         var result = ExternalIdentityResolver.Resolve(
-            members,
+            accounts,
             ExternalIdentityProvider.Google,
             "not-found");
 
@@ -20,7 +20,7 @@ public class ExternalIdentityResolverTests
     }
 
     [Fact]
-    public void Resolve_throws_when_members_is_null()
+    public void Resolve_throws_when_accounts_is_null()
     {
         Assert.Throws<ArgumentNullException>(() =>
             ExternalIdentityResolver.Resolve(
@@ -32,11 +32,11 @@ public class ExternalIdentityResolverTests
     [Fact]
     public void Resolve_throws_when_provider_subject_is_blank()
     {
-        var members = new[] { new Member() };
+        var accounts = new[] { UserAccount.Create() };
 
         Assert.Throws<ArgumentException>(() =>
             ExternalIdentityResolver.Resolve(
-                members,
+                accounts,
                 ExternalIdentityProvider.Google,
                 ""));
     }
@@ -44,42 +44,42 @@ public class ExternalIdentityResolverTests
     [Fact]
     public void Resolve_uses_provider_subject_and_ignores_email()
     {
-        var member = new Member();
-        member.TryLinkExternalIdentity(new ExternalIdentity(
+        var account = UserAccount.Create("primary@example.com");
+        account.TryLinkExternalIdentity(new ExternalIdentity(
             ExternalIdentityProvider.Google,
             "google-subject-123",
             Email: "primary@example.com"));
 
-        var members = new[]
+        var accounts = new[]
         {
-            member,
-            new Member()
+            account,
+            UserAccount.Create(),
         };
 
         var resolved = ExternalIdentityResolver.Resolve(
-            members,
+            accounts,
             ExternalIdentityProvider.Google,
             "google-subject-123");
 
-        Assert.Same(member, resolved);
+        Assert.Same(account, resolved);
     }
 
     [Fact]
-    public void Member_can_store_multiple_external_identities_but_reject_duplicates()
+    public void Account_can_store_multiple_external_identities_but_reject_duplicates()
     {
-        var member = new Member();
+        var account = UserAccount.Create("person@example.com");
 
-        var googleLinked = member.TryLinkExternalIdentity(new ExternalIdentity(
+        var googleLinked = account.TryLinkExternalIdentity(new ExternalIdentity(
             ExternalIdentityProvider.Google,
             "google-subject-123",
             Email: "person@example.com"));
 
-        var microsoftLinked = member.TryLinkExternalIdentity(new ExternalIdentity(
+        var microsoftLinked = account.TryLinkExternalIdentity(new ExternalIdentity(
             ExternalIdentityProvider.Microsoft,
             "microsoft-subject-456",
             Email: "person@outlook.com"));
 
-        var duplicateGoogleLink = member.TryLinkExternalIdentity(new ExternalIdentity(
+        var duplicateGoogleLink = account.TryLinkExternalIdentity(new ExternalIdentity(
             ExternalIdentityProvider.Google,
             "google-subject-123",
             Email: "another@example.com"));
@@ -87,8 +87,8 @@ public class ExternalIdentityResolverTests
         Assert.True(googleLinked);
         Assert.True(microsoftLinked);
         Assert.False(duplicateGoogleLink);
-        Assert.Equal(2, member.ExternalIdentities.Count);
-        Assert.True(member.HasExternalIdentity(ExternalIdentityProvider.Google, "google-subject-123"));
-        Assert.True(member.HasExternalIdentity(ExternalIdentityProvider.Microsoft, "microsoft-subject-456"));
+        Assert.Equal(2, account.ExternalIdentities.Count);
+        Assert.True(account.HasExternalIdentity(ExternalIdentityProvider.Google, "google-subject-123"));
+        Assert.True(account.HasExternalIdentity(ExternalIdentityProvider.Microsoft, "microsoft-subject-456"));
     }
 }
