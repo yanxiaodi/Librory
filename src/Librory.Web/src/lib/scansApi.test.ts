@@ -31,7 +31,7 @@ describe('scansApi', () => {
       inferredLanguage: 0,
       hasMixedLanguages: false,
     }
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify(responseBody), { status: 201 }))
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify(responseBody), { status: 201 }))
     vi.stubGlobal('fetch', fetchMock)
 
     await expect(createScanSession(input)).resolves.toEqual(responseBody)
