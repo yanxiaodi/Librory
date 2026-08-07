@@ -345,13 +345,19 @@ Behavior:
 
 - Requires a shelf photo path.
 - Accepts optional recognized candidates.
+- Accepts an optional `targetMemberId`; when omitted, the current family member is selected.
+- Candidate entries may include nullable `detectedLanguage` (`English` or `Chinese`).
 - Accepts an optional retention window in days.
-- Stores the session temporarily for later review.
+- Stores the selected target, profile availability/use flags, and temporary language context for later review.
+- A different active member requires an administrator caller or a family-visible, enabled recommendation profile. A missing profile does not block the current member's scan.
+- Mixed-language scans keep each candidate's detected language and expose no dominant language; unknown language remains nullable.
 
 Returns:
 
 - `201 Created` with the persisted session payload.
-- `400 Bad Request` when required fields are missing or invalid.
+- The response includes `targetMemberId`, `targetMemberDisplayName`, `targetProfileAvailable`, `targetProfileUsed`, `inferredLanguage`, and `hasMixedLanguages`.
+- Profile notes and other private profile fields are never returned by scan endpoints.
+- `400 Bad Request` when required fields are missing, invalid, or the target member is not eligible.
 - `401 Unauthorized` when the caller is not signed in.
 - `404 Not Found` when the current family no longer exists.
 
