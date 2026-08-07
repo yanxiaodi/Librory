@@ -150,6 +150,33 @@ describe('RecommendationProfileSection', () => {
     expect(await screen.findByDisplayValue('Mia note')).toBeVisible()
   })
 
+  it('clears members and profile data while the family member list refreshes', async () => {
+    let listCallCount = 0
+    let resolveRefresh: (response: Response) => void = () => undefined
+    const refreshMembers = new Promise<Response>(resolve => { resolveRefresh = resolve })
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/family/current/members') {
+        listCallCount += 1
+        if (listCallCount > 1) return refreshMembers
+        return new Response(JSON.stringify([{ memberId: 'member-1', displayName: 'Alice', role: 'Admin', preferredLanguage: 0, isActive: true, hasAccount: true }]), { status: 200 })
+      }
+      return new Response(JSON.stringify({ memberId: 'member-1', minimumAge: null, maximumAge: null, favoriteAuthors: [], excludedAuthors: [], favoriteGenres: [], excludedGenres: [], favoriteStyles: [], excludedStyles: [], preferredBookLanguages: [], preferenceNotes: 'Old family note', profileVisibility: 'Family', useInFamilyRecommendations: true }), { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { rerender } = render(<RecommendationProfileSection isAdmin currentMemberId="member-1" refreshKey={0} />)
+    expect(await screen.findByDisplayValue('Old family note')).toBeVisible()
+
+    rerender(<RecommendationProfileSection isAdmin currentMemberId="member-1" refreshKey={1} />)
+
+    expect(screen.queryByDisplayValue('Old family note')).not.toBeInTheDocument()
+    expect(screen.queryByText('Alice')).not.toBeInTheDocument()
+
+    resolveRefresh(new Response(JSON.stringify([]), { status: 200 }))
+    expect(await screen.findByText(/no active family members/i)).toBeVisible()
+  })
+
   it('shows a read-only state for a forbidden profile without rendering private fields', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       if (String(input) === '/api/family/current/members') {

@@ -32,6 +32,8 @@ type ProfileFormState = {
   useInFamilyRecommendations: boolean
 }
 
+type ProfileAccess = 'loading' | 'ok' | 'missing' | 'forbidden' | 'error'
+
 const emptyForm: ProfileFormState = {
   minimumAge: '',
   maximumAge: '',
@@ -140,11 +142,21 @@ export function RecommendationProfileSection({ isAdmin, currentMemberId, refresh
   const [error, setError] = useState<string | null>(null)
   const [readOnly, setReadOnly] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [profileAccess, setProfileAccess] = useState<ProfileAccess>('loading')
   const profileMemberId = useRef<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     setLoadingMembers(true)
+    setMembers([])
+    setSelectedMemberId('')
+    setForm(emptyForm)
+    setLoadingProfile(false)
+    setReadOnly(false)
+    setSaved(false)
+    setProfileAccess('loading')
+    profileMemberId.current = null
+    setError(null)
     void listMembers()
       .then(result => {
         if (cancelled) return
@@ -170,6 +182,7 @@ export function RecommendationProfileSection({ isAdmin, currentMemberId, refresh
     if (loadingMembers || !selectedMemberId || !members.some(member => member.memberId === selectedMemberId)) return
     let cancelled = false
     setLoadingProfile(true)
+    setProfileAccess('loading')
     const memberChanged = profileMemberId.current !== selectedMemberId
     profileMemberId.current = selectedMemberId
     if (memberChanged) setForm(emptyForm)
@@ -180,21 +193,25 @@ export function RecommendationProfileSection({ isAdmin, currentMemberId, refresh
       .then(profile => {
         if (cancelled) return
         setForm(toForm(profile))
+        setProfileAccess('ok')
         setError(null)
       })
       .catch((caught: unknown) => {
         if (cancelled) return
         if (caught instanceof FamilyApiError && caught.status === 404) {
           setForm(emptyForm)
+          setProfileAccess('missing')
           setError(null)
           return
         }
         if (caught instanceof FamilyApiError && caught.status === 403) {
           setReadOnly(true)
           setForm(emptyForm)
+          setProfileAccess('forbidden')
           setError('This profile is not available to you.')
           return
         }
+        setProfileAccess('error')
         setError('Unable to load this recommendation profile.')
       })
       .finally(() => {
@@ -207,7 +224,7 @@ export function RecommendationProfileSection({ isAdmin, currentMemberId, refresh
     () => members.find(member => member.memberId === selectedMemberId),
     [members, selectedMemberId],
   )
-  const canEdit = !readOnly && (isAdmin || selectedMemberId === currentMemberId)
+  const canEdit = profileAccess !== 'forbidden' && !readOnly && (isAdmin || selectedMemberId === currentMemberId)
   const updateField = <K extends keyof ProfileFormState>(key: K, value: ProfileFormState[K]) => {
     setForm(previous => ({ ...previous, [key]: value }))
     setSaved(false)
@@ -262,8 +279,8 @@ export function RecommendationProfileSection({ isAdmin, currentMemberId, refresh
               </label>
             ) : <p className="text-sm font-semibold text-[var(--text-primary)]">{selectedMember?.displayName}</p>}
 
-            {error === 'This profile is not available to you.' ? <p role="alert" className="text-sm text-[var(--status-alert)]">{error}</p> : null}
-            {error !== 'This profile is not available to you.' ? (
+            {profileAccess === 'forbidden' ? <p role="alert" className="text-sm text-[var(--status-alert)]">{error}</p> : null}
+            {profileAccess !== 'forbidden' ? (
               <>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Minimum reading age" id="minimum-reading-age" type="number" inputMode="numeric" min={0} step={1} value={form.minimumAge} disabled={!canEdit || loadingProfile} onChange={value => updateField('minimumAge', value)} />
@@ -295,7 +312,7 @@ export function RecommendationProfileSection({ isAdmin, currentMemberId, refresh
               </>
             ) : null}
             {saved ? <p role="status" className="text-sm text-[var(--text-secondary)]">Preferences saved.</p> : null}
-            {error && error !== 'This profile is not available to you.' ? <p role="alert" className="text-sm text-[var(--status-alert)]">{error}</p> : null}
+            {error && profileAccess !== 'forbidden' ? <p role="alert" className="text-sm text-[var(--status-alert)]">{error}</p> : null}
           </form>
         ) : null}
       </CardContent>
