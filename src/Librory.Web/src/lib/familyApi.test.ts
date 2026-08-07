@@ -100,7 +100,7 @@ describe('familyApi', () => {
       excludedStyles: [],
       preferredBookLanguages: [],
       preferenceNotes: null,
-      profileVisibility: 'Family',
+      profileVisibility: 0,
       useInFamilyRecommendations: true,
     })
 
@@ -120,7 +120,7 @@ describe('familyApi', () => {
         excludedStyles: [],
         preferredBookLanguages: [],
         preferenceNotes: null,
-        profileVisibility: 'Family',
+        profileVisibility: 0,
         useInFamilyRecommendations: true,
       }),
     }))
