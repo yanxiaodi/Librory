@@ -7,6 +7,7 @@ import { ThemeSelect } from '@/components/theme/ThemeSelect'
 import { FamilySection } from '@/components/family/FamilySection'
 import { MembersSection } from '@/components/family/MembersSection'
 import { InvitationsSection } from '@/components/family/InvitationsSection'
+import { RecommendationProfileSection } from '@/components/family/RecommendationProfileSection'
 
 export default function SettingsPage() {
   const navigate = useNavigate()
@@ -35,6 +36,11 @@ export default function SettingsPage() {
                 await refreshSession()
                 setFamilyRefreshKey(value => value + 1)
               }}
+            />
+            <RecommendationProfileSection
+              isAdmin={session.user?.role === 'Admin'}
+              currentMemberId={session.family?.memberId}
+              refreshKey={familyRefreshKey}
             />
             <MembersSection isAdmin={session.user?.role === 'Admin'} refreshKey={familyRefreshKey} />
             <InvitationsSection isAdmin={session.user?.role === 'Admin'} />

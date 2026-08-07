@@ -46,7 +46,7 @@ describe('InvitationPage', () => {
 
     render(
       <MemoryRouter initialEntries={['/family-invitations/token-1']}>
-        <AuthSessionProvider initialSession={{ status: 'authenticated', user: { id: 'member-1', displayName: 'Bob', email: 'bob@example.com' }, family: { id: 'family-1', name: 'Bob Family', memberCount: 1 } }}>
+        <AuthSessionProvider initialSession={{ status: 'authenticated', user: { id: 'member-1', displayName: 'Bob', email: 'bob@example.com' }, family: { id: 'family-1', name: 'Bob Family', memberId: 'member-1', memberCount: 1 } }}>
           <Routes><Route path="/family-invitations/:token" element={<InvitationPage />} /><Route path="/app/home" element={<div>Home destination</div>} /></Routes>
         </AuthSessionProvider>
       </MemoryRouter>,

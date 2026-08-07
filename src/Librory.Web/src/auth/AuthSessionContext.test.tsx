@@ -136,7 +136,7 @@ describe('AuthSessionContext', () => {
     renderProbe({
       status: 'authenticated',
       user: { id: 'member-1', displayName: 'Alice', email: 'alice@example.com' },
-      family: { id: 'family-1', name: 'The Yans', memberCount: 2 },
+      family: { id: 'family-1', name: 'The Yans', memberId: 'member-1', memberCount: 2 },
     })
 
     await user.click(screen.getByRole('button', { name: /sign out/i }))

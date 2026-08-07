@@ -49,7 +49,7 @@ describe('SettingsPage', () => {
             initialSession={{
               status: 'authenticated',
               user: { id: 'user-1', displayName: 'Alice', email: 'alice@example.com' },
-              family: { id: 'family-1', name: 'The Yans', memberCount: 1 },
+              family: { id: 'family-1', name: 'The Yans', memberId: 'member-1', memberCount: 1 },
             }}
           >
             <App />
@@ -88,6 +88,9 @@ describe('SettingsPage', () => {
         memberList = [...memberList, created]
         return new Response(JSON.stringify(created), { status: 201 })
       }
+      if (url === '/api/family/current/members/member-1/recommendation-profile') {
+        return new Response(JSON.stringify({ memberId: 'member-1', minimumAge: 8, maximumAge: 12, favoriteAuthors: [], excludedAuthors: [], favoriteGenres: [], excludedGenres: [], favoriteStyles: [], excludedStyles: [], preferredBookLanguages: [0], preferenceNotes: null, profileVisibility: 0, useInFamilyRecommendations: true }), { status: 200 })
+      }
       if (url === '/api/family/current/members') {
         return new Response(JSON.stringify(memberList), { status: 200 })
       }
@@ -108,7 +111,7 @@ describe('SettingsPage', () => {
             initialSession={{
               status: 'authenticated',
               user: { id: 'member-1', displayName: 'Alice', role: 'Admin' },
-              family: { id: 'family-1', name: 'The Yans', memberCount: 1 },
+              family: { id: 'family-1', name: 'The Yans', memberId: 'member-1', memberCount: 1 },
             }}
           >
             <SettingsPage />
@@ -116,6 +119,9 @@ describe('SettingsPage', () => {
         </ThemeRoot>
       </MemoryRouter>,
     )
+
+    expect(await screen.findByText('Reading preferences')).toBeVisible()
+    expect(fetchMock).toHaveBeenCalledWith('/api/family/current/members/member-1/recommendation-profile', { credentials: 'include' })
 
     await user.selectOptions(await screen.findByLabelText(/current family/i), 'family-2')
     expect(fetchMock).toHaveBeenCalledWith('/api/families/family-2/select', expect.objectContaining({ method: 'POST' }))
@@ -142,7 +148,7 @@ describe('SettingsPage', () => {
     render(
       <MemoryRouter initialEntries={['/app/settings']}>
         <ThemeRoot>
-          <AuthSessionProvider initialSession={{ status: 'authenticated', user: { id: 'member-1', displayName: 'Alice', role: 'Admin' }, family: { id: 'family-1', name: 'The Yans', memberCount: 1 } }}>
+        <AuthSessionProvider initialSession={{ status: 'authenticated', user: { id: 'member-1', displayName: 'Alice', role: 'Admin' }, family: { id: 'family-1', name: 'The Yans', memberId: 'member-1', memberCount: 1 } }}>
             <SettingsPage />
           </AuthSessionProvider>
         </ThemeRoot>
