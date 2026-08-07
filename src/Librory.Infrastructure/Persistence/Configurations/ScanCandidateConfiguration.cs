@@ -18,6 +18,7 @@ internal sealed class ScanCandidateConfiguration : IEntityTypeConfiguration<Scan
         builder.Property(x => x.RecommendationScore).HasPrecision(5, 4);
         builder.Property(x => x.DuplicateMessage).HasMaxLength(1000);
         builder.Property(x => x.ConfidenceLabel).HasMaxLength(64).IsRequired();
+        builder.Property(x => x.DetectedLanguage).HasConversion<string>().HasMaxLength(32);
 
         builder.HasOne(x => x.ScanSession)
             .WithMany(x => x.Candidates)

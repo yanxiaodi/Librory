@@ -16,8 +16,18 @@ internal sealed class ScanSessionConfiguration : IEntityTypeConfiguration<ScanSe
         builder.Property(x => x.ShelfPhotoPath).HasMaxLength(400).IsRequired();
         builder.Property(x => x.CreatedAt).IsRequired();
         builder.Property(x => x.ExpiresAt).IsRequired();
+        builder.Property(x => x.TargetProfileAvailable).IsRequired();
+        builder.Property(x => x.TargetProfileUsed).IsRequired();
+        builder.Property(x => x.InferredLanguage).HasConversion<string>().HasMaxLength(32);
+        builder.Property(x => x.HasMixedLanguages).IsRequired();
+
+        builder.HasOne<Member>()
+            .WithMany()
+            .HasForeignKey(x => x.TargetMemberId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(x => new { x.FamilyId, x.CreatedAt });
+        builder.HasIndex(x => new { x.FamilyId, x.TargetMemberId });
         builder.HasIndex(x => x.ExpiresAt);
     }
 }

@@ -18,6 +18,12 @@ public static class ScanSessionDtoFactory
             session.FamilyId,
             session.ShelfPhotoPath,
             candidates,
-            session.ExpiresAt);
+            session.ExpiresAt,
+            session.TargetMemberId,
+            family.Members.SingleOrDefault(member => member.Id == session.TargetMemberId)?.DisplayName ?? string.Empty,
+            session.TargetProfileAvailable,
+            session.TargetProfileUsed,
+            session.InferredLanguage,
+            session.HasMixedLanguages);
     }
 }

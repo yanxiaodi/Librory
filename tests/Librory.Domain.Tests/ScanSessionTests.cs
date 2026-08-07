@@ -33,6 +33,77 @@ public class ScanSessionTests
     }
 
     [Fact]
+    public void Scan_session_stores_target_member_and_profile_context()
+    {
+        var family = Family.Create("The Yans");
+        var targetMemberId = Guid.NewGuid();
+
+        var session = ScanSession.Create(family, targetMemberId, true, false, "shelf-photo.jpg");
+
+        Assert.Equal(targetMemberId, session.TargetMemberId);
+        Assert.True(session.TargetProfileAvailable);
+        Assert.False(session.TargetProfileUsed);
+    }
+
+    [Fact]
+    public void Scan_session_infers_strictly_dominant_language_and_keeps_mixed_state()
+    {
+        var family = Family.Create("The Yans");
+        var session = family.StartScanSession("shelf-photo.jpg");
+
+        session.AddCandidate(ScanCandidate.Create("English book", "High", detectedLanguage: PreferredLanguage.English));
+        session.AddCandidate(ScanCandidate.Create("Chinese book", "High", detectedLanguage: PreferredLanguage.Chinese));
+        session.AddCandidate(ScanCandidate.Create("Another English book", "High", detectedLanguage: PreferredLanguage.English));
+
+        Assert.Equal(PreferredLanguage.English, session.InferredLanguage);
+        Assert.True(session.HasMixedLanguages);
+    }
+
+    [Fact]
+    public void Scan_session_does_not_infer_language_for_a_tie_or_unknown_candidates()
+    {
+        var family = Family.Create("The Yans");
+        var session = family.StartScanSession("shelf-photo.jpg");
+
+        session.AddCandidate(ScanCandidate.Create("English book", "High", detectedLanguage: PreferredLanguage.English));
+        session.AddCandidate(ScanCandidate.Create("Chinese book", "High", detectedLanguage: PreferredLanguage.Chinese));
+        session.AddCandidate(ScanCandidate.Create("Unknown book", "Low"));
+
+        Assert.Null(session.InferredLanguage);
+        Assert.True(session.HasMixedLanguages);
+    }
+
+    [Fact]
+    public void Correcting_candidate_preserves_detected_language_when_not_supplied()
+    {
+        var family = Family.Create("The Yans");
+        var session = family.StartScanSession("shelf-photo.jpg");
+        var candidate = ScanCandidate.Create("Book", "High", detectedLanguage: PreferredLanguage.Chinese);
+        session.AddCandidate(candidate);
+
+        session.CorrectCandidate(candidate.Id, "Corrected book", "Medium");
+
+        Assert.Equal(PreferredLanguage.Chinese, candidate.DetectedLanguage);
+    }
+
+    [Fact]
+    public void Correcting_candidate_can_replace_detected_language()
+    {
+        var family = Family.Create("The Yans");
+        var session = family.StartScanSession("shelf-photo.jpg");
+        var candidate = ScanCandidate.Create("Book", "High", detectedLanguage: PreferredLanguage.Chinese);
+        session.AddCandidate(candidate);
+
+        session.CorrectCandidate(
+            candidate.Id,
+            "Corrected book",
+            "Medium",
+            detectedLanguage: PreferredLanguage.English);
+
+        Assert.Equal(PreferredLanguage.English, candidate.DetectedLanguage);
+    }
+
+    [Fact]
     public void Family_start_scan_session_accepts_custom_retention_and_candidates()
     {
         var family = Family.Create("The Yans");
@@ -143,6 +214,24 @@ public class ScanSessionTests
         Assert.Single(session.Candidates);
         Assert.Same(secondCandidate, session.Candidates[0]);
         Assert.Throws<InvalidOperationException>(() => session.RemoveCandidate(firstCandidate.Id));
+    }
+
+    [Fact]
+    public void Removing_candidate_recalculates_language_context()
+    {
+        var family = Family.Create("The Yans");
+        var session = family.StartScanSession("shelf-photo.jpg");
+        var english = ScanCandidate.Create("English book", "High", detectedLanguage: PreferredLanguage.English);
+        var chinese = ScanCandidate.Create("Chinese book", "High", detectedLanguage: PreferredLanguage.Chinese);
+
+        session.AddCandidate(english);
+        session.AddCandidate(chinese);
+        Assert.True(session.HasMixedLanguages);
+
+        session.RemoveCandidate(chinese.Id);
+
+        Assert.False(session.HasMixedLanguages);
+        Assert.Equal(PreferredLanguage.English, session.InferredLanguage);
     }
 
     [Fact]

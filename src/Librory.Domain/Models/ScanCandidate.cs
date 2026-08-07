@@ -10,6 +10,7 @@ public sealed class ScanCandidate
     public bool IsAlreadyOwned { get; private set; }
     public string? DuplicateMessage { get; private set; }
     public string ConfidenceLabel { get; private set; } = string.Empty;
+    public PreferredLanguage? DetectedLanguage { get; private set; }
     public ScanSession ScanSession { get; private set; } = null!;
 
     public static ScanCandidate Create(
@@ -18,7 +19,8 @@ public sealed class ScanCandidate
         string? author = null,
         decimal recommendationScore = 0m,
         bool isAlreadyOwned = false,
-        string? duplicateMessage = null)
+        string? duplicateMessage = null,
+        PreferredLanguage? detectedLanguage = null)
     {
         Validate(displayTitle, confidenceLabel, recommendationScore);
 
@@ -30,6 +32,7 @@ public sealed class ScanCandidate
             IsAlreadyOwned = isAlreadyOwned,
             DuplicateMessage = Normalize(duplicateMessage),
             ConfidenceLabel = confidenceLabel.Trim(),
+            DetectedLanguage = detectedLanguage,
         };
     }
 
@@ -42,7 +45,8 @@ public sealed class ScanCandidate
         string? author = null,
         decimal recommendationScore = 0m,
         bool isAlreadyOwned = false,
-        string? duplicateMessage = null)
+        string? duplicateMessage = null,
+        PreferredLanguage? detectedLanguage = null)
     {
         Validate(displayTitle, confidenceLabel, recommendationScore);
 
@@ -52,6 +56,10 @@ public sealed class ScanCandidate
         IsAlreadyOwned = isAlreadyOwned;
         DuplicateMessage = Normalize(duplicateMessage);
         ConfidenceLabel = confidenceLabel.Trim();
+        if (detectedLanguage.HasValue)
+        {
+            DetectedLanguage = detectedLanguage;
+        }
     }
 
     internal void AttachTo(ScanSession scanSession)
