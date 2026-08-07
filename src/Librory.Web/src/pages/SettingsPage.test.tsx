@@ -121,6 +121,7 @@ describe('SettingsPage', () => {
     )
 
     expect(await screen.findByText('Reading preferences')).toBeVisible()
+    expect(await screen.findByDisplayValue('8')).toBeVisible()
     expect(fetchMock).toHaveBeenCalledWith('/api/family/current/members/member-1/recommendation-profile', { credentials: 'include' })
 
     await user.selectOptions(await screen.findByLabelText(/current family/i), 'family-2')
