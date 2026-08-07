@@ -4,14 +4,18 @@ import { PageFrame } from '@/components/shell/PageFrame'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { BookRecognitionResults } from '@/components/scans/BookRecognitionResults'
+import { useAuthSession } from '@/auth/AuthSessionContext'
+import { listMembers, type FamilyMember } from '@/lib/familyApi'
 import {
   createBookRecognitionJob,
   getBookRecognitionJob,
   isRecognitionJobComplete,
   type BookRecognitionJobResponse,
 } from '@/lib/bookRecognitionApi'
+import { createScanSession, type ScanSessionResponse } from '@/lib/scansApi'
 
 type ScanState = 'idle' | 'uploading' | 'polling' | 'ready' | 'error'
+type PersistenceState = 'idle' | 'saving' | 'saved' | 'error'
 
 const stateCopy: Record<ScanState, { title: string; description: string; tone: string }> = {
   idle: {
@@ -41,13 +45,55 @@ const stateCopy: Record<ScanState, { title: string; description: string; tone: s
   },
 }
 
+function toDetectedLanguage(language: string | null) {
+  if (language?.toLowerCase() === 'en') return 0
+  if (language?.toLowerCase() === 'zh') return 1
+  return undefined
+}
+
+function languageLabel(language: number | null) {
+  if (language === 0) return 'English'
+  if (language === 1) return 'Chinese'
+  return 'Unknown language'
+}
+
 export function ScansPage() {
+  const { family, user } = useAuthSession()
   const inputRef = React.useRef<HTMLInputElement>(null)
   const [state, setState] = React.useState<ScanState>('idle')
   const [fileName, setFileName] = React.useState<string | null>(null)
   const [job, setJob] = React.useState<BookRecognitionJobResponse | null>(null)
+  const [members, setMembers] = React.useState<FamilyMember[]>([])
+  const [selectedMemberId, setSelectedMemberId] = React.useState(family?.memberId ?? '')
+  const [memberError, setMemberError] = React.useState<string | null>(null)
+  const [scanSession, setScanSession] = React.useState<ScanSessionResponse | null>(null)
+  const [persistenceState, setPersistenceState] = React.useState<PersistenceState>('idle')
+  const [persistenceError, setPersistenceError] = React.useState<string | null>(null)
   const pollTimerRef = React.useRef<number | null>(null)
   const activeJobIdRef = React.useRef<string | null>(null)
+  const activeTargetMemberIdRef = React.useRef<string | undefined>(undefined)
+
+  const currentMemberId = family?.memberId
+
+  React.useEffect(() => {
+    void listMembers()
+      .then(result => {
+        const eligible = result.filter(member =>
+          member.memberId === currentMemberId || (member.isActive && member.canUseForFamilyRecommendations === true),
+        )
+        setMembers(eligible)
+        setSelectedMemberId(previous => {
+          if (eligible.some(member => member.memberId === previous)) return previous
+          if (currentMemberId && eligible.some(member => member.memberId === currentMemberId)) return currentMemberId
+          return eligible[0]?.memberId ?? currentMemberId ?? ''
+        })
+        setMemberError(null)
+      })
+      .catch(() => {
+        setMemberError('Family members could not be loaded. Scanning will use the current member.')
+        if (currentMemberId) setSelectedMemberId(currentMemberId)
+      })
+  }, [currentMemberId])
 
   const openPicker = () => {
     inputRef.current?.click()
@@ -57,6 +103,34 @@ export function ScansPage() {
     if (pollTimerRef.current !== null) {
       window.clearTimeout(pollTimerRef.current)
       pollTimerRef.current = null
+    }
+  }, [])
+
+  const persistScanSession = React.useCallback(async (completedJob: BookRecognitionJobResponse) => {
+    if (activeJobIdRef.current !== completedJob.jobId) return
+
+    setPersistenceState('saving')
+    setPersistenceError(null)
+
+    try {
+      const response = await createScanSession({
+        shelfPhotoPath: completedJob.sourcePhotoPath,
+        targetMemberId: activeTargetMemberIdRef.current,
+        candidates: completedJob.candidates.map(candidate => ({
+          displayTitle: candidate.displayTitle,
+          confidenceLabel: candidate.evidenceText,
+          author: candidate.metadataMatches[0]?.authors[0],
+          recommendationScore: Math.min(Math.max(candidate.rank / 1000, 0), 1),
+          detectedLanguage: toDetectedLanguage(candidate.metadataMatches[0]?.language ?? null),
+        })),
+      })
+      if (activeJobIdRef.current !== completedJob.jobId) return
+      setScanSession(response)
+      setPersistenceState('saved')
+    } catch {
+      if (activeJobIdRef.current !== completedJob.jobId) return
+      setPersistenceState('error')
+      setPersistenceError('The scan results are ready, but the member context could not be saved.')
     }
   }, [])
 
@@ -72,6 +146,7 @@ export function ScansPage() {
       if (isRecognitionJobComplete(current.status)) {
         setState(current.status === 3 ? 'error' : 'ready')
         clearPollTimer()
+        if (current.status === 2) void persistScanSession(current)
         return
       }
 
@@ -88,7 +163,7 @@ export function ScansPage() {
       setState('error')
       clearPollTimer()
     }
-  }, [clearPollTimer])
+  }, [clearPollTimer, persistScanSession])
 
   const handlePickerKeyDown = (event: React.KeyboardEvent<HTMLLabelElement>) => {
     if (state === 'uploading') {
@@ -111,7 +186,11 @@ export function ScansPage() {
 
     setFileName(file.name)
     setJob(null)
+    setScanSession(null)
+    setPersistenceState('idle')
+    setPersistenceError(null)
     activeJobIdRef.current = null
+    activeTargetMemberIdRef.current = selectedMemberId || undefined
     setState('uploading')
 
     try {
@@ -121,6 +200,7 @@ export function ScansPage() {
 
       if (isRecognitionJobComplete(response.status)) {
         setState(response.status === 3 ? 'error' : 'ready')
+        if (response.status === 2) void persistScanSession(response)
         return
       }
 
@@ -130,6 +210,10 @@ export function ScansPage() {
     } catch {
       setState('error')
     }
+  }
+
+  const retryPersistence = () => {
+    if (job?.status === 2) void persistScanSession(job)
   }
 
   React.useEffect(() => {
@@ -159,6 +243,23 @@ export function ScansPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
+            <div className="grid gap-2">
+              <label className="text-sm font-semibold text-[var(--text-secondary)]" htmlFor="scan-target-member">
+                Scan for member
+              </label>
+              <select
+                id="scan-target-member"
+                value={selectedMemberId}
+                onChange={event => setSelectedMemberId(event.target.value)}
+                disabled={state === 'uploading' || state === 'polling' || persistenceState === 'saving' || persistenceState === 'error' || members.length === 0}
+                className="h-12 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-3 text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-[var(--accent-subtle)]"
+              >
+                {members.length === 0 && currentMemberId ? <option value={currentMemberId}>{user?.displayName ?? 'Current member'}</option> : null}
+                {members.map(member => <option key={member.memberId} value={member.memberId}>{member.displayName}</option>)}
+              </select>
+              {memberError ? <p className="text-sm leading-6 text-[var(--text-secondary)]">{memberError}</p> : null}
+            </div>
+
             <input
               id="shelf-photo-input"
               ref={inputRef}
@@ -213,6 +314,29 @@ export function ScansPage() {
             ) : null}
           </CardContent>
         </Card>
+
+        {persistenceState === 'saving' ? <Card><CardContent><p className="text-sm text-[var(--text-secondary)]">Saving scan context…</p></CardContent></Card> : null}
+        {persistenceState === 'error' ? (
+          <Card>
+            <CardContent className="grid gap-3">
+              <p className="text-sm leading-6 text-[var(--text-secondary)]">{persistenceError}</p>
+              <Button type="button" variant="outline" onClick={retryPersistence}>Retry saving context</Button>
+            </CardContent>
+          </Card>
+        ) : null}
+        {scanSession ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Recommendation context</CardTitle>
+              <CardDescription>Scan prepared for {scanSession.targetMemberDisplayName || 'the current member'}.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-2 text-sm leading-6 text-[var(--text-secondary)]">
+              <p>Profile: {scanSession.targetProfileUsed ? 'used' : scanSession.targetProfileAvailable ? 'available but not used' : 'not available'}</p>
+              <p>Language context: {languageLabel(scanSession.inferredLanguage)}</p>
+              {scanSession.hasMixedLanguages ? <p>This shelf contains mixed languages; each book will be considered independently.</p> : null}
+            </CardContent>
+          </Card>
+        ) : null}
 
         {job && state !== 'uploading' ? <BookRecognitionResults job={job} /> : null}
       </div>

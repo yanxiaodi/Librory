@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { AuthSessionProvider } from '@/auth/AuthSessionContext'
 import { ScansPage } from './ScansPage'
 
 afterEach(() => {
@@ -9,12 +10,104 @@ afterEach(() => {
 })
 
 describe('ScansPage', () => {
+  it('defaults the scan target to the current member and allows an eligible member', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === '/api/family/current/members') {
+        return new Response(JSON.stringify([
+          { memberId: 'member-1', displayName: 'Alice', role: 'Admin', preferredLanguage: 0, isActive: false, hasAccount: true, canUseForFamilyRecommendations: false },
+          { memberId: 'member-2', displayName: 'Bob', role: 'Member', preferredLanguage: 0, isActive: true, hasAccount: false, canUseForFamilyRecommendations: true },
+          { memberId: 'member-3', displayName: 'Inactive', role: 'Member', preferredLanguage: 0, isActive: false, hasAccount: false, canUseForFamilyRecommendations: true },
+        ]), { status: 200 })
+      }
+
+      throw new Error(`Unexpected fetch request: ${String(input)}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <AuthSessionProvider initialSession={{
+        status: 'authenticated',
+        user: { id: 'member-1', displayName: 'Alice', role: 'Admin' },
+        family: { id: 'family-1', name: 'The Yans', memberId: 'member-1', memberCount: 2 },
+      }}>
+        <ScansPage />
+      </AuthSessionProvider>,
+    )
+
+    const target = await screen.findByLabelText(/scan for member/i)
+    expect(target).toHaveValue('member-1')
+    expect(screen.getByRole('option', { name: 'Alice' })).toBeVisible()
+    expect(screen.getByRole('option', { name: 'Bob' })).toBeVisible()
+    expect(screen.queryByRole('option', { name: 'Inactive' })).not.toBeInTheDocument()
+
+    await user.selectOptions(target, 'member-2')
+    expect(target).toHaveValue('member-2')
+  })
+
+  it('persists the selected target and renders the returned recommendation context', async () => {
+    const user = userEvent.setup()
+    let sessionPayload: Record<string, unknown> | undefined
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/family/current/members') {
+        return new Response(JSON.stringify([
+          { memberId: 'member-1', displayName: 'Alice', role: 'Admin', preferredLanguage: 0, isActive: true, hasAccount: true, canUseForFamilyRecommendations: true },
+          { memberId: 'member-2', displayName: 'Bob', role: 'Member', preferredLanguage: 0, isActive: true, hasAccount: false, canUseForFamilyRecommendations: true },
+        ]), { status: 200 })
+      }
+      if (url === '/api/book-recognition-jobs' && init?.method === 'POST') {
+        return new Response(JSON.stringify({
+          jobId: 'job-2', familyId: 'family-1', status: 2,
+          sourcePhotoPath: '/tmp/Librory/scan-uploads/shelf.jpg', candidates: [{
+            candidateId: 'candidate-1', displayTitle: 'Dune', evidenceText: 'DUNE', rank: 940,
+            metadataMatches: [{ source: 'google-books', sourceId: 'source-1', title: 'Dune', subtitle: null, authors: ['Frank Herbert'], publisher: null, publishedDate: null, language: 'en', description: null, isbn10: null, isbn13: null, thumbnailUrl: null, infoUrl: null }],
+          }], warnings: [], failureMessage: null, createdAt: '2026-08-07T00:00:00Z', updatedAt: '2026-08-07T00:00:00Z',
+        }), { status: 202 })
+      }
+      if (url === '/api/family/current/scan-sessions' && init?.method === 'POST') {
+        sessionPayload = JSON.parse(init.body as string) as Record<string, unknown>
+        return new Response(JSON.stringify({
+          scanSessionId: 'scan-2', familyId: 'family-1', shelfPhotoPath: '/tmp/Librory/scan-uploads/shelf.jpg', candidates: [], expiresAt: '2026-08-08T00:00:00Z',
+          targetMemberId: 'member-2', targetMemberDisplayName: 'Bob', targetProfileAvailable: true, targetProfileUsed: true, inferredLanguage: 0, hasMixedLanguages: false,
+        }), { status: 201 })
+      }
+      throw new Error(`Unexpected fetch request: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <AuthSessionProvider initialSession={{
+        status: 'authenticated', user: { id: 'member-1', displayName: 'Alice', role: 'Admin' }, family: { id: 'family-1', name: 'The Yans', memberId: 'member-1', memberCount: 2 },
+      }}>
+        <ScansPage />
+      </AuthSessionProvider>,
+    )
+
+    await user.selectOptions(await screen.findByLabelText(/scan for member/i), 'member-2')
+    await user.upload(screen.getByLabelText(/shelf photo/i), new File(['fake image'], 'shelf.jpg', { type: 'image/jpeg' }))
+
+    expect(await screen.findByText(/recommendation context/i)).toBeVisible()
+    expect(screen.getByText(/scan prepared for bob/i)).toBeVisible()
+    expect(screen.getByText(/profile: used/i)).toBeVisible()
+    expect(screen.getByText(/language context: english/i)).toBeVisible()
+    expect(sessionPayload).toMatchObject({
+      shelfPhotoPath: '/tmp/Librory/scan-uploads/shelf.jpg',
+      targetMemberId: 'member-2',
+      candidates: [{ displayTitle: 'Dune', confidenceLabel: 'DUNE', author: 'Frank Herbert', detectedLanguage: 0 }],
+    })
+  })
+
   it('uploads a shelf photo and renders recognized candidates after polling', async () => {
     const user = userEvent.setup()
     let resolvePoll: ((response: Response) => void) | undefined
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
+
+      if (url === '/api/family/current/members') {
+        return new Response(JSON.stringify([]), { status: 200 })
+      }
 
       if (url === '/api/book-recognition-jobs' && init?.method === 'POST') {
         return new Response(
@@ -44,6 +137,22 @@ describe('ScansPage', () => {
         })
       }
 
+      if (url === '/api/family/current/scan-sessions' && init?.method === 'POST') {
+        return new Response(JSON.stringify({
+          scanSessionId: 'scan-1',
+          familyId: 'family-1',
+          shelfPhotoPath: '/tmp/Librory/scan-uploads/shelf.jpg',
+          candidates: [],
+          expiresAt: '2026-08-08T00:00:00Z',
+          targetMemberId: null,
+          targetMemberDisplayName: 'Current member',
+          targetProfileAvailable: false,
+          targetProfileUsed: false,
+          inferredLanguage: 0,
+          hasMixedLanguages: false,
+        }), { status: 201 })
+      }
+
       throw new Error(`Unexpected fetch request: ${url}`)
     })
 
@@ -66,7 +175,11 @@ describe('ScansPage', () => {
       }),
     )
 
-    const requestInit = fetchMock.mock.calls[0][1] as RequestInit
+    const uploadCall = fetchMock.mock.calls.find(([input]) => String(input) === '/api/book-recognition-jobs')
+    if (!uploadCall) {
+      throw new Error('Expected a book-recognition upload request.')
+    }
+    const requestInit = uploadCall[1] as RequestInit
     const formData = requestInit.body as FormData
     expect(formData.get('photo')).toBe(file)
 
@@ -128,7 +241,8 @@ describe('ScansPage', () => {
 
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => {
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input) === '/api/family/current/members') return new Response(JSON.stringify([]), { status: 200 })
         return new Response('nope', { status: 500 })
       }),
     )
@@ -150,10 +264,12 @@ describe('ScansPage', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(
-        () =>
-          new Promise<Response>(resolve => {
+        (input: RequestInfo | URL) => {
+          if (String(input) === '/api/family/current/members') return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }))
+          return new Promise<Response>(resolve => {
             resolvePost = resolve
-          }),
+          })
+        },
       ),
     )
 
@@ -168,7 +284,7 @@ describe('ScansPage', () => {
     button.focus()
     await user.keyboard('{Enter}')
 
-    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(fetch).toHaveBeenCalledTimes(2)
 
     resolvePost?.(
       new Response(
