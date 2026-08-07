@@ -79,7 +79,7 @@ export function ScansPage() {
     void listMembers()
       .then(result => {
         const eligible = result.filter(member =>
-          member.isActive && (member.memberId === currentMemberId || member.canUseForFamilyRecommendations === true),
+          member.memberId === currentMemberId || (member.isActive && member.canUseForFamilyRecommendations === true),
         )
         setMembers(eligible)
         setSelectedMemberId(previous => {
@@ -251,7 +251,7 @@ export function ScansPage() {
                 id="scan-target-member"
                 value={selectedMemberId}
                 onChange={event => setSelectedMemberId(event.target.value)}
-                disabled={state === 'uploading' || members.length === 0}
+                disabled={state === 'uploading' || state === 'polling' || persistenceState === 'saving' || persistenceState === 'error' || members.length === 0}
                 className="h-12 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-3 text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-[var(--accent-subtle)]"
               >
                 {members.length === 0 && currentMemberId ? <option value={currentMemberId}>{user?.displayName ?? 'Current member'}</option> : null}

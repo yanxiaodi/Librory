@@ -15,7 +15,7 @@ describe('ScansPage', () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       if (String(input) === '/api/family/current/members') {
         return new Response(JSON.stringify([
-          { memberId: 'member-1', displayName: 'Alice', role: 'Admin', preferredLanguage: 0, isActive: true, hasAccount: true, canUseForFamilyRecommendations: true },
+          { memberId: 'member-1', displayName: 'Alice', role: 'Admin', preferredLanguage: 0, isActive: false, hasAccount: true, canUseForFamilyRecommendations: false },
           { memberId: 'member-2', displayName: 'Bob', role: 'Member', preferredLanguage: 0, isActive: true, hasAccount: false, canUseForFamilyRecommendations: true },
           { memberId: 'member-3', displayName: 'Inactive', role: 'Member', preferredLanguage: 0, isActive: false, hasAccount: false, canUseForFamilyRecommendations: true },
         ]), { status: 200 })
@@ -176,7 +176,10 @@ describe('ScansPage', () => {
     )
 
     const uploadCall = fetchMock.mock.calls.find(([input]) => String(input) === '/api/book-recognition-jobs')
-    const requestInit = uploadCall?.[1] as RequestInit
+    if (!uploadCall) {
+      throw new Error('Expected a book-recognition upload request.')
+    }
+    const requestInit = uploadCall[1] as RequestInit
     const formData = requestInit.body as FormData
     expect(formData.get('photo')).toBe(file)
 
