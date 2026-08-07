@@ -3,9 +3,11 @@ import {
   createInvitation,
   acceptInvitation,
   getInvitationPreview,
+  getMemberRecommendationProfile,
   listFamilies,
   revokeInvitation,
   setMemberActive,
+  updateMemberRecommendationProfile,
 } from './familyApi'
 
 afterEach(() => {
@@ -74,5 +76,53 @@ describe('familyApi', () => {
 
     expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/family-invitations/token%2Fwith%20space', { credentials: 'include' })
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/family-invitations/token%2Fwith%20space/accept', expect.objectContaining({ method: 'POST', credentials: 'include' }))
+  })
+
+  it('loads and updates a member recommendation profile with explicit clears', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === 'PUT') {
+        return new Response(JSON.stringify({ memberId: 'member-1' }), { status: 200 })
+      }
+
+      return new Response(JSON.stringify({ memberId: 'member-1', minimumAge: 8 }), { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(getMemberRecommendationProfile('member-1')).resolves.toMatchObject({ memberId: 'member-1', minimumAge: 8 })
+    await updateMemberRecommendationProfile('member-1', {
+      minimumAge: null,
+      maximumAge: null,
+      favoriteAuthors: [],
+      excludedAuthors: [],
+      favoriteGenres: [],
+      excludedGenres: [],
+      favoriteStyles: [],
+      excludedStyles: [],
+      preferredBookLanguages: [],
+      preferenceNotes: null,
+      profileVisibility: 'Family',
+      useInFamilyRecommendations: true,
+    })
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/family/current/members/member-1/recommendation-profile', { credentials: 'include' })
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/family/current/members/member-1/recommendation-profile', expect.objectContaining({
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        minimumAge: null,
+        maximumAge: null,
+        favoriteAuthors: [],
+        excludedAuthors: [],
+        favoriteGenres: [],
+        excludedGenres: [],
+        favoriteStyles: [],
+        excludedStyles: [],
+        preferredBookLanguages: [],
+        preferenceNotes: null,
+        profileVisibility: 'Family',
+        useInFamilyRecommendations: true,
+      }),
+    }))
   })
 })
