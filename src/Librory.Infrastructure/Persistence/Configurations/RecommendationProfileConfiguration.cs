@@ -13,6 +13,10 @@ internal sealed class RecommendationProfileConfiguration : IEntityTypeConfigurat
         value => JsonSerializer.Serialize(value, (JsonSerializerOptions?)null),
         value => JsonSerializer.Deserialize<List<string>>(value, (JsonSerializerOptions?)null) ?? new List<string>());
 
+    private static readonly ValueConverter<List<PreferredLanguage>, string> LanguageListConverter = new(
+        value => JsonSerializer.Serialize(value, (JsonSerializerOptions?)null),
+        value => JsonSerializer.Deserialize<List<PreferredLanguage>>(value, (JsonSerializerOptions?)null) ?? new List<PreferredLanguage>());
+
     private static readonly ValueComparer<List<string>> StringListComparer = new(
         (left, right) => left != null && right != null ? left.SequenceEqual(right) : left == right,
         value => value.Aggregate(0, (hashCode, item) => HashCode.Combine(hashCode, StringComparer.Ordinal.GetHashCode(item))),
@@ -36,6 +40,23 @@ internal sealed class RecommendationProfileConfiguration : IEntityTypeConfigurat
         builder.Property(x => x.FavoriteStyles)
             .HasConversion(StringListConverter)
             .Metadata.SetValueComparer(StringListComparer);
+        builder.Property(x => x.ExcludedAuthors)
+            .HasConversion(StringListConverter)
+            .Metadata.SetValueComparer(StringListComparer);
+        builder.Property(x => x.ExcludedGenres)
+            .HasConversion(StringListConverter)
+            .Metadata.SetValueComparer(StringListComparer);
+        builder.Property(x => x.ExcludedStyles)
+            .HasConversion(StringListConverter)
+            .Metadata.SetValueComparer(StringListComparer);
+        builder.Property(x => x.PreferredBookLanguages)
+            .HasConversion(LanguageListConverter)
+            .Metadata.SetValueComparer(new ValueComparer<List<PreferredLanguage>>(
+                (left, right) => left != null && right != null ? left.SequenceEqual(right) : left == right,
+                value => value.Aggregate(0, (hashCode, item) => HashCode.Combine(hashCode, item.GetHashCode())),
+                value => value.ToList()));
+        builder.Property(x => x.PreferenceNotes).HasMaxLength(1000);
+        builder.Property(x => x.ProfileVisibility).HasConversion<string>().HasMaxLength(32).IsRequired();
 
         builder.HasOne(x => x.Member)
             .WithMany()

@@ -100,4 +100,24 @@ public sealed class LibroryDbContextModelTests
         Assert.True(concurrencyProperty!.IsConcurrencyToken);
         Assert.True(concurrencyProperty.ValueGenerated == Microsoft.EntityFrameworkCore.Metadata.ValueGenerated.OnAddOrUpdate);
     }
+
+    [Fact]
+    public void Recommendation_profile_maps_membership_scoped_preferences()
+    {
+        var options = new DbContextOptionsBuilder<LibroryDbContext>()
+            .UseInMemoryDatabase(nameof(Recommendation_profile_maps_membership_scoped_preferences))
+            .Options;
+
+        using var db = new LibroryDbContext(options);
+        var profileType = db.Model.FindEntityType(typeof(RecommendationProfile));
+
+        Assert.NotNull(profileType);
+        Assert.Contains(profileType!.GetIndexes(), index =>
+            index.IsUnique && index.Properties.Select(property => property.Name).SequenceEqual(["MemberId"]));
+        Assert.Contains(profileType.GetProperties(), property => property.Name == nameof(RecommendationProfile.ExcludedAuthors));
+        Assert.Contains(profileType.GetProperties(), property => property.Name == nameof(RecommendationProfile.PreferredBookLanguages));
+        Assert.Contains(profileType.GetProperties(), property => property.Name == nameof(RecommendationProfile.PreferenceNotes));
+        Assert.Contains(profileType.GetProperties(), property => property.Name == nameof(RecommendationProfile.ProfileVisibility));
+        Assert.Contains(profileType.GetProperties(), property => property.Name == nameof(RecommendationProfile.UseInFamilyRecommendations));
+    }
 }

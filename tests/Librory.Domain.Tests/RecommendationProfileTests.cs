@@ -137,4 +137,69 @@ public class RecommendationProfileTests
         Assert.Contains("Fantasy", RecommendationCategoryCatalog.DefaultGenres);
         Assert.Contains("Character-driven", RecommendationCategoryCatalog.DefaultStyles);
     }
+
+    [Fact]
+    public void Recommendation_profile_stores_excluded_preferences_languages_visibility_and_notes()
+    {
+        var family = Family.Create("The Yans");
+        var member = family.AddMember("Alice");
+        var profile = RecommendationProfile.Create(member);
+
+        profile.ApplyChanges(new RecommendationProfileChanges
+        {
+            ExcludedAuthorsSpecified = true,
+            ExcludedAuthors = ["  Author A  ", "author a"],
+            ExcludedGenresSpecified = true,
+            ExcludedGenres = ["Horror"],
+            PreferredBookLanguagesSpecified = true,
+            PreferredBookLanguages = [PreferredLanguage.Chinese],
+            PreferenceNotesSpecified = true,
+            PreferenceNotes = "Prefers thoughtful stories.",
+            ProfileVisibilitySpecified = true,
+            ProfileVisibility = ProfileVisibility.Family,
+            UseInFamilyRecommendationsSpecified = true,
+            UseInFamilyRecommendations = true,
+        });
+
+        Assert.Equal(["Author A"], profile.ExcludedAuthors);
+        Assert.Equal(["Horror"], profile.ExcludedGenres);
+        Assert.Equal([PreferredLanguage.Chinese], profile.PreferredBookLanguages);
+        Assert.Equal("Prefers thoughtful stories.", profile.PreferenceNotes);
+        Assert.Equal(ProfileVisibility.Family, profile.ProfileVisibility);
+        Assert.True(profile.UseInFamilyRecommendations);
+    }
+
+    [Fact]
+    public void Recommendation_profile_explicitly_clears_fields_while_omitted_fields_are_preserved()
+    {
+        var family = Family.Create("The Yans");
+        var member = family.AddMember("Alice");
+        var profile = RecommendationProfile.Create(member, minimumAge: 8, favoriteGenres: ["Fantasy"]);
+
+        profile.ApplyChanges(new RecommendationProfileChanges
+        {
+            MinimumAgeSpecified = true,
+            MinimumAge = null,
+            FavoriteGenresSpecified = true,
+            FavoriteGenres = null,
+        });
+
+        Assert.Null(profile.MinimumAge);
+        Assert.Empty(profile.FavoriteGenres);
+        Assert.Null(profile.MaximumAge);
+    }
+
+    [Fact]
+    public void Recommendation_profile_rejects_notes_over_one_thousand_characters()
+    {
+        var family = Family.Create("The Yans");
+        var member = family.AddMember("Alice");
+        var profile = RecommendationProfile.Create(member);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => profile.ApplyChanges(new RecommendationProfileChanges
+        {
+            PreferenceNotesSpecified = true,
+            PreferenceNotes = new string('x', 1001),
+        }));
+    }
 }

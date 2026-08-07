@@ -13,7 +13,14 @@ public static class RecommendationProfileDtoFactory
             profile.MinimumAge,
             profile.MaximumAge,
             profile.FavoriteAuthors.ToList(),
+            profile.ExcludedAuthors.ToList(),
             profile.FavoriteGenres.ToList(),
-            profile.FavoriteStyles.ToList());
+            profile.ExcludedGenres.ToList(),
+            profile.FavoriteStyles.ToList(),
+            profile.ExcludedStyles.ToList(),
+            profile.PreferredBookLanguages.ToList(),
+            profile.PreferenceNotes,
+            profile.ProfileVisibility,
+            profile.UseInFamilyRecommendations);
     }
 }
