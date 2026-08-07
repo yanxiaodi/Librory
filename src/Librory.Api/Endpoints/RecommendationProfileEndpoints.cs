@@ -16,130 +16,177 @@ internal static class RecommendationProfileEndpoints
             .RequireAuthorization()
             .WithTags("Recommendations");
 
-        group.MapGet(string.Empty, GetRecommendationProfileAsync)
+        group.MapGet(string.Empty, GetCurrentRecommendationProfileAsync)
             .WithName("GetRecommendationProfile")
             .WithSummary("Get the current member's recommendation profile.")
-            .WithDescription("Returns the signed-in member's recommendation preferences when a profile exists.")
             .Produces<RecommendationProfileResponse>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status404NotFound);
-
-        group.MapPut(string.Empty, UpsertRecommendationProfileAsync)
+        group.MapPut(string.Empty, UpsertCurrentRecommendationProfileAsync)
             .WithName("UpsertRecommendationProfile")
             .WithSummary("Create or update the current member's recommendation profile.")
-            .WithDescription("Creates the signed-in member's profile if needed and preserves existing preferences when fields are omitted.")
             .Produces<RecommendationProfileResponse>(StatusCodes.Status200OK)
             .ProducesValidationProblem()
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status404NotFound);
 
+        var memberGroup = app.MapGroup("/api/family/current/members/{memberId:guid}/recommendation-profile")
+            .RequireAuthorization()
+            .WithTags("Recommendations");
+        memberGroup.MapGet(string.Empty, GetMemberRecommendationProfileAsync)
+            .WithName("GetMemberRecommendationProfile")
+            .Produces<RecommendationProfileResponse>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound);
+        memberGroup.MapPut(string.Empty, UpsertMemberRecommendationProfileAsync)
+            .WithName("UpsertMemberRecommendationProfile")
+            .Produces<RecommendationProfileResponse>(StatusCodes.Status200OK)
+            .ProducesValidationProblem()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound);
+
         return app;
     }
 
-    private static async Task<IResult> GetRecommendationProfileAsync(
+    private static async Task<IResult> GetCurrentRecommendationProfileAsync(
         LibroryDbContext db,
         ICurrentFamilyContextAccessor accessor,
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
         var current = accessor.Current;
-        if (current is null)
-        {
-            return Results.Unauthorized();
-        }
-
-        var profile = await LoadCurrentRecommendationProfileAsync(db, current.FamilyId, current.MemberId, cancellationToken);
-
-        return profile is null
-            ? Results.NotFound()
-            : Results.Ok(RecommendationProfileResponseFactory.Create(profile));
+        return current is null
+            ? Results.Unauthorized()
+            : await GetMemberProfileAsync(current.MemberId, db, current, ct);
     }
 
-    private static async Task<IResult> UpsertRecommendationProfileAsync(
+    private static async Task<IResult> GetMemberRecommendationProfileAsync(
+        Guid memberId,
+        LibroryDbContext db,
+        ICurrentFamilyContextAccessor accessor,
+        CancellationToken ct)
+    {
+        var current = accessor.Current;
+        return current is null
+            ? Results.Unauthorized()
+            : await GetMemberProfileAsync(memberId, db, current, ct);
+    }
+
+    private static async Task<IResult> GetMemberProfileAsync(
+        Guid memberId,
+        LibroryDbContext db,
+        CurrentFamilyContext current,
+        CancellationToken ct)
+    {
+        var member = await LoadActiveMemberAsync(db, current.FamilyId, memberId, ct);
+        if (member is null) return Results.NotFound();
+
+        var profile = await LoadProfileAsync(db, current.FamilyId, memberId, ct);
+        if (profile is null) return Results.NotFound();
+
+        var isOwnerOrAdmin = await CanEditMemberAsync(db, current, memberId, ct);
+        if (!isOwnerOrAdmin && profile.ProfileVisibility == ProfileVisibility.Private)
+        {
+            return Results.Forbid();
+        }
+
+        return Results.Ok(RecommendationProfileResponseFactory.Create(profile, isOwnerOrAdmin));
+    }
+
+    private static async Task<IResult> UpsertCurrentRecommendationProfileAsync(
         UpsertRecommendationProfileRequest request,
         LibroryDbContext db,
         ICurrentFamilyContextAccessor accessor,
-        CancellationToken cancellationToken)
+        CancellationToken ct)
+    {
+        var current = accessor.Current;
+        return current is null
+            ? Results.Unauthorized()
+            : await UpsertMemberProfileAsync(current.MemberId, request, db, current, ct);
+    }
+
+    private static async Task<IResult> UpsertMemberRecommendationProfileAsync(
+        Guid memberId,
+        UpsertRecommendationProfileRequest request,
+        LibroryDbContext db,
+        ICurrentFamilyContextAccessor accessor,
+        CancellationToken ct)
+    {
+        var current = accessor.Current;
+        return current is null
+            ? Results.Unauthorized()
+            : await UpsertMemberProfileAsync(memberId, request, db, current, ct);
+    }
+
+    private static async Task<IResult> UpsertMemberProfileAsync(
+        Guid memberId,
+        UpsertRecommendationProfileRequest request,
+        LibroryDbContext db,
+        CurrentFamilyContext current,
+        CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var current = accessor.Current;
-        if (current is null)
+        var member = await LoadActiveMemberAsync(db, current.FamilyId, memberId, ct);
+        if (member is null) return Results.NotFound();
+        if (!await CanEditMemberAsync(db, current, memberId, ct)) return Results.Forbid();
+
+        var changes = request.ToChanges();
+        var profile = await LoadProfileAsync(db, current.FamilyId, memberId, ct);
+
+        try
         {
-            return Results.Unauthorized();
+            if (profile is null)
+            {
+                profile = RecommendationProfile.Create(member);
+                profile.ApplyChanges(changes);
+                db.RecommendationProfiles.Add(profile);
+            }
+            else
+            {
+                profile.ApplyChanges(changes);
+            }
+
+            await db.SaveChangesAsync(ct);
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or ArgumentOutOfRangeException or ArgumentException)
+        {
+            return Results.Problem(detail: exception.Message, statusCode: StatusCodes.Status400BadRequest);
         }
 
-        var profile = await LoadCurrentRecommendationProfileAsync(db, current.FamilyId, current.MemberId, cancellationToken);
-        if (profile is null)
-        {
-            var member = await LoadCurrentMemberAsync(db, current.FamilyId, current.MemberId, cancellationToken);
-            if (member is null)
-            {
-                return Results.Unauthorized();
-            }
-
-            try
-            {
-                profile = RecommendationProfile.Create(
-                    member,
-                    request.MinimumAge,
-                    request.MaximumAge,
-                    request.FavoriteAuthors,
-                    request.FavoriteGenres,
-                    request.FavoriteStyles);
-            }
-            catch (Exception exception) when (exception is InvalidOperationException or ArgumentOutOfRangeException or ArgumentException)
-            {
-                return Results.Problem(
-                    detail: exception.Message,
-                    statusCode: StatusCodes.Status400BadRequest);
-            }
-
-            db.RecommendationProfiles.Add(profile);
-        }
-        else
-        {
-            try
-            {
-                profile.UpdatePreferences(
-                    request.MinimumAge,
-                    request.MaximumAge,
-                    request.FavoriteAuthors,
-                    request.FavoriteGenres,
-                    request.FavoriteStyles);
-            }
-            catch (Exception exception) when (exception is InvalidOperationException or ArgumentOutOfRangeException or ArgumentException)
-            {
-                return Results.Problem(
-                    detail: exception.Message,
-                    statusCode: StatusCodes.Status400BadRequest);
-            }
-        }
-
-        await db.SaveChangesAsync(cancellationToken);
-
-        return Results.Ok(RecommendationProfileResponseFactory.Create(profile));
+        return Results.Ok(RecommendationProfileResponseFactory.Create(profile, includePrivateNotes: true));
     }
 
-    private static Task<Member?> LoadCurrentMemberAsync(
+    private static Task<Member?> LoadActiveMemberAsync(
         LibroryDbContext db,
         Guid familyId,
         Guid memberId,
-        CancellationToken cancellationToken)
-    {
-        return db.Members
-            .SingleOrDefaultAsync(x => x.Id == memberId && x.FamilyId == familyId, cancellationToken);
-    }
+        CancellationToken ct) =>
+        db.Members.SingleOrDefaultAsync(x => x.Id == memberId && x.FamilyId == familyId && x.IsActive, ct);
 
-    private static Task<RecommendationProfile?> LoadCurrentRecommendationProfileAsync(
+    private static Task<RecommendationProfile?> LoadProfileAsync(
         LibroryDbContext db,
         Guid familyId,
         Guid memberId,
-        CancellationToken cancellationToken)
-    {
-        return db.RecommendationProfiles
+        CancellationToken ct) =>
+        db.RecommendationProfiles
             .Include(x => x.Member)
-            .SingleOrDefaultAsync(
-                x => x.MemberId == memberId && x.Member.FamilyId == familyId,
-                cancellationToken);
+            .SingleOrDefaultAsync(x => x.MemberId == memberId && x.Member.FamilyId == familyId, ct);
+
+    private static async Task<bool> CanEditMemberAsync(
+        LibroryDbContext db,
+        CurrentFamilyContext current,
+        Guid targetMemberId,
+        CancellationToken ct)
+    {
+        if (current.MemberId == targetMemberId) return true;
+
+        return await db.Members.AnyAsync(
+            x => x.Id == current.MemberId &&
+                 x.FamilyId == current.FamilyId &&
+                 x.IsActive &&
+                 x.Role == MemberRole.Admin,
+            ct);
     }
 }

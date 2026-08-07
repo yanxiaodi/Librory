@@ -99,7 +99,25 @@ internal static class FamilyEndpoints
         var current = accessor.Current;
         if (current is null) return Results.Unauthorized();
         var members = await db.Members.Where(x => x.FamilyId == current.FamilyId).OrderBy(x => x.DisplayName).ToListAsync(ct);
-        return Results.Ok(members.Select(x => new FamilyMemberResponse(x.Id, x.DisplayName, x.Role, x.PreferredLanguage, x.IsActive, x.UserAccountId is not null)));
+        var memberIds = members.Select(x => x.Id).ToList();
+        var profiles = await db.RecommendationProfiles
+            .Where(x => memberIds.Contains(x.MemberId))
+            .ToDictionaryAsync(x => x.MemberId, ct);
+
+        return Results.Ok(members.Select(member =>
+        {
+            profiles.TryGetValue(member.Id, out var profile);
+            return new FamilyMemberResponse(
+                member.Id,
+                member.DisplayName,
+                member.Role,
+                member.PreferredLanguage,
+                member.IsActive,
+                member.UserAccountId is not null,
+                profile is not null,
+                profile?.ProfileVisibility,
+                member.IsActive && profile?.ProfileVisibility == ProfileVisibility.Family && profile.UseInFamilyRecommendations);
+        }));
     }
 
     private static async Task<IResult> CreateMemberAsync(CreateMemberRequest request, LibroryDbContext db, ICurrentFamilyContextAccessor accessor, CancellationToken ct)

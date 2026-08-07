@@ -858,6 +858,38 @@ public sealed class ApiIntegrationTests
         Assert.Equal(["Roald Dahl"], updated.FavoriteAuthors);
         Assert.Equal(["Adventure"], updated.FavoriteGenres);
         Assert.Equal(["Reflective"], updated.FavoriteStyles);
+
+        var memberScopedGetResponse = await client.GetAsync($"/api/family/current/members/{created.MemberId}/recommendation-profile");
+        await AssertSuccessAsync(memberScopedGetResponse);
+
+        var memberScopedUpdateResponse = await client.PutAsJsonAsync(
+            $"/api/family/current/members/{created.MemberId}/recommendation-profile",
+            new UpsertRecommendationProfileRequest(9, 13));
+        await AssertSuccessAsync(memberScopedUpdateResponse);
+
+        var memberScopedUpdated = await memberScopedUpdateResponse.Content.ReadFromJsonAsync<RecommendationProfileResponse>();
+        Assert.NotNull(memberScopedUpdated);
+        Assert.Equal(9, memberScopedUpdated!.MinimumAge);
+        Assert.Equal(13, memberScopedUpdated.MaximumAge);
+
+        var memberListResponse = await client.GetAsync("/api/family/current/members");
+        await AssertSuccessAsync(memberListResponse);
+        var members = await memberListResponse.Content.ReadFromJsonAsync<FamilyMemberResponse[]>();
+        Assert.NotNull(members);
+        var currentMember = Assert.Single(members!, member => member.MemberId == created.MemberId);
+        Assert.True(currentMember.HasRecommendationProfile);
+        Assert.True(currentMember.CanUseForFamilyRecommendations);
+
+        var clearResponse = await client.PutAsJsonAsync(
+            $"/api/family/current/members/{created.MemberId}/recommendation-profile",
+            new { minimumAge = (int?)null, favoriteGenres = (string[]?)null });
+        await AssertSuccessAsync(clearResponse);
+        var cleared = await clearResponse.Content.ReadFromJsonAsync<RecommendationProfileResponse>();
+        Assert.NotNull(cleared);
+        Assert.Null(cleared!.MinimumAge);
+        Assert.Empty(cleared.FavoriteGenres);
+        Assert.Equal(13, cleared.MaximumAge);
+        Assert.Equal(["Roald Dahl"], cleared.FavoriteAuthors);
     }
 
     [Fact]
@@ -877,6 +909,38 @@ public sealed class ApiIntegrationTests
             new UpsertRecommendationProfileRequest(12, 8));
 
         Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Admin_can_manage_another_member_profile_but_families_cannot_cross_read_it()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var firstClient = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        using var secondClient = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+
+        await AssertSuccessAsync(await firstClient.PostAsJsonAsync(
+            "/dev/auth/login",
+            new DevLoginRequest("Profile Family One", "Parent", PreferredLanguage.English)));
+
+        var memberResponse = await firstClient.PostAsJsonAsync(
+            "/api/family/current/members",
+            new CreateMemberRequest("Child", PreferredLanguage.Chinese));
+        await AssertSuccessAsync(memberResponse);
+        var child = await memberResponse.Content.ReadFromJsonAsync<FamilyMemberResponse>();
+        Assert.NotNull(child);
+
+        var childProfileResponse = await firstClient.PutAsJsonAsync(
+            $"/api/family/current/members/{child!.MemberId}/recommendation-profile",
+            new UpsertRecommendationProfileRequest(10, 16, preferredBookLanguages: [PreferredLanguage.English]));
+        await AssertSuccessAsync(childProfileResponse);
+
+        await AssertSuccessAsync(await secondClient.PostAsJsonAsync(
+            "/dev/auth/login",
+            new DevLoginRequest("Profile Family Two", "Other Parent", PreferredLanguage.English)));
+
+        var foreignReadResponse = await secondClient.GetAsync(
+            $"/api/family/current/members/{child.MemberId}/recommendation-profile");
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, foreignReadResponse.StatusCode);
     }
 
     private static async Task AssertSuccessAsync(HttpResponseMessage response)

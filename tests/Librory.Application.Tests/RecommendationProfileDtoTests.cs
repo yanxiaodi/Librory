@@ -18,6 +18,19 @@ public class RecommendationProfileDtoTests
             favoriteAuthors: ["Roald Dahl"],
             favoriteGenres: ["Fantasy"],
             favoriteStyles: ["Reflective"]);
+        profile.ApplyChanges(new RecommendationProfileChanges
+        {
+            ExcludedAuthorsSpecified = true,
+            ExcludedAuthors = ["Stephen King"],
+            PreferredBookLanguagesSpecified = true,
+            PreferredBookLanguages = [PreferredLanguage.Chinese],
+            PreferenceNotesSpecified = true,
+            PreferenceNotes = "Thoughtful stories",
+            ProfileVisibilitySpecified = true,
+            ProfileVisibility = ProfileVisibility.Private,
+            UseInFamilyRecommendationsSpecified = true,
+            UseInFamilyRecommendations = false,
+        });
 
         var dto = RecommendationProfileDtoFactory.Create(profile);
 
@@ -27,5 +40,10 @@ public class RecommendationProfileDtoTests
         Assert.Equal(["Roald Dahl"], dto.FavoriteAuthors);
         Assert.Equal(["Fantasy"], dto.FavoriteGenres);
         Assert.Equal(["Reflective"], dto.FavoriteStyles);
+        Assert.Equal(["Stephen King"], dto.ExcludedAuthors);
+        Assert.Equal([PreferredLanguage.Chinese], dto.PreferredBookLanguages);
+        Assert.Equal("Thoughtful stories", dto.PreferenceNotes);
+        Assert.Equal(ProfileVisibility.Private, dto.ProfileVisibility);
+        Assert.False(dto.UseInFamilyRecommendations);
     }
 }
