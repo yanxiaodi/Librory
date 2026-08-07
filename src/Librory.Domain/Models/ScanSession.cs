@@ -83,6 +83,7 @@ public sealed class ScanSession
     {
         var candidate = GetCandidateById(candidateId);
         _candidates.Remove(candidate);
+        RecalculateLanguageContext();
     }
 
     public void CorrectCandidate(

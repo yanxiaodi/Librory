@@ -216,7 +216,8 @@ public sealed class ScanSessionService : IScanSessionService
             throw new ArgumentException("The target member is not available for family recommendations.", nameof(requestedTargetMemberId));
         }
 
-        return new ScanTargetContext(target.Id, profileAvailable, profileAvailable);
+        var profileUsed = profile is not null && (isCurrentMember || canUseAlternateProfile);
+        return new ScanTargetContext(target.Id, profileAvailable, profileUsed);
     }
 
     private Task<ScanSession?> LoadScanSessionAsync(

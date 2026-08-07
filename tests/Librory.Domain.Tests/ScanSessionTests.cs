@@ -217,6 +217,24 @@ public class ScanSessionTests
     }
 
     [Fact]
+    public void Removing_candidate_recalculates_language_context()
+    {
+        var family = Family.Create("The Yans");
+        var session = family.StartScanSession("shelf-photo.jpg");
+        var english = ScanCandidate.Create("English book", "High", detectedLanguage: PreferredLanguage.English);
+        var chinese = ScanCandidate.Create("Chinese book", "High", detectedLanguage: PreferredLanguage.Chinese);
+
+        session.AddCandidate(english);
+        session.AddCandidate(chinese);
+        Assert.True(session.HasMixedLanguages);
+
+        session.RemoveCandidate(chinese.Id);
+
+        Assert.False(session.HasMixedLanguages);
+        Assert.Equal(PreferredLanguage.English, session.InferredLanguage);
+    }
+
+    [Fact]
     public void Scan_session_throws_when_retention_window_is_not_positive()
     {
         var family = Family.Create("The Yans");
