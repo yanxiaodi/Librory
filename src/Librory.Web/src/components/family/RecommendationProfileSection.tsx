@@ -161,6 +161,8 @@ export function RecommendationProfileSection({ isAdmin, currentMemberId, refresh
     if (!selectedMemberId) return
     let cancelled = false
     setLoadingProfile(true)
+    setForm(emptyForm)
+    setError(null)
     setSaved(false)
     setReadOnly(!isAdmin && selectedMemberId !== currentMemberId)
     void getMemberRecommendationProfile(selectedMemberId)

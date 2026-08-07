@@ -92,6 +92,33 @@ describe('RecommendationProfileSection', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/family/current/members/member-2/recommendation-profile', { credentials: 'include' })
   })
 
+  it('clears the previous member form while the next profile is loading', async () => {
+    const user = userEvent.setup()
+    let resolveSecondProfile: (response: Response) => void = () => undefined
+    const secondProfile = new Promise<Response>(resolve => { resolveSecondProfile = resolve })
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/family/current/members') {
+        return new Response(JSON.stringify([
+          { memberId: 'member-1', displayName: 'Alice', role: 'Admin', preferredLanguage: 0, isActive: true, hasAccount: true },
+          { memberId: 'member-2', displayName: 'Mia', role: 'Member', preferredLanguage: 1, isActive: true, hasAccount: false },
+        ]), { status: 200 })
+      }
+      if (url.includes('member-2')) return secondProfile
+      return new Response(JSON.stringify({ memberId: 'member-1', minimumAge: null, maximumAge: null, favoriteAuthors: [], excludedAuthors: [], favoriteGenres: [], excludedGenres: [], favoriteStyles: [], excludedStyles: [], preferredBookLanguages: [], preferenceNotes: 'Alice private note', profileVisibility: 'Private', useInFamilyRecommendations: true }), { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RecommendationProfileSection isAdmin currentMemberId="member-1" />)
+
+    expect(await screen.findByDisplayValue('Alice private note')).toBeVisible()
+    await user.selectOptions(screen.getByLabelText(/^member$/i), 'member-2')
+    expect(screen.queryByDisplayValue('Alice private note')).not.toBeInTheDocument()
+
+    resolveSecondProfile(new Response(JSON.stringify({ memberId: 'member-2', minimumAge: null, maximumAge: null, favoriteAuthors: [], excludedAuthors: [], favoriteGenres: [], excludedGenres: [], favoriteStyles: [], excludedStyles: [], preferredBookLanguages: [], preferenceNotes: 'Mia note', profileVisibility: 'Family', useInFamilyRecommendations: true }), { status: 200 }))
+    expect(await screen.findByDisplayValue('Mia note')).toBeVisible()
+  })
+
   it('shows a read-only state for a forbidden profile without rendering private fields', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       if (String(input) === '/api/family/current/members') {
