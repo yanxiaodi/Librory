@@ -14,7 +14,28 @@ export type FamilyMember = {
   preferredLanguage: number | string
   isActive: boolean
   hasAccount: boolean
+  hasRecommendationProfile?: boolean
+  recommendationProfileVisibility?: number | string | null
+  canUseForFamilyRecommendations?: boolean
 }
+
+export type RecommendationProfile = {
+  memberId: string
+  minimumAge: number | null
+  maximumAge: number | null
+  favoriteAuthors: string[]
+  excludedAuthors: string[]
+  favoriteGenres: string[]
+  excludedGenres: string[]
+  favoriteStyles: string[]
+  excludedStyles: string[]
+  preferredBookLanguages: Array<number | string>
+  preferenceNotes: string | null
+  profileVisibility: number | string
+  useInFamilyRecommendations: boolean
+}
+
+export type RecommendationProfileUpdate = Omit<RecommendationProfile, 'memberId'>
 
 export type FamilyInvitation = {
   invitationId: string
@@ -105,6 +126,15 @@ export const updateMember = (memberId: string, input: UpdateMemberInput) =>
 
 export const setMemberActive = (memberId: string, active: boolean) =>
   request<FamilyMember>(`/api/family/current/members/${memberId}/${active ? 'reactivate' : 'deactivate'}`, { method: 'POST' })
+
+export const getMemberRecommendationProfile = (memberId: string) =>
+  request<RecommendationProfile>(`/api/family/current/members/${memberId}/recommendation-profile`)
+
+export const updateMemberRecommendationProfile = (memberId: string, input: RecommendationProfileUpdate) =>
+  request<RecommendationProfile>(
+    `/api/family/current/members/${memberId}/recommendation-profile`,
+    jsonRequest('PUT', input),
+  )
 
 export const listInvitations = () => request<FamilyInvitation[]>('/api/family/current/invitations')
 

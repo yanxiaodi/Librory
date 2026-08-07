@@ -71,6 +71,7 @@ export function AuthSessionProvider({
         family: {
           id: currentFamily.familyId,
           name: currentFamily.familyName,
+          memberId: currentFamily.memberId,
           memberCount: currentFamily.memberCount,
         },
       })

@@ -3,6 +3,7 @@ export type AuthStatus = 'loading' | 'anonymous' | 'authenticated'
 export type FamilySummary = {
   id: string
   name: string
+  memberId: string
   memberCount: number
 }
 

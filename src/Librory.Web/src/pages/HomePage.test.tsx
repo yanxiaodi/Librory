@@ -11,7 +11,7 @@ describe('HomePage', () => {
           initialSession={{
             status: 'authenticated',
             user: { id: 'user-1', displayName: 'Alice', email: 'alice@example.com' },
-            family: { id: 'family-1', name: 'The Yans', memberCount: 1 },
+            family: { id: 'family-1', name: 'The Yans', memberId: 'member-1', memberCount: 1 },
           }}
         >
           <App />
