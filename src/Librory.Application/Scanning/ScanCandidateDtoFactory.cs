@@ -18,6 +18,7 @@ public static class ScanCandidateDtoFactory
             candidate.RecommendationScore,
             candidate.IsAlreadyOwned || duplicateDetection.HasPotentialDuplicate,
             candidate.DuplicateMessage ?? duplicateDetection.FollowUpHint,
-            candidate.ConfidenceLabel);
+            candidate.ConfidenceLabel,
+            candidate.DetectedLanguage);
     }
 }

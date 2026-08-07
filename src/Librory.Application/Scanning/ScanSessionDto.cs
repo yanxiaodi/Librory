@@ -1,3 +1,5 @@
+using Librory.Domain.Models;
+
 namespace Librory.Application.Scanning;
 
 public sealed record ScanSessionDto(
@@ -5,4 +7,10 @@ public sealed record ScanSessionDto(
     Guid FamilyId,
     string ShelfPhotoPath,
     IReadOnlyList<ScanCandidateDto> Candidates,
-    DateTimeOffset ExpiresAt);
+    DateTimeOffset ExpiresAt,
+    Guid? TargetMemberId = null,
+    string TargetMemberDisplayName = "",
+    bool TargetProfileAvailable = false,
+    bool TargetProfileUsed = false,
+    PreferredLanguage? InferredLanguage = null,
+    bool HasMixedLanguages = false);

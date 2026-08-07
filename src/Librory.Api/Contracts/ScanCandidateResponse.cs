@@ -1,3 +1,5 @@
+using Librory.Domain.Models;
+
 namespace Librory.Api.Contracts;
 
 public sealed record ScanCandidateResponse(
@@ -7,4 +9,5 @@ public sealed record ScanCandidateResponse(
     decimal RecommendationScore,
     bool IsAlreadyOwned,
     string? DuplicateMessage,
-    string ConfidenceLabel);
+    string ConfidenceLabel,
+    PreferredLanguage? DetectedLanguage = null);

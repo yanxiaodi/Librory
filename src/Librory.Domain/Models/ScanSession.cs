@@ -10,22 +10,23 @@ public sealed class ScanSession
     public Family Family { get; private set; } = null!;
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset ExpiresAt { get; private set; }
-    public Guid TargetMemberId { get; private set; }
+    public Guid? TargetMemberId { get; private set; }
     public bool TargetProfileAvailable { get; private set; }
     public bool TargetProfileUsed { get; private set; }
     public PreferredLanguage? InferredLanguage { get; private set; }
     public bool HasMixedLanguages { get; private set; }
+    public ScanLanguageContext LanguageContext => new(InferredLanguage, HasMixedLanguages);
     private readonly List<ScanCandidate> _candidates = [];
     public IReadOnlyList<ScanCandidate> Candidates => _candidates;
 
     public static ScanSession Create(Family family, string shelfPhotoPath, TimeSpan? retentionWindow = null)
     {
-        return Create(family, Guid.Empty, false, false, shelfPhotoPath, retentionWindow);
+        return Create(family, null, false, false, shelfPhotoPath, retentionWindow);
     }
 
     public static ScanSession Create(
         Family family,
-        Guid targetMemberId,
+        Guid? targetMemberId,
         bool targetProfileAvailable,
         bool targetProfileUsed,
         string shelfPhotoPath,
@@ -53,7 +54,7 @@ public sealed class ScanSession
 
     private void AttachTo(
         Family family,
-        Guid targetMemberId,
+        Guid? targetMemberId,
         bool targetProfileAvailable,
         bool targetProfileUsed,
         string shelfPhotoPath,
@@ -91,7 +92,8 @@ public sealed class ScanSession
         string? author = null,
         decimal recommendationScore = 0m,
         bool isAlreadyOwned = false,
-        string? duplicateMessage = null)
+        string? duplicateMessage = null,
+        PreferredLanguage? detectedLanguage = null)
     {
         var candidate = GetCandidateById(candidateId);
         candidate.ApplyCorrection(
@@ -100,7 +102,8 @@ public sealed class ScanSession
             author,
             recommendationScore,
             isAlreadyOwned,
-            duplicateMessage);
+            duplicateMessage,
+            detectedLanguage);
         RecalculateLanguageContext();
     }
 

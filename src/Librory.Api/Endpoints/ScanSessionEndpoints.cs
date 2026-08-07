@@ -254,8 +254,10 @@ internal static class ScanSessionEndpoints
                             candidate.Author,
                             candidate.RecommendationScore,
                             candidate.IsAlreadyOwned,
-                            candidate.DuplicateMessage))
-                        .ToList()),
+                            candidate.DuplicateMessage,
+                            candidate.DetectedLanguage))
+                        .ToList(),
+                    request.TargetMemberId),
                 cancellationToken);
 
             return Results.Created(
@@ -464,6 +466,7 @@ internal static class ScanSessionEndpoints
             .Include(x => x.BookCopies)
                 .ThenInclude(x => x.BookEdition)
                     .ThenInclude(x => x.BookWork)
+            .Include(x => x.Members)
             .SingleOrDefaultAsync(x => x.Id == familyId, cancellationToken);
     }
 
@@ -515,7 +518,8 @@ internal static class ScanSessionEndpoints
                 candidate.RecommendationScore,
                 candidate.IsAlreadyOwned,
                 candidate.DuplicateMessage,
-                candidate.ConfidenceLabel))
+                candidate.ConfidenceLabel,
+                candidate.DetectedLanguage))
             .ToList();
 
         return new ScanSessionResponse(
@@ -523,6 +527,12 @@ internal static class ScanSessionEndpoints
             dto.FamilyId,
             dto.ShelfPhotoPath,
             candidates,
-            dto.ExpiresAt);
+            dto.ExpiresAt,
+            dto.TargetMemberId,
+            dto.TargetMemberDisplayName,
+            dto.TargetProfileAvailable,
+            dto.TargetProfileUsed,
+            dto.InferredLanguage,
+            dto.HasMixedLanguages);
     }
 }

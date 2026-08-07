@@ -5,4 +5,5 @@ public sealed record ScanShelfRequest(
     string? PreferredLanguage,
     string ShelfPhotoPath,
     TimeSpan? RetentionWindow = null,
-    IReadOnlyList<ScanCandidateInput>? Candidates = null);
+    IReadOnlyList<ScanCandidateInput>? Candidates = null,
+    Guid? TargetMemberId = null);

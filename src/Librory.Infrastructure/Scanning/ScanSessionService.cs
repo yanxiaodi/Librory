@@ -51,7 +51,11 @@ public sealed class ScanSessionService : IScanSessionService
                 "Scan photo retention window must be positive.");
         }
 
-        var session = ScanSessionRecorder.Record(family, request with { RetentionWindow = retentionWindow });
+        var targetContext = await ResolveTargetContextAsync(family, request.TargetMemberId, current, cancellationToken);
+        var session = ScanSessionRecorder.Record(
+            family,
+            request with { RetentionWindow = retentionWindow },
+            targetContext);
         _db.ScanSessions.Add(session);
         await _db.SaveChangesAsync(cancellationToken);
 
@@ -181,7 +185,38 @@ public sealed class ScanSessionService : IScanSessionService
             .Include(x => x.BookCopies)
                 .ThenInclude(x => x.BookEdition)
                     .ThenInclude(x => x.BookWork)
+            .Include(x => x.Members)
             .SingleOrDefaultAsync(x => x.Id == familyId, cancellationToken);
+    }
+
+    private async Task<ScanTargetContext> ResolveTargetContextAsync(
+        Family family,
+        Guid? requestedTargetMemberId,
+        CurrentFamilyContext current,
+        CancellationToken cancellationToken)
+    {
+        var targetMemberId = requestedTargetMemberId ?? current.MemberId;
+        var target = family.Members.SingleOrDefault(member => member.Id == targetMemberId);
+        if (target is null || !target.IsActive)
+        {
+            throw new ArgumentException("Target member must be an active member of the current family.", nameof(requestedTargetMemberId));
+        }
+
+        var profile = await _db.RecommendationProfiles
+            .SingleOrDefaultAsync(candidate => candidate.MemberId == target.Id, cancellationToken);
+        var profileAvailable = profile is not null;
+        var isCurrentMember = target.Id == current.MemberId;
+        var isAdmin = current.MemberRole == MemberRole.Admin;
+        var canUseAlternateProfile = profile is not null
+            && profile.ProfileVisibility == ProfileVisibility.Family
+            && profile.UseInFamilyRecommendations;
+
+        if (!isCurrentMember && !isAdmin && !canUseAlternateProfile)
+        {
+            throw new ArgumentException("The target member is not available for family recommendations.", nameof(requestedTargetMemberId));
+        }
+
+        return new ScanTargetContext(target.Id, profileAvailable, profileAvailable);
     }
 
     private Task<ScanSession?> LoadScanSessionAsync(

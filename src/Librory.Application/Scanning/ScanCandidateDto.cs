@@ -1,3 +1,5 @@
+using Librory.Domain.Models;
+
 namespace Librory.Application.Scanning;
 
 public sealed record ScanCandidateDto(
@@ -7,4 +9,5 @@ public sealed record ScanCandidateDto(
     decimal RecommendationScore,
     bool IsAlreadyOwned,
     string? DuplicateMessage,
-    string ConfidenceLabel);
+    string ConfidenceLabel,
+    PreferredLanguage? DetectedLanguage = null);
