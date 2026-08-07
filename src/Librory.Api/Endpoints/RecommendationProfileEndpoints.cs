@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Librory.Api.Contracts;
 using Librory.Application.Families;
 using Librory.Domain.Models;
@@ -132,11 +133,11 @@ internal static class RecommendationProfileEndpoints
         if (member is null) return Results.NotFound();
         if (!await CanEditMemberAsync(db, current, memberId, ct)) return Results.Forbid();
 
-        var changes = request.ToChanges();
-        var profile = await LoadProfileAsync(db, current.FamilyId, memberId, ct);
-
         try
         {
+            var changes = request.ToChanges();
+            var profile = await LoadProfileAsync(db, current.FamilyId, memberId, ct);
+
             if (profile is null)
             {
                 profile = RecommendationProfile.Create(member);
@@ -149,13 +150,13 @@ internal static class RecommendationProfileEndpoints
             }
 
             await db.SaveChangesAsync(ct);
+
+            return Results.Ok(RecommendationProfileResponseFactory.Create(profile, includePrivateNotes: true));
         }
-        catch (Exception exception) when (exception is InvalidOperationException or ArgumentOutOfRangeException or ArgumentException)
+        catch (Exception exception) when (exception is JsonException or InvalidOperationException or ArgumentOutOfRangeException or ArgumentException)
         {
             return Results.Problem(detail: exception.Message, statusCode: StatusCodes.Status400BadRequest);
         }
-
-        return Results.Ok(RecommendationProfileResponseFactory.Create(profile, includePrivateNotes: true));
     }
 
     private static Task<Member?> LoadActiveMemberAsync(

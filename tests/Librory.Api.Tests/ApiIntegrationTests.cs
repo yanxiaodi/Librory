@@ -872,6 +872,15 @@ public sealed class ApiIntegrationTests
         Assert.Equal(9, memberScopedUpdated!.MinimumAge);
         Assert.Equal(13, memberScopedUpdated.MaximumAge);
 
+        var nullNonNullableFieldsResponse = await client.PutAsJsonAsync(
+            $"/api/family/current/members/{created.MemberId}/recommendation-profile",
+            new { profileVisibility = (string?)null, useInFamilyRecommendations = (bool?)null });
+        await AssertSuccessAsync(nullNonNullableFieldsResponse);
+        var preserved = await nullNonNullableFieldsResponse.Content.ReadFromJsonAsync<RecommendationProfileResponse>();
+        Assert.NotNull(preserved);
+        Assert.Equal(ProfileVisibility.Family, preserved!.ProfileVisibility);
+        Assert.True(preserved.UseInFamilyRecommendations);
+
         var memberListResponse = await client.GetAsync("/api/family/current/members");
         await AssertSuccessAsync(memberListResponse);
         var members = await memberListResponse.Content.ReadFromJsonAsync<FamilyMemberResponse[]>();
@@ -907,6 +916,27 @@ public sealed class ApiIntegrationTests
         var response = await client.PutAsJsonAsync(
             "/api/family/current/recommendation-profile",
             new UpsertRecommendationProfileRequest(12, 8));
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Recommendation_profile_returns_bad_request_for_invalid_json_value_type()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var bootstrapResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        await AssertSuccessAsync(bootstrapResponse);
+
+        using var content = new StringContent(
+            "{\"minimumAge\":\"not-a-number\"}",
+            System.Text.Encoding.UTF8,
+            "application/json");
+        var response = await client.PutAsync("/api/family/current/recommendation-profile", content);
 
         Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
     }

@@ -73,13 +73,16 @@ public sealed class UpsertRecommendationProfileRequest
         PreferredBookLanguages = ReadList<PreferredLanguage>(PreferredBookLanguages),
         PreferenceNotesSpecified = IsSpecified(PreferenceNotes),
         PreferenceNotes = ReadNullableReference<string>(PreferenceNotes),
-        ProfileVisibilitySpecified = IsSpecified(ProfileVisibility),
+        ProfileVisibilitySpecified = IsNonNullSpecified(ProfileVisibility),
         ProfileVisibility = ReadValue(ProfileVisibility, default(ProfileVisibility)),
-        UseInFamilyRecommendationsSpecified = IsSpecified(UseInFamilyRecommendations),
+        UseInFamilyRecommendationsSpecified = IsNonNullSpecified(UseInFamilyRecommendations),
         UseInFamilyRecommendations = ReadValue(UseInFamilyRecommendations, true),
     };
 
     private static bool IsSpecified(JsonElement element) => element.ValueKind != JsonValueKind.Undefined;
+
+    private static bool IsNonNullSpecified(JsonElement element) =>
+        element.ValueKind is not (JsonValueKind.Undefined or JsonValueKind.Null);
 
     private static JsonElement ToElement<T>(T? value) where T : struct =>
         value.HasValue ? JsonSerializer.SerializeToElement(value.Value) : default;
