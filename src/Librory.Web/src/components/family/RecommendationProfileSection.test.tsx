@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RecommendationProfileSection } from './RecommendationProfileSection'
 
@@ -43,6 +43,37 @@ describe('RecommendationProfileSection', () => {
     expect(screen.getByDisplayValue('12')).toBeVisible()
     expect(screen.getByDisplayValue('Enjoys imaginative stories.')).toBeVisible()
     expect(screen.getByRole('combobox', { name: /profile visibility/i })).toHaveValue('Family')
+    expect(screen.getByLabelText(/minimum reading age/i)).toHaveAttribute('type', 'number')
+    expect(screen.getByLabelText(/minimum reading age/i)).toHaveAttribute('inputmode', 'numeric')
+  })
+
+  it('rejects invalid reading ages instead of silently clearing them', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === '/api/family/current/members') {
+        return new Response(JSON.stringify([{ memberId: 'member-1', displayName: 'Alice', role: 'Admin', preferredLanguage: 0, isActive: true, hasAccount: true }]), { status: 200 })
+      }
+      if (init?.method === 'PUT') return new Response(JSON.stringify({ memberId: 'member-1' }), { status: 200 })
+      return new Response(null, { status: 404 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RecommendationProfileSection isAdmin currentMemberId="member-1" />)
+
+    const minimumAge = await screen.findByLabelText(/minimum reading age/i)
+    fireEvent.change(minimumAge, { target: { value: '1.5' } })
+    fireEvent.submit(screen.getByRole('button', { name: /save preferences/i }).closest('form')!)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/whole numbers/i)
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(false)
+  })
+
+  it('shows a member loading error instead of an empty-family message', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 500 })))
+
+    render(<RecommendationProfileSection isAdmin currentMemberId="member-1" />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/unable to load recommendation members/i)
+    expect(screen.queryByText(/no active family members/i)).not.toBeInTheDocument()
   })
 
   it('creates an empty profile after a 404 and sends explicit clears', async () => {

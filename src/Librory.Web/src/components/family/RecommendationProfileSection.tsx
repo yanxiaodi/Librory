@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useRef, useState, type InputHTMLAttributes } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -102,13 +102,21 @@ function toPayload(form: ProfileFormState): RecommendationProfileUpdate {
   }
 }
 
-function Field({ label, id, value, onChange, disabled, multiline = false }: {
+function hasValidAge(value: string): boolean {
+  return value.trim() === '' || /^\d+$/.test(value.trim())
+}
+
+function Field({ label, id, value, onChange, disabled, multiline = false, type = 'text', inputMode, min, step }: {
   label: string
   id: string
   value: string
   onChange: (value: string) => void
   disabled: boolean
   multiline?: boolean
+  type?: InputHTMLAttributes<HTMLInputElement>['type']
+  inputMode?: InputHTMLAttributes<HTMLInputElement>['inputMode']
+  min?: number
+  step?: number
 }) {
   return (
     <label className={labelClassName} htmlFor={id}>
@@ -116,7 +124,7 @@ function Field({ label, id, value, onChange, disabled, multiline = false }: {
       {multiline ? (
         <textarea id={id} value={value} disabled={disabled} onChange={event => onChange(event.target.value)} rows={3} className={`${inputClassName} h-auto py-3`} />
       ) : (
-        <input id={id} value={value} disabled={disabled} onChange={event => onChange(event.target.value)} className={inputClassName} />
+        <input id={id} type={type} inputMode={inputMode} min={min} step={step} value={value} disabled={disabled} onChange={event => onChange(event.target.value)} className={inputClassName} />
       )}
     </label>
   )
@@ -132,6 +140,7 @@ export function RecommendationProfileSection({ isAdmin, currentMemberId, refresh
   const [error, setError] = useState<string | null>(null)
   const [readOnly, setReadOnly] = useState(false)
   const [saved, setSaved] = useState(false)
+  const profileMemberId = useRef<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -158,10 +167,12 @@ export function RecommendationProfileSection({ isAdmin, currentMemberId, refresh
   }, [currentMemberId, refreshKey])
 
   useEffect(() => {
-    if (!selectedMemberId) return
+    if (loadingMembers || !selectedMemberId || !members.some(member => member.memberId === selectedMemberId)) return
     let cancelled = false
     setLoadingProfile(true)
-    setForm(emptyForm)
+    const memberChanged = profileMemberId.current !== selectedMemberId
+    profileMemberId.current = selectedMemberId
+    if (memberChanged) setForm(emptyForm)
     setError(null)
     setSaved(false)
     setReadOnly(!isAdmin && selectedMemberId !== currentMemberId)
@@ -190,7 +201,7 @@ export function RecommendationProfileSection({ isAdmin, currentMemberId, refresh
         if (!cancelled) setLoadingProfile(false)
       })
     return () => { cancelled = true }
-  }, [currentMemberId, isAdmin, refreshKey, selectedMemberId])
+  }, [currentMemberId, isAdmin, loadingMembers, members, refreshKey, selectedMemberId])
 
   const selectedMember = useMemo(
     () => members.find(member => member.memberId === selectedMemberId),
@@ -212,6 +223,10 @@ export function RecommendationProfileSection({ isAdmin, currentMemberId, refresh
   const handleSave = async (event: FormEvent) => {
     event.preventDefault()
     if (!selectedMemberId || !canEdit) return
+    if (!hasValidAge(form.minimumAge) || !hasValidAge(form.maximumAge)) {
+      setError('Reading ages must be whole numbers.')
+      return
+    }
     setSaving(true)
     setSaved(false)
     setError(null)
@@ -234,7 +249,8 @@ export function RecommendationProfileSection({ isAdmin, currentMemberId, refresh
       </CardHeader>
       <CardContent className="grid gap-4 pt-0">
         {loadingMembers || loadingProfile ? <p className="text-sm text-[var(--text-tertiary)]">Loading preferences…</p> : null}
-        {!loadingMembers && members.length === 0 ? <p className="text-sm text-[var(--text-secondary)]">No active family members found.</p> : null}
+        {!loadingMembers && members.length === 0 && !error ? <p className="text-sm text-[var(--text-secondary)]">No active family members found.</p> : null}
+        {!loadingMembers && members.length === 0 && error ? <p role="alert" className="text-sm text-[var(--status-alert)]">{error}</p> : null}
         {members.length > 0 ? (
           <form className="grid gap-4" onSubmit={event => void handleSave(event)}>
             {members.length > 1 ? (
@@ -250,8 +266,8 @@ export function RecommendationProfileSection({ isAdmin, currentMemberId, refresh
             {error !== 'This profile is not available to you.' ? (
               <>
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Minimum reading age" id="minimum-reading-age" value={form.minimumAge} disabled={!canEdit || loadingProfile} onChange={value => updateField('minimumAge', value)} />
-                  <Field label="Maximum reading age" id="maximum-reading-age" value={form.maximumAge} disabled={!canEdit || loadingProfile} onChange={value => updateField('maximumAge', value)} />
+                  <Field label="Minimum reading age" id="minimum-reading-age" type="number" inputMode="numeric" min={0} step={1} value={form.minimumAge} disabled={!canEdit || loadingProfile} onChange={value => updateField('minimumAge', value)} />
+                  <Field label="Maximum reading age" id="maximum-reading-age" type="number" inputMode="numeric" min={0} step={1} value={form.maximumAge} disabled={!canEdit || loadingProfile} onChange={value => updateField('maximumAge', value)} />
                 </div>
                 <div className="grid gap-3">
                   <Field label="Favorite authors" id="favorite-authors" value={form.favoriteAuthors} disabled={!canEdit || loadingProfile} onChange={value => updateField('favoriteAuthors', value)} />
