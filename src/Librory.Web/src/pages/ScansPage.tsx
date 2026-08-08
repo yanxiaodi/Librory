@@ -70,6 +70,7 @@ export function ScansPage() {
   const [persistenceState, setPersistenceState] = React.useState<PersistenceState>('idle')
   const [persistenceError, setPersistenceError] = React.useState<string | null>(null)
   const [reviewedCandidates, setReviewedCandidates] = React.useState<BookRecognitionJobResponse['candidates']>([])
+  const [reviewedCandidatesInitialized, setReviewedCandidatesInitialized] = React.useState(false)
   const pollTimerRef = React.useRef<number | null>(null)
   const activeJobIdRef = React.useRef<string | null>(null)
   const activeTargetMemberIdRef = React.useRef<string | undefined>(undefined)
@@ -114,10 +115,11 @@ export function ScansPage() {
     setPersistenceError(null)
 
     try {
+      const candidatesToPersist = reviewedCandidatesInitialized ? reviewedCandidates : completedJob.candidates
       const response = await createScanSession({
         shelfPhotoPath: completedJob.sourcePhotoPath,
         targetMemberId: activeTargetMemberIdRef.current,
-        candidates: (reviewedCandidates.length > 0 ? reviewedCandidates : completedJob.candidates).map(candidate => ({
+        candidates: candidatesToPersist.map(candidate => ({
           displayTitle: candidate.displayTitle,
           confidenceLabel: candidate.evidenceText,
           author: candidate.metadataMatches[0]?.authors[0],
@@ -133,7 +135,7 @@ export function ScansPage() {
       setPersistenceState('error')
       setPersistenceError('The scan results are ready, but the member context could not be saved.')
     }
-  }, [reviewedCandidates])
+  }, [reviewedCandidates, reviewedCandidatesInitialized])
 
   const schedulePoll = React.useCallback(async (jobId: string) => {
     try {
@@ -143,10 +145,11 @@ export function ScansPage() {
       }
 
       setJob(current)
-      setReviewedCandidates(current.candidates)
 
       if (isRecognitionJobComplete(current.status)) {
         setState(current.status === 3 ? 'error' : 'ready')
+        setReviewedCandidates(current.candidates)
+        setReviewedCandidatesInitialized(true)
         clearPollTimer()
         if (current.status === 2) void persistScanSession(current)
         return
@@ -189,6 +192,7 @@ export function ScansPage() {
     setFileName(file.name)
     setJob(null)
     setReviewedCandidates([])
+    setReviewedCandidatesInitialized(false)
     setScanSession(null)
     setPersistenceState('idle')
     setPersistenceError(null)
@@ -199,11 +203,12 @@ export function ScansPage() {
     try {
       const response = await createBookRecognitionJob(file)
       setJob(response)
-      setReviewedCandidates(response.candidates)
       activeJobIdRef.current = response.jobId
 
       if (isRecognitionJobComplete(response.status)) {
         setState(response.status === 3 ? 'error' : 'ready')
+        setReviewedCandidates(response.candidates)
+        setReviewedCandidatesInitialized(true)
         if (response.status === 2) void persistScanSession(response)
         return
       }

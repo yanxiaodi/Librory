@@ -15,9 +15,27 @@ export function BookRecognitionResults({ job, candidates, onCandidatesChange }: 
   )
 
   React.useEffect(() => {
-    setSearchTextByCandidateId(
-      Object.fromEntries(candidates.map(candidate => [candidate.candidateId, candidate.displayTitle])),
-    )
+    setSearchTextByCandidateId(current => {
+      const nextState: Record<string, string> = {}
+      let changed = false
+
+      for (const candidate of candidates) {
+        const existingValue = current[candidate.candidateId]
+        if (existingValue === undefined) {
+          nextState[candidate.candidateId] = candidate.displayTitle
+          changed = true
+          continue
+        }
+
+        nextState[candidate.candidateId] = existingValue
+      }
+
+      if (Object.keys(current).length !== candidates.length) {
+        changed = true
+      }
+
+      return changed ? nextState : current
+    })
   }, [candidates])
 
   const isFailed = job.failureMessage !== null

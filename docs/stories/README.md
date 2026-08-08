@@ -4,7 +4,7 @@ This directory contains the standalone story documents for Librory.
 
 ## Canonical Sources
 
-- [Backend Story Map](../backend-story-map.md)
+- [MVP Story Map](../story-map-mvp.md)
 - [MVP Story Map](../story-map-mvp.md)
 - [Story Template](story-template.md)
 
@@ -84,4 +84,4 @@ This directory contains the standalone story documents for Librory.
 
 - The backend story map remains the numbered implementation overview.
 - Standalone story files should use the same structure and live in this directory.
-- If a story is split into design and implementation notes, keep both files next to each other and use the same base name.# Stories Index
+- If a story is split into design and implementation notes, keep both files next to each other and use the same base name.
