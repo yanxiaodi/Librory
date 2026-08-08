@@ -1,4 +1,4 @@
-# Story 03b Design: Manual Intake API
+# Story 03 Design: Manual Intake API
 
 ## Goal
 

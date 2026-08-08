@@ -236,6 +236,60 @@ describe('ScansPage', () => {
     expect(screen.getByText(/Frank Herbert/i, { selector: 'li' })).toBeVisible()
   })
 
+  it('lets the user remove a candidate and edit its search text', async () => {
+    const user = userEvent.setup()
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input)
+
+        if (url === '/api/family/current/members') {
+          return new Response(JSON.stringify([]), { status: 200 })
+        }
+
+        if (url === '/api/book-recognition-jobs' && init?.method === 'POST') {
+          return new Response(JSON.stringify({
+            jobId: 'job-1',
+            familyId: 'family-1',
+            status: 2,
+            sourcePhotoPath: '/tmp/Librory/scan-uploads/shelf.jpg',
+            candidates: [
+              {
+                candidateId: 'candidate-1',
+                displayTitle: 'Dune',
+                evidenceText: 'DUNE',
+                rank: 940,
+                metadataMatches: [],
+              },
+            ],
+            warnings: [],
+            failureMessage: null,
+            createdAt: '2026-08-03T00:00:00Z',
+            updatedAt: '2026-08-03T00:00:00Z',
+          }), { status: 202 })
+        }
+
+        throw new Error(`Unexpected fetch request: ${url}`)
+      }),
+    )
+
+    render(<ScansPage />)
+
+    await user.upload(screen.getByLabelText(/shelf photo/i), new File(['fake image'], 'shelf.jpg', { type: 'image/jpeg' }))
+
+    expect(await screen.findByRole('heading', { name: 'Dune' })).toBeVisible()
+
+    const searchText = screen.getByLabelText(/search text/i)
+    await user.clear(searchText)
+    await user.type(searchText, 'Dune Messiah')
+    expect(searchText).toHaveValue('Dune Messiah')
+
+    await user.click(screen.getByRole('button', { name: /remove/i }))
+    expect(screen.queryByRole('heading', { name: 'Dune' })).not.toBeInTheDocument()
+    expect(screen.getByText(/no candidates were found yet/i)).toBeVisible()
+  })
+
   it('shows an error when the recognition upload fails', async () => {
     const user = userEvent.setup()
 

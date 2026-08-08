@@ -49,9 +49,14 @@ public sealed class BookRecognitionJobService : IBookRecognitionJobService
 
     private static BookRecognitionJobDto ToDto(Domain.Models.BookRecognitionJob job)
     {
-        var result = DeserializeResult(job.ResultJson);
+        var result = DeserializeResult(job.ResultJson, out var resultWarning);
         var candidates = result?.Candidates ?? [];
         var warnings = result?.Warnings ?? [];
+
+        if (resultWarning is not null)
+        {
+            warnings = [.. warnings, resultWarning];
+        }
 
         return new BookRecognitionJobDto(
             job.Id,
@@ -65,13 +70,23 @@ public sealed class BookRecognitionJobService : IBookRecognitionJobService
             job.UpdatedAt);
     }
 
-    private static BookRecognitionJobResult? DeserializeResult(string? resultJson)
+    private static BookRecognitionJobResult? DeserializeResult(string? resultJson, out string? warning)
     {
+        warning = null;
+
         if (string.IsNullOrWhiteSpace(resultJson))
         {
             return null;
         }
 
-        return JsonSerializer.Deserialize<BookRecognitionJobResult>(resultJson, JsonOptions);
+        try
+        {
+            return JsonSerializer.Deserialize<BookRecognitionJobResult>(resultJson, JsonOptions);
+        }
+        catch (JsonException)
+        {
+            warning = "Stored recognition result payload could not be parsed.";
+            return null;
+        }
     }
 }
