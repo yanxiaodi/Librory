@@ -25,23 +25,26 @@ public static class ScanSessionRecorder
         family.ScanSessions.Add(session);
         foreach (var candidateInput in request.Candidates ?? [])
         {
-            session.AddCandidate(CreateCandidate(candidateInput));
+            session.AddCandidate(CreateCandidate(family, candidateInput));
         }
 
         return session;
     }
 
-    private static ScanCandidate CreateCandidate(ScanCandidateInput input)
+    private static ScanCandidate CreateCandidate(Family family, ScanCandidateInput input)
     {
         ArgumentNullException.ThrowIfNull(input);
+
+        var duplicateDetection = family.DetectPotentialDuplicate(input.DisplayTitle);
+        var duplicateMessage = input.DuplicateMessage ?? duplicateDetection.FollowUpHint;
 
         return ScanCandidate.Create(
             input.DisplayTitle,
             input.ConfidenceLabel,
             input.Author,
             input.RecommendationScore,
-            input.IsAlreadyOwned,
-            input.DuplicateMessage,
+            input.IsAlreadyOwned || duplicateDetection.HasPotentialDuplicate,
+            duplicateMessage,
             input.DetectedLanguage);
     }
 }

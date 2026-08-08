@@ -32,6 +32,23 @@ public class FamilyDuplicateDetectionTests
     }
 
     [Fact]
+    public void Family_detect_potential_duplicate_matches_the_canonical_title()
+    {
+        var family = Family.Create("The Yans");
+        var member = family.AddMember("Alice");
+        var work = BookWork.Create("Charlotte's Web", "E. B. White");
+        var edition = work.AddEdition(isbn: "978-0-06-112495-2", format: "Hardcover", publicationYear: 2006);
+        family.AddBookCopy(edition, member);
+
+        var result = family.DetectPotentialDuplicate("Charlotte's Web");
+
+        Assert.True(result.HasPotentialDuplicate);
+        Assert.Equal("Charlotte's Web", result.CandidateTitle);
+        Assert.Equal("CHARLOTTESWEB", result.NormalizedTitle);
+        Assert.Single(result.Matches);
+    }
+
+    [Fact]
     public void Family_detect_potential_duplicate_returns_no_match_for_different_title()
     {
         var family = Family.Create("The Yans");

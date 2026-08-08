@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using Librory.Api.Contracts;
 using Librory.Application.Scanning;
+using Librory.Domain.Models;
 using Librory.Infrastructure.Persistence;
 using Librory.Infrastructure.Scanning;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -52,6 +53,30 @@ public sealed class ScanUploadEndpointsTests
         Assert.Equal(created.ShelfPhotoPath, session.ShelfPhotoPath);
         Assert.Equal(storageRoot, Path.GetDirectoryName(created.ShelfPhotoPath));
         Assert.True(session.ExpiresAt > DateTimeOffset.UtcNow.AddDays(6).AddHours(23));
+    }
+
+    [Fact]
+    public async Task Scan_session_response_surfaces_duplicate_warning_for_scan_review()
+    {
+        var family = Family.Create("The Yans");
+        var member = family.AddMember("Alice");
+        var work = BookWork.Create("Charlotte's Web", "E. B. White");
+        var edition = work.AddEdition(isbn: "978-0-06-112495-2", format: "Hardcover", publicationYear: 2006);
+        family.AddBookCopy(edition, member);
+
+        var session = family.StartScanSession("shelf-photo.jpg");
+        session.AddCandidate(ScanCandidate.Create(
+            "Charlotte's Web",
+            "High",
+            "E. B. White",
+            0.94m));
+
+        var dto = ScanSessionDtoFactory.Create(family, session);
+
+        Assert.Single(dto.Candidates);
+        Assert.Equal("Charlotte's Web", dto.Candidates[0].DisplayTitle);
+        Assert.True(dto.Candidates[0].IsAlreadyOwned);
+        Assert.Equal("Capture ISBN or barcode information to confirm the edition.", dto.Candidates[0].DuplicateMessage);
     }
 
     [Fact]

@@ -35,7 +35,7 @@
 - Family library browse and search
 - External metadata lookup and normalization for ISBN/title search
 - Promotion of confirmed external metadata into canonical catalog records
-- Duplicate detection stub
+- Duplicate detection shared domain slice and scan-review warning output
 
 ## Step 5: AI Integration
 

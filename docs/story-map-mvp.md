@@ -158,6 +158,12 @@ Acceptance criteria:
 - The user can continue buying after seeing a warning.
 - Edition differences or ISBN hints are shown when available.
 
+Current implementation focus:
+
+- Build the shared duplicate-detection domain slice first.
+- Surface the warning output in the scan-review flow.
+- Keep manual intake reuse inside the same duplicate-detection boundary.
+
 ### Epic 5: Save Purchased Books
 
 Goal: record books after purchase with low friction.
