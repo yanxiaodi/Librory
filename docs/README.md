@@ -12,5 +12,6 @@ This directory contains the product definition for Librory.
 - [API Reference](./api-reference.md): current developer-facing API endpoints and auth flow.
 - [Implementation Plan](./implementation-plan.md): the first delivery sequence.
 - [Backend Story Map](./backend-story-map.md): numbered backend stories for implementation.
+- [Story Progress Table](./story-progress.md): code-based delivery status with unfinished items first.
 - [Deployment](./deployment.md): production configuration, storage, database, and auth requirements.
 - [Mobile Debugging With Dev Tunnel](./mobile-debugging-with-devtunnel.md): how to open the local Aspire web app on a phone and wire Google sign-in through a dev tunnel.
