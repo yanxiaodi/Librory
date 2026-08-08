@@ -62,6 +62,8 @@ This story is implemented in the current branch and is the active delivery slice
 
 The existing scan flow covers the recognition job handoff, the temporary scan session API, and the web review surface. The remaining work should stay outside this story boundary and move to manual intake or duplicate detection follow-on stories.
 
+See [Story Progress Table](../story-progress.md) for the current cross-story status.
+
 ## Next Step
 
 Move to the next story after this slice, keeping manual intake and duplicate detection as separate follow-on stories.

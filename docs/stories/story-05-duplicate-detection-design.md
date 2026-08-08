@@ -52,6 +52,8 @@ This story is the active implementation slice on the current branch.
 
 The first pass focuses on the shared domain duplicate-detection behavior and the scan-review entrypoint that consumes it. Manual intake reuse stays in the same duplicate-detection boundary, but the implementation should stay small and test-driven.
 
+See [Story Progress Table](../story-progress.md) for the current cross-story status.
+
 ## Next Step
 
 Implement the shared duplicate-detection slice first, then wire the scan-review surface to consume the warning output.
