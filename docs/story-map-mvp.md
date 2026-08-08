@@ -255,3 +255,31 @@ The first release should be good at one thing:
 helping a family member stand in front of a second-hand shelf and avoid bad purchases.
 
 Everything else should support that flow, not distract from it.
+
+## 7. Story References
+
+The story content now lives in [docs/stories](stories/README.md).
+
+Use these files as the canonical references for MVP implementation:
+
+- [Story 01: Identity, Family, and Login](stories/story-01-identity-family-login-design.md)
+- [Story 02: Core Book Domain Model](stories/story-02-core-book-domain-model-design.md)
+- [Story 03: Manual Book Intake](stories/story-03-manual-book-intake-design.md)
+- [Story 04: Shelf Scan Sessions](stories/story-04-shelf-scan-sessions-design.md)
+- [Story 05: Duplicate Detection](stories/story-05-duplicate-detection-design.md)
+- [Story 06: Recommendation Profiles](stories/story-06-recommendation-profiles-design.md)
+- [Story 07: Wishlist](stories/story-07-wishlist-design.md)
+- [Story 08: Localization-Aware Shaping](stories/story-08-localization-aware-shaping-design.md)
+- [Story 09: Frontend Shell and Theme Switching](stories/story-09-frontend-shell-theme-switching-design.md)
+- [Story 10: API and Persistence Foundation](stories/story-10-api-persistence-foundation-design.md)
+- [Story 11: PostgreSQL Test Infrastructure](stories/story-11-postgresql-test-infrastructure-design.md)
+- [Story 12: External Metadata Providers and Canonical Import](stories/story-12-external-metadata-providers-canonical-import-design.md)
+- [Story 13: Book Recognition Job](stories/story-13-book-recognition-job-design.md)
+- [Story 13: Book Recognition Results Web](stories/story-13-book-recognition-results-web-design.md)
+- [Story 14: Family Membership and Invitations](stories/story-14-family-membership-and-invitations-design.md)
+- [Story 14: Family Management Web](stories/story-14-family-management-web-design.md)
+- [Story 14: Invitation Acceptance](stories/story-14-invitation-acceptance-design.md)
+- [Story 15: Member Recommendation Profiles](stories/story-15-member-recommendation-profiles-design.md)
+- [Story 15: Recommendation Profile Web](stories/story-15-recommendation-profile-web-design.md)
+- [Story 16: Scan Recommendation Context](stories/story-16-scan-recommendation-context-design.md)
+- [Story 16: Scan Context Web](stories/story-16-scan-context-web-design.md)
