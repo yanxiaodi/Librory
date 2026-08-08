@@ -7,6 +7,27 @@ namespace Librory.Application.Tests;
 public class ScanOutputMappingTests
 {
     [Fact]
+    public void Scan_candidate_dto_factory_uses_duplicate_detection_warning_for_scan_review()
+    {
+        var family = Family.Create("The Yans");
+        var member = family.AddMember("Alice");
+        var work = BookWork.Create("Charlotte's Web", "E. B. White");
+        var edition = work.AddEdition(isbn: "978-0-06-112495-2", format: "Hardcover");
+        family.AddBookCopy(edition, member);
+
+        var candidate = ScanCandidate.Create(
+            "  charlotte s web!  ",
+            confidenceLabel: "High",
+            author: "E. B. White",
+            recommendationScore: 0.94m);
+
+        var dto = ScanCandidateDtoFactory.Create(family, candidate);
+
+        Assert.True(dto.IsAlreadyOwned);
+        Assert.Equal("Capture ISBN or barcode information to confirm the edition.", dto.DuplicateMessage);
+    }
+
+    [Fact]
     public void Scan_session_dto_factory_enriches_candidates_with_duplicate_warning()
     {
         var family = Family.Create("The Yans");
