@@ -56,7 +56,7 @@ public sealed class ScanUploadEndpointsTests
     }
 
     [Fact]
-    public async Task Scan_session_response_surfaces_duplicate_warning_for_scan_review()
+    public void Scan_session_response_surfaces_duplicate_warning_for_scan_review()
     {
         var family = Family.Create("The Yans");
         var member = family.AddMember("Alice");

@@ -36,7 +36,9 @@ public static class ScanSessionRecorder
         ArgumentNullException.ThrowIfNull(input);
 
         var duplicateDetection = family.DetectPotentialDuplicate(input.DisplayTitle);
-        var duplicateMessage = input.DuplicateMessage ?? duplicateDetection.FollowUpHint;
+        var duplicateMessage = string.IsNullOrWhiteSpace(input.DuplicateMessage)
+            ? duplicateDetection.FollowUpHint
+            : input.DuplicateMessage;
 
         return ScanCandidate.Create(
             input.DisplayTitle,
