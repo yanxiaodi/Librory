@@ -26,12 +26,13 @@
 
 ## Step 4: Core Flows
 
-- Manual book intake from a resolved edition into the current family/member context, with purchase metadata kept optional
-- Family library browse and search
-- Temporary scan session storage with source photo tracking
+- Temporary scan session workflow as the next implementation slice
+- Candidate correction within a scan session
 - Catalog resolution and candidate enrichment for scan results
 - Scan candidate promotion into new canonical work and edition records
 - Scan candidate discard from temporary scan sessions
+- Manual book intake from a resolved edition into the current family/member context, with purchase metadata kept optional
+- Family library browse and search
 - External metadata lookup and normalization for ISBN/title search
 - Promotion of confirmed external metadata into canonical catalog records
 - Duplicate detection stub
