@@ -72,6 +72,13 @@ public sealed class BookRecognitionJobService : IBookRecognitionJobService
             return null;
         }
 
-        return JsonSerializer.Deserialize<BookRecognitionJobResult>(resultJson, JsonOptions);
+        try
+        {
+            return JsonSerializer.Deserialize<BookRecognitionJobResult>(resultJson, JsonOptions);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 }

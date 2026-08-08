@@ -120,3 +120,11 @@ This story is complete when:
 - the app polls the recognition job,
 - the app shows a reviewable candidate list with metadata,
 - and the user can trim or edit the candidate set before moving on.
+
+## Implementation Status
+
+Implemented in the web app.
+
+- The scan page now persists the reviewed candidate list instead of only the raw job result.
+- The review component supports removing candidates and editing search text.
+- The scan page test coverage includes the review interactions and the recognition completion flow.

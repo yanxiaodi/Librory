@@ -126,6 +126,49 @@ public sealed class BookRecognitionJobEndpointsTests
         Assert.Equal(BookRecognitionJobStatus.Succeeded, completed!.Status);
         Assert.Single(completed.Candidates);
         Assert.Single(completed.Candidates[0].MetadataMatches);
+        Assert.Equal("Dune", completed.Candidates[0].DisplayTitle);
+        Assert.Equal("DUNE", completed.Candidates[0].EvidenceText);
+        Assert.Equal(940, completed.Candidates[0].Rank);
+        Assert.Equal("google-books", completed.Candidates[0].MetadataMatches[0].Source);
+        Assert.Equal("Dune", completed.Candidates[0].MetadataMatches[0].Title);
+    }
+
+    [Fact]
+    public async Task Getting_a_job_without_result_json_returns_an_empty_result_payload()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var bootstrapResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        Assert.True(bootstrapResponse.IsSuccessStatusCode);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<Librory.Infrastructure.Persistence.LibroryDbContext>();
+            var family = db.Families.AsEnumerable().Single();
+
+            var seededJob = Domain.Models.BookRecognitionJob.Create(family.Id, "scan.jpg", null, DateTimeOffset.UtcNow);
+
+            db.BookRecognitionJobs.Add(seededJob);
+
+            await db.SaveChangesAsync();
+        }
+
+        using var readScope = factory.Services.CreateScope();
+        var readDb = readScope.ServiceProvider.GetRequiredService<Librory.Infrastructure.Persistence.LibroryDbContext>();
+        var persistedJob = readDb.BookRecognitionJobs.AsEnumerable().Single(x => x.SourcePhotoPath == "scan.jpg");
+
+        var service = readScope.ServiceProvider.GetRequiredService<IBookRecognitionJobService>();
+        var dto = await service.GetAsync(persistedJob.FamilyId, persistedJob.Id, CancellationToken.None);
+
+        Assert.NotNull(dto);
+        Assert.Equal(BookRecognitionJobStatus.Queued, dto!.Status);
+        Assert.Empty(dto.Candidates);
+        Assert.Empty(dto.Warnings);
     }
 
     [Fact]
