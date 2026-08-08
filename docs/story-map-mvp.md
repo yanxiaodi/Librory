@@ -93,6 +93,12 @@ Acceptance criteria:
 - The list can continue when some items are incomplete.
 - The UI clearly marks uncertain matches.
 
+Current implementation focus:
+
+- Finish the temporary scan-session workflow as the next backend and web slice.
+- Keep candidate correction and candidate promotion inside the scan-session boundary.
+- Leave manual intake and duplicate detection as separate follow-on stories.
+
 ### Epic 2: Correct and Refine Recognition
 
 Goal: let the user fix the few mistakes that matter without restarting the whole shelf flow.

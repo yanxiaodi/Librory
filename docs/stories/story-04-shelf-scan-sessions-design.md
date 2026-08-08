@@ -55,3 +55,13 @@ Add coverage for:
 - correcting one candidate in place
 - promoting a candidate into catalog data
 - discarding a candidate from the session
+
+## Implementation Status
+
+This story is implemented in the current branch and is the active delivery slice.
+
+The existing scan flow covers the recognition job handoff, the temporary scan session API, and the web review surface. The remaining work should stay outside this story boundary and move to manual intake or duplicate detection follow-on stories.
+
+## Next Step
+
+Move to the next story after this slice, keeping manual intake and duplicate detection as separate follow-on stories.

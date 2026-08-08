@@ -290,6 +290,70 @@ describe('ScansPage', () => {
     expect(screen.getByText(/no candidates were found yet/i)).toBeVisible()
   })
 
+  it('renders the persisted scan session context after recognition completes', async () => {
+    const user = userEvent.setup()
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input)
+
+        if (url === '/api/family/current/members') {
+          return new Response(JSON.stringify([]), { status: 200 })
+        }
+
+        if (url === '/api/book-recognition-jobs' && init?.method === 'POST') {
+          return new Response(JSON.stringify({
+            jobId: 'job-1',
+            familyId: 'family-1',
+            status: 2,
+            sourcePhotoPath: '/tmp/Librory/scan-uploads/shelf.jpg',
+            candidates: [
+              {
+                candidateId: 'candidate-1',
+                displayTitle: 'Dune',
+                evidenceText: 'DUNE',
+                rank: 940,
+                metadataMatches: [],
+              },
+            ],
+            warnings: [],
+            failureMessage: null,
+            createdAt: '2026-08-03T00:00:00Z',
+            updatedAt: '2026-08-03T00:00:00Z',
+          }), { status: 202 })
+        }
+
+        if (url === '/api/family/current/scan-sessions' && init?.method === 'POST') {
+          return new Response(JSON.stringify({
+            scanSessionId: 'scan-1',
+            familyId: 'family-1',
+            shelfPhotoPath: '/tmp/Librory/scan-uploads/shelf.jpg',
+            candidates: [],
+            expiresAt: '2026-08-08T00:00:00Z',
+            targetMemberId: null,
+            targetMemberDisplayName: 'Current member',
+            targetProfileAvailable: false,
+            targetProfileUsed: false,
+            inferredLanguage: 0,
+            hasMixedLanguages: false,
+          }), { status: 201 })
+        }
+
+        throw new Error(`Unexpected fetch request: ${url}`)
+      }),
+    )
+
+    render(<ScansPage />)
+
+    await user.upload(screen.getByLabelText(/shelf photo/i), new File(['fake image'], 'shelf.jpg', { type: 'image/jpeg' }))
+
+    expect(await screen.findByText(/recommendation context/i)).toBeVisible()
+    expect(screen.getByText(/scan prepared for current member/i)).toBeVisible()
+    expect(screen.getByText(/profile: not available/i)).toBeVisible()
+    expect(screen.getByText(/language context: english/i)).toBeVisible()
+  })
+
   it('shows an error when the recognition upload fails', async () => {
     const user = userEvent.setup()
 
