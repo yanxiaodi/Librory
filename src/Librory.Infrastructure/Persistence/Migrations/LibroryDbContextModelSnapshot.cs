@@ -544,6 +544,10 @@ namespace Librory.Infrastructure.Persistence.Migrations
                             b1.Property<Guid>("BookEditionId")
                                 .HasColumnType("uuid");
 
+                            b1.Property<bool>("Exists")
+                                .HasColumnType("boolean")
+                                .HasColumnName("publication_year_provenance_exists");
+
                             b1.Property<DateTimeOffset?>("CapturedAt")
                                 .HasColumnType("timestamp with time zone")
                                 .HasColumnName("publication_year_captured_at");
@@ -600,6 +604,10 @@ namespace Librory.Infrastructure.Persistence.Migrations
                             b1.Property<Guid>("BookEditionId")
                                 .HasColumnType("uuid");
 
+                            b1.Property<bool>("Exists")
+                                .HasColumnType("boolean")
+                                .HasColumnName("subtitle_provenance_exists");
+
                             b1.Property<DateTimeOffset?>("CapturedAt")
                                 .HasColumnType("timestamp with time zone")
                                 .HasColumnName("subtitle_captured_at");
@@ -653,6 +661,10 @@ namespace Librory.Infrastructure.Persistence.Migrations
                         {
                             b1.Property<Guid>("BookWorkId")
                                 .HasColumnType("uuid");
+
+                            b1.Property<bool>("Exists")
+                                .HasColumnType("boolean")
+                                .HasColumnName("canonical_author_provenance_exists");
 
                             b1.Property<DateTimeOffset?>("CapturedAt")
                                 .HasColumnType("timestamp with time zone")
@@ -709,6 +721,10 @@ namespace Librory.Infrastructure.Persistence.Migrations
                         {
                             b1.Property<Guid>("BookWorkId")
                                 .HasColumnType("uuid");
+
+                            b1.Property<bool>("Exists")
+                                .HasColumnType("boolean")
+                                .HasColumnName("summary_provenance_exists");
 
                             b1.Property<DateTimeOffset?>("CapturedAt")
                                 .HasColumnType("timestamp with time zone")

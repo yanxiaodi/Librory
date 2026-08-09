@@ -2,6 +2,8 @@ namespace Librory.Domain.Models;
 
 public sealed record MetadataProvenance
 {
+    public bool Exists { get; init; } = true;
+
     public string? Source { get; init; }
 
     public string? SourceId { get; init; }
@@ -28,9 +30,11 @@ public sealed record MetadataProvenance
         SourceId = sourceId;
         Confidence = confidence;
         CapturedAt = capturedAt;
+        Exists = true;
     }
 
     public MetadataProvenance()
     {
+        Exists = true;
     }
 }

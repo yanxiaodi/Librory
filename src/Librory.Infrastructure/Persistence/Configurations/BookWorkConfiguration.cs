@@ -24,6 +24,7 @@ internal sealed class BookWorkConfiguration : IEntityTypeConfiguration<BookWork>
 
         builder.OwnsOne(x => x.SummaryProvenance, owned =>
         {
+            owned.Property(x => x.Exists).HasColumnName("summary_provenance_exists");
             owned.Property(x => x.Source).HasColumnName("summary_source").HasMaxLength(200);
             owned.Property(x => x.SourceId).HasColumnName("summary_source_id").HasMaxLength(200);
             owned.Property(x => x.Confidence).HasColumnName("summary_confidence").HasPrecision(5, 4);
@@ -32,6 +33,7 @@ internal sealed class BookWorkConfiguration : IEntityTypeConfiguration<BookWork>
 
         builder.OwnsOne(x => x.CanonicalAuthorProvenance, owned =>
         {
+            owned.Property(x => x.Exists).HasColumnName("canonical_author_provenance_exists");
             owned.Property(x => x.Source).HasColumnName("canonical_author_source").HasMaxLength(200);
             owned.Property(x => x.SourceId).HasColumnName("canonical_author_source_id").HasMaxLength(200);
             owned.Property(x => x.Confidence).HasColumnName("canonical_author_confidence").HasPrecision(5, 4);

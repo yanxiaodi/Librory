@@ -25,6 +25,7 @@ internal sealed class BookEditionConfiguration : IEntityTypeConfiguration<BookEd
 
         builder.OwnsOne(x => x.SubtitleProvenance, owned =>
         {
+            owned.Property(x => x.Exists).HasColumnName("subtitle_provenance_exists");
             owned.Property(x => x.Source).HasColumnName("subtitle_source").HasMaxLength(200);
             owned.Property(x => x.SourceId).HasColumnName("subtitle_source_id").HasMaxLength(200);
             owned.Property(x => x.Confidence).HasColumnName("subtitle_confidence").HasPrecision(5, 4);
@@ -33,6 +34,7 @@ internal sealed class BookEditionConfiguration : IEntityTypeConfiguration<BookEd
 
         builder.OwnsOne(x => x.PublicationYearProvenance, owned =>
         {
+            owned.Property(x => x.Exists).HasColumnName("publication_year_provenance_exists");
             owned.Property(x => x.Source).HasColumnName("publication_year_source").HasMaxLength(200);
             owned.Property(x => x.SourceId).HasColumnName("publication_year_source_id").HasMaxLength(200);
             owned.Property(x => x.Confidence).HasColumnName("publication_year_confidence").HasPrecision(5, 4);
