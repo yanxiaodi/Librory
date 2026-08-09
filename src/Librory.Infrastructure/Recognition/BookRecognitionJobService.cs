@@ -36,13 +36,6 @@ public sealed class BookRecognitionJobService : IBookRecognitionJobService
         _db.Set<Domain.Models.BookRecognitionJob>().Add(job);
         await _db.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation(
-            "Created book recognition job {JobId} for family {FamilyId} with photo {SourcePhotoPath} and language {Language}.",
-            job.Id,
-            familyId,
-            job.SourcePhotoPath,
-            job.Language ?? "<none>");
-
         return ToDto(job);
     }
 

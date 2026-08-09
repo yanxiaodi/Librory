@@ -61,8 +61,8 @@ This directory contains the standalone story documents for Librory.
 
 ### Story 13
 
-- [Design: Book Recognition Results Web](story-13-book-recognition-results-web-design.md)
-- [Design: Book Recognition Job](story-13-book-recognition-job-design.md)
+- [Design: Book Recognition Results Web](story-13-book-recognition-results-web-design.md) (outdated; see Story 18 for the Azure OpenAI vision workflow)
+- [Design: Book Recognition Job](story-13-book-recognition-job-design.md) (outdated; see Story 18 for the Azure OpenAI vision workflow)
 
 ### Story 14
 

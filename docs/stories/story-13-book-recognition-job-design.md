@@ -9,7 +9,7 @@ Accept a shelf or book-cover photo, process recognition asynchronously, and retu
 In scope:
 
 - Temporary image storage for uploaded photos
-- Document Intelligence-first title extraction with an optional vision fallback
+- Outdated: Document Intelligence-first title extraction with an optional vision fallback; see Story 18 for the Azure OpenAI vision workflow
 - Candidate ranking and noise reduction
 - Metadata lookup for the strongest title candidates
 - Pollable job states

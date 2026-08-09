@@ -86,8 +86,6 @@ if (builder.Environment.IsDevelopment())
 
 var app = builder.Build();
 
-app.Logger.LogInformation("Librory API startup test log: logging pipeline is active.");
-
 if (app.Environment.IsDevelopment())
 {
     await using var scope = app.Services.CreateAsyncScope();

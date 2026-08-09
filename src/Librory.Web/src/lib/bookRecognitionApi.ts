@@ -35,12 +35,6 @@ export interface BookRecognitionJobResponse {
 }
 
 export async function createBookRecognitionJob(file: File): Promise<BookRecognitionJobResponse> {
-  console.log('[Librory] createBookRecognitionJob called', {
-    name: file.name,
-    type: file.type,
-    size: file.size,
-  })
-
   const formData = new FormData()
   formData.append('photo', file)
 
@@ -48,11 +42,6 @@ export async function createBookRecognitionJob(file: File): Promise<BookRecognit
     method: 'POST',
     credentials: 'include',
     body: formData,
-  })
-
-  console.log('[Librory] createBookRecognitionJob response', {
-    ok: response.ok,
-    status: response.status,
   })
 
   if (!response.ok) {
