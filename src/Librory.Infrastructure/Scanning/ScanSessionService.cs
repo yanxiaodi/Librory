@@ -186,6 +186,7 @@ public sealed class ScanSessionService : IScanSessionService
                 .ThenInclude(x => x.BookEdition)
                     .ThenInclude(x => x.BookWork)
             .Include(x => x.Members)
+            .AsSplitQuery()
             .SingleOrDefaultAsync(x => x.Id == familyId, cancellationToken);
     }
 

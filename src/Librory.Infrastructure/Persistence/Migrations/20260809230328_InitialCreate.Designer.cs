@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Librory.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(LibroryDbContext))]
-    [Migration("20260806235727_ExpandRecommendationProfiles")]
-    partial class ExpandRecommendationProfiles
+    [Migration("20260809230328_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -375,6 +375,10 @@ namespace Librory.Infrastructure.Persistence.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<string>("DetectedLanguage")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
                     b.Property<string>("DisplayTitle")
                         .IsRequired()
                         .HasMaxLength(300)
@@ -415,16 +419,36 @@ namespace Librory.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("FamilyId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("HasMixedLanguages")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("InferredLanguage")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
                     b.Property<string>("ShelfPhotoPath")
                         .IsRequired()
                         .HasMaxLength(400)
                         .HasColumnType("character varying(400)");
 
+                    b.Property<Guid?>("TargetMemberId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("TargetProfileAvailable")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("TargetProfileUsed")
+                        .HasColumnType("boolean");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ExpiresAt");
 
+                    b.HasIndex("TargetMemberId");
+
                     b.HasIndex("FamilyId", "CreatedAt");
+
+                    b.HasIndex("FamilyId", "TargetMemberId");
 
                     b.ToTable("scan_sessions", "librory");
                 });
@@ -532,6 +556,10 @@ namespace Librory.Infrastructure.Persistence.Migrations
                                 .HasColumnType("numeric(5,4)")
                                 .HasColumnName("publication_year_confidence");
 
+                            b1.Property<bool>("Exists")
+                                .HasColumnType("boolean")
+                                .HasColumnName("publication_year_provenance_exists");
+
                             b1.Property<string>("Source")
                                 .HasMaxLength(200)
                                 .HasColumnType("character varying(200)")
@@ -588,6 +616,10 @@ namespace Librory.Infrastructure.Persistence.Migrations
                                 .HasColumnType("numeric(5,4)")
                                 .HasColumnName("subtitle_confidence");
 
+                            b1.Property<bool>("Exists")
+                                .HasColumnType("boolean")
+                                .HasColumnName("subtitle_provenance_exists");
+
                             b1.Property<string>("Source")
                                 .HasMaxLength(200)
                                 .HasColumnType("character varying(200)")
@@ -641,6 +673,10 @@ namespace Librory.Infrastructure.Persistence.Migrations
                                 .HasPrecision(5, 4)
                                 .HasColumnType("numeric(5,4)")
                                 .HasColumnName("canonical_author_confidence");
+
+                            b1.Property<bool>("Exists")
+                                .HasColumnType("boolean")
+                                .HasColumnName("canonical_author_provenance_exists");
 
                             b1.Property<string>("Source")
                                 .HasMaxLength(200)
@@ -697,6 +733,10 @@ namespace Librory.Infrastructure.Persistence.Migrations
                                 .HasPrecision(5, 4)
                                 .HasColumnType("numeric(5,4)")
                                 .HasColumnName("summary_confidence");
+
+                            b1.Property<bool>("Exists")
+                                .HasColumnType("boolean")
+                                .HasColumnName("summary_provenance_exists");
 
                             b1.Property<string>("Source")
                                 .HasMaxLength(200)
@@ -800,6 +840,11 @@ namespace Librory.Infrastructure.Persistence.Migrations
                         .HasForeignKey("FamilyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("Librory.Domain.Models.Member", null)
+                        .WithMany()
+                        .HasForeignKey("TargetMemberId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Family");
                 });
