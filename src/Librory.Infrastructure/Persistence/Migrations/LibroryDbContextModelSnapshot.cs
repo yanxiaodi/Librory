@@ -553,6 +553,10 @@ namespace Librory.Infrastructure.Persistence.Migrations
                                 .HasColumnType("numeric(5,4)")
                                 .HasColumnName("publication_year_confidence");
 
+                            b1.Property<bool>("Exists")
+                                .HasColumnType("boolean")
+                                .HasColumnName("publication_year_provenance_exists");
+
                             b1.Property<string>("Source")
                                 .HasMaxLength(200)
                                 .HasColumnType("character varying(200)")
@@ -609,6 +613,10 @@ namespace Librory.Infrastructure.Persistence.Migrations
                                 .HasColumnType("numeric(5,4)")
                                 .HasColumnName("subtitle_confidence");
 
+                            b1.Property<bool>("Exists")
+                                .HasColumnType("boolean")
+                                .HasColumnName("subtitle_provenance_exists");
+
                             b1.Property<string>("Source")
                                 .HasMaxLength(200)
                                 .HasColumnType("character varying(200)")
@@ -662,6 +670,10 @@ namespace Librory.Infrastructure.Persistence.Migrations
                                 .HasPrecision(5, 4)
                                 .HasColumnType("numeric(5,4)")
                                 .HasColumnName("canonical_author_confidence");
+
+                            b1.Property<bool>("Exists")
+                                .HasColumnType("boolean")
+                                .HasColumnName("canonical_author_provenance_exists");
 
                             b1.Property<string>("Source")
                                 .HasMaxLength(200)
@@ -718,6 +730,10 @@ namespace Librory.Infrastructure.Persistence.Migrations
                                 .HasPrecision(5, 4)
                                 .HasColumnType("numeric(5,4)")
                                 .HasColumnName("summary_confidence");
+
+                            b1.Property<bool>("Exists")
+                                .HasColumnType("boolean")
+                                .HasColumnName("summary_provenance_exists");
 
                             b1.Property<string>("Source")
                                 .HasMaxLength(200)

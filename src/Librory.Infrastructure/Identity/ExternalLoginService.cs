@@ -21,6 +21,7 @@ public sealed class ExternalLoginService(LibroryDbContext db) : IExternalLoginSe
             .Include(x => x.ExternalIdentities)
             .Include(x => x.Memberships)
                 .ThenInclude(x => x.Family)
+            .AsSplitQuery()
             .SingleOrDefaultAsync(x => x.ExternalIdentities.Any(identity =>
                 identity.Provider == request.Provider &&
                 identity.ProviderSubject == request.ProviderSubject), cancellationToken);
