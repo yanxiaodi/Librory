@@ -3,6 +3,7 @@ using Librory.Application.Metadata;
 using Librory.Application.Recognition;
 using Librory.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Librory.Infrastructure.Recognition;
 
@@ -11,10 +12,12 @@ public sealed class BookRecognitionJobService : IBookRecognitionJobService
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly LibroryDbContext _db;
+    private readonly ILogger<BookRecognitionJobService> _logger;
 
-    public BookRecognitionJobService(LibroryDbContext db)
+    public BookRecognitionJobService(LibroryDbContext db, ILogger<BookRecognitionJobService> logger)
     {
         _db = db;
+        _logger = logger;
     }
 
     public async Task<BookRecognitionJobDto> CreateAsync(
@@ -32,6 +35,13 @@ public sealed class BookRecognitionJobService : IBookRecognitionJobService
         var job = Domain.Models.BookRecognitionJob.Create(familyId, sourcePhotoPath, language, DateTimeOffset.UtcNow);
         _db.Set<Domain.Models.BookRecognitionJob>().Add(job);
         await _db.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation(
+            "Created book recognition job {JobId} for family {FamilyId} with photo {SourcePhotoPath} and language {Language}.",
+            job.Id,
+            familyId,
+            job.SourcePhotoPath,
+            job.Language ?? "<none>");
 
         return ToDto(job);
     }

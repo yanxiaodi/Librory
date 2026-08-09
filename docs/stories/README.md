@@ -82,7 +82,12 @@ This directory contains the standalone story documents for Librory.
 
 ### Story 17
 
-- [Design: Document Intelligence OCR Migration](story-17-document-intelligence-ocr-design.md)
+- [Design: Document Intelligence OCR Migration](story-17-document-intelligence-ocr-design.md) (superseded by Story 18; OCR services were removed)
+
+### Story 18
+
+- [Design: MAF-Driven Book Recognition Workflow](story-18-vision-candidate-extraction-design.md)
+- [Implementation: MAF-Driven Book Recognition Workflow](story-18-vision-candidate-extraction-implementation.md)
 
 ## Notes
 

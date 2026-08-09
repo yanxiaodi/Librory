@@ -4,6 +4,7 @@ using Librory.Application.Families;
 using Librory.Application.Recognition;
 using Librory.Application.Scanning;
 using Librory.Domain.Models;
+using Microsoft.Extensions.Logging;
 
 namespace Librory.Api.Endpoints;
 
@@ -42,16 +43,37 @@ internal static class BookRecognitionJobEndpoints
         ICurrentFamilyContextAccessor accessor,
         IScanPhotoStorage photoStorage,
         IBookRecognitionJobService recognitionJobService,
+        ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
     {
+        var logger = loggerFactory.CreateLogger("Librory.Api.Endpoints.BookRecognitionJobEndpoints");
+        logger.LogInformation(
+            "Book recognition upload endpoint invoked. Path={Path}, Method={Method}, ContentLength={ContentLength}, ContentType={ContentType}.",
+            request.Path,
+            request.Method,
+            request.ContentLength,
+            request.ContentType ?? "<unknown>");
+
         var current = accessor.Current;
         if (current is null)
         {
+            logger.LogWarning("Rejected book recognition upload request because no current family context was available.");
             return Results.Unauthorized();
         }
 
+        logger.LogInformation(
+            "Received book recognition upload request for family {FamilyId}.",
+            current.FamilyId);
+
+        logger.LogInformation(
+            "Book recognition upload request for family {FamilyId} reached multipart validation with content length {ContentLength} and content type {ContentType}.",
+            current.FamilyId,
+            request.ContentLength,
+            request.ContentType ?? "<unknown>");
+
         if (request.ContentLength is null || request.ContentLength == 0 || !request.HasFormContentType)
         {
+            logger.LogWarning("Rejected book recognition upload request for family {FamilyId} because the request body was missing or not multipart form data.", current.FamilyId);
             return Results.ValidationProblem(new Dictionary<string, string[]>
             {
                 ["photo"] = ["Recognition photo is required."],
@@ -62,6 +84,7 @@ internal static class BookRecognitionJobEndpoints
         var photo = form.Files.GetFile("photo");
         if (photo is null || photo.Length <= 0)
         {
+            logger.LogWarning("Rejected book recognition upload request for family {FamilyId} because no photo file was provided.", current.FamilyId);
             return Results.ValidationProblem(new Dictionary<string, string[]>
             {
                 ["photo"] = ["Recognition photo is required."],
@@ -70,6 +93,7 @@ internal static class BookRecognitionJobEndpoints
 
         if (!IsSupportedImage(photo))
         {
+            logger.LogWarning("Rejected book recognition upload request for family {FamilyId} because the photo content type {ContentType} is unsupported.", current.FamilyId, photo.ContentType);
             return Results.ValidationProblem(new Dictionary<string, string[]>
             {
                 ["photo"] = ["Recognition photo must be a supported image file."],
@@ -78,6 +102,7 @@ internal static class BookRecognitionJobEndpoints
 
         if (photo.Length > ScanPhotoUploadPolicy.MaxUploadBytes)
         {
+            logger.LogWarning("Rejected book recognition upload request for family {FamilyId} because the photo exceeded the maximum size.", current.FamilyId);
             return Results.ValidationProblem(new Dictionary<string, string[]>
             {
                 ["photo"] = ["Recognition photo is too large."],
@@ -87,15 +112,28 @@ internal static class BookRecognitionJobEndpoints
         string storedPhotoPath;
         try
         {
+            logger.LogInformation(
+                "Storing recognition upload for family {FamilyId} with file {FileName} ({ContentType}, {Length} bytes).",
+                current.FamilyId,
+                photo.FileName,
+                photo.ContentType ?? "<unknown>",
+                photo.Length);
+
             await using var source = photo.OpenReadStream();
             storedPhotoPath = await photoStorage.StoreTemporaryAsync(
                 source,
                 photo.FileName,
                 photo.ContentType ?? string.Empty,
                 cancellationToken);
+
+            logger.LogInformation(
+                "Stored recognition upload for family {FamilyId} at {StoredPhotoPath}.",
+                current.FamilyId,
+                storedPhotoPath);
         }
         catch (ArgumentException exception)
         {
+            logger.LogWarning(exception, "Failed to store temporary photo for family {FamilyId}.", current.FamilyId);
             return Results.ValidationProblem(new Dictionary<string, string[]>
             {
                 ["photo"] = [exception.Message],
@@ -110,13 +148,28 @@ internal static class BookRecognitionJobEndpoints
                 ToLanguageCode(current.PreferredLanguage),
                 cancellationToken);
 
+            logger.LogInformation(
+                "Book recognition upload request for family {FamilyId} created job {JobId}.",
+                current.FamilyId,
+                dto.JobId);
+
+            logger.LogInformation(
+                "Book recognition upload request for family {FamilyId} completed successfully with status {StatusCode}.",
+                current.FamilyId,
+                StatusCodes.Status202Accepted);
+
             return Results.Accepted(
                 $"/api/book-recognition-jobs/{dto.JobId}",
                 ToResponse(dto));
         }
         catch (Exception exception)
         {
+            logger.LogError(exception, "Failed to create book recognition job for family {FamilyId}.", current.FamilyId);
             await photoStorage.DeleteAsync(storedPhotoPath, cancellationToken);
+
+            logger.LogWarning(
+                "Book recognition upload request for family {FamilyId} failed before returning a response.",
+                current.FamilyId);
 
             return exception switch
             {

@@ -32,18 +32,11 @@ public static class DependencyInjection
         services.AddScoped<IScanSessionCleanupService, ExpiredScanSessionCleanupService>();
         services.AddSingleton<LocalScanPhotoStorage>();
         services.AddSingleton<IScanPhotoStorage>(serviceProvider => serviceProvider.GetRequiredService<LocalScanPhotoStorage>());
-        services.AddOptions<RecognitionOptions>()
-            .BindConfiguration("Recognition");
+        services.AddOptions<AgentFrameworkOptions>()
+            .BindConfiguration(AgentFrameworkOptions.SectionName);
+        services.AddSingleton<IBookVisionChatClientFactory, AzureOpenAIBookVisionChatClientFactory>();
         services.AddSingleton<BookTitleCandidateRanker>();
-        services.AddHttpClient<IOcrTextExtractionService, DocumentIntelligenceTextExtractionService>(client =>
-        {
-            client.Timeout = TimeSpan.FromSeconds(20);
-        });
-        services.AddHttpClient<IVisionFallbackService, AzureOpenAiVisionFallbackService>(client =>
-        {
-            client.Timeout = TimeSpan.FromSeconds(30);
-        });
-        services.AddScoped<IBookRecognitionPipeline, BookRecognitionPipeline>();
+        services.AddScoped<IBookRecognitionPipeline, BookRecognitionAgentWorkflow>();
         services.AddScoped<IBookRecognitionJobService, BookRecognitionJobService>();
         services.AddScoped<BookRecognitionJobProcessor>();
         services.AddOptions<GoogleBooksOptions>()

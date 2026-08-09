@@ -70,6 +70,7 @@ export function ScansPage() {
   const [persistenceState, setPersistenceState] = React.useState<PersistenceState>('idle')
   const [persistenceError, setPersistenceError] = React.useState<string | null>(null)
   const [reviewedCandidates, setReviewedCandidates] = React.useState<BookRecognitionJobResponse['candidates']>([])
+  const [uploadError, setUploadError] = React.useState<string | null>(null)
   const [reviewedCandidatesInitialized, setReviewedCandidatesInitialized] = React.useState(false)
   const pollTimerRef = React.useRef<number | null>(null)
   const activeJobIdRef = React.useRef<string | null>(null)
@@ -117,7 +118,6 @@ export function ScansPage() {
     try {
       const candidatesToPersist = reviewedCandidatesInitialized ? reviewedCandidates : completedJob.candidates
       const response = await createScanSession({
-        shelfPhotoPath: completedJob.sourcePhotoPath,
         targetMemberId: activeTargetMemberIdRef.current,
         candidates: candidatesToPersist.map(candidate => ({
           displayTitle: candidate.displayTitle,
@@ -160,11 +160,12 @@ export function ScansPage() {
       pollTimerRef.current = window.setTimeout(() => {
         void schedulePoll(jobId)
       }, 1000)
-    } catch {
+    } catch (error) {
       if (activeJobIdRef.current !== jobId) {
         return
       }
 
+      setUploadError(error instanceof Error ? error.message : 'Book recognition job lookup failed.')
       setState('error')
       clearPollTimer()
     }
@@ -216,7 +217,8 @@ export function ScansPage() {
       setState('polling')
       clearPollTimer()
       void schedulePoll(response.jobId)
-    } catch {
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'Book recognition upload failed.')
       setState('error')
     }
   }
@@ -321,6 +323,11 @@ export function ScansPage() {
                 The recognition job did not complete. Tap scan again to retry.
               </p>
             ) : null}
+            {uploadError ? (
+              <p className="text-sm leading-6 text-[var(--text-secondary)]">
+                Error: {uploadError}
+              </p>
+            ) : null}
           </CardContent>
         </Card>
 
@@ -348,6 +355,16 @@ export function ScansPage() {
         ) : null}
 
         {job && state !== 'uploading' ? <BookRecognitionResults job={job} candidates={reviewedCandidates} onCandidatesChange={setReviewedCandidates} /> : null}
+        {job && state === 'polling' ? (
+          <Card>
+            <CardContent className="grid gap-2">
+              <p className="text-sm font-medium text-[var(--text-primary)]">Recognition job is running</p>
+              <p className="text-sm leading-6 text-[var(--text-secondary)]">
+                Job {job.jobId} is queued or being processed. If it stays here for a long time, check the API logs for OCR or Azure OpenAI errors.
+              </p>
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
     </PageFrame>
   )

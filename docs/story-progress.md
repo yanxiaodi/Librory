@@ -22,7 +22,8 @@
 | 13 | Book Recognition Results Web / Job | Done | Recognition job, ranked candidates, and metadata enrichment are present |
 | 15 | Member Recommendation Profiles / Web | Done | Recommendation profile web UI and API are present |
 | 16 | Scan Recommendation Context / Web | Done | Scan target selection and recommendation context are present |
-| 17 | Document Intelligence OCR Migration | In progress | OCR adapter and configuration have been renamed to Document Intelligence terminology |
+| 17 | Document Intelligence OCR Migration | Superseded | OCR-based recognition was replaced by the MAF vision workflow in Story 18; OCR services and config were removed |
+| 18 | MAF-Driven Book Recognition Workflow | Done | Vision agent extracts structured candidates via Microsoft Agent Framework; Google Books enrichment and title/author re-ranking are wired and tested |
 | 10 | API and Persistence Foundation | Done | API, EF Core, migrations, and integration tests are present |
 | 11 | PostgreSQL Test Infrastructure | Done | PostgreSQL-backed test infrastructure is present |
 | 12 | External Metadata Providers and Canonical Import | Done | External metadata import flow and tests are present |

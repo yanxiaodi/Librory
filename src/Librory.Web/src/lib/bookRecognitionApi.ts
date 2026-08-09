@@ -35,6 +35,12 @@ export interface BookRecognitionJobResponse {
 }
 
 export async function createBookRecognitionJob(file: File): Promise<BookRecognitionJobResponse> {
+  console.log('[Librory] createBookRecognitionJob called', {
+    name: file.name,
+    type: file.type,
+    size: file.size,
+  })
+
   const formData = new FormData()
   formData.append('photo', file)
 
@@ -44,8 +50,13 @@ export async function createBookRecognitionJob(file: File): Promise<BookRecognit
     body: formData,
   })
 
+  console.log('[Librory] createBookRecognitionJob response', {
+    ok: response.ok,
+    status: response.status,
+  })
+
   if (!response.ok) {
-    throw new Error(`Book recognition job creation failed (${response.status}).`)
+    throw new Error(await readErrorMessage(response, `Book recognition job creation failed (${response.status}).`))
   }
 
   return response.json() as Promise<BookRecognitionJobResponse>
@@ -57,7 +68,7 @@ export async function getBookRecognitionJob(jobId: string): Promise<BookRecognit
   })
 
   if (!response.ok) {
-    throw new Error(`Book recognition job lookup failed (${response.status}).`)
+    throw new Error(await readErrorMessage(response, `Book recognition job lookup failed (${response.status}).`))
   }
 
   return response.json() as Promise<BookRecognitionJobResponse>
@@ -65,4 +76,24 @@ export async function getBookRecognitionJob(jobId: string): Promise<BookRecognit
 
 export function isRecognitionJobComplete(status: number) {
   return status === 2 || status === 3
+}
+
+async function readErrorMessage(response: Response, fallbackMessage: string) {
+  const contentType = response.headers.get('Content-Type') ?? ''
+
+  if (contentType.includes('application/json')) {
+    try {
+      const payload = await response.json() as { detail?: string; title?: string; message?: string }
+      return payload.detail ?? payload.title ?? payload.message ?? fallbackMessage
+    } catch {
+      return fallbackMessage
+    }
+  }
+
+  try {
+    const text = await response.text()
+    return text.trim() || fallbackMessage
+  } catch {
+    return fallbackMessage
+  }
 }

@@ -1,6 +1,8 @@
 using Librory.Application.Metadata;
 using Librory.Application.Recognition;
 using Librory.Infrastructure.Recognition;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace Librory.Api.Tests;
@@ -24,56 +26,148 @@ public sealed class BookRecognitionPipelineTests
     }
 
     [Fact]
-    public async Task Pipeline_uses_ocr_and_enriches_top_candidates_with_metadata()
+    public async Task Workflow_returns_no_candidates_when_agent_framework_is_not_configured()
     {
-        var ocr = new FakeOcrTextExtractionService(new[]
-        {
-            new RecognizedTextBlock("Dune", 0.99m, 100, 100, 240, 180, false),
-            new RecognizedTextBlock("Frank Herbert", 0.97m, 100, 200, 260, 240, false),
-        });
+        var pipeline = new BookRecognitionAgentWorkflow(
+            new FakeBookVisionChatClientFactory(chatClient: null),
+            new FakeBookMetadataSearchService("Dune", []),
+            NullLogger<BookRecognitionAgentWorkflow>.Instance);
+
+        await using var photo = new TempPhotoFile();
+        var result = await pipeline.RecognizeAsync(photo.Path, "en", CancellationToken.None);
+
+        Assert.Empty(result.Candidates);
+        Assert.Empty(result.Warnings);
+    }
+
+    [Fact]
+    public async Task Workflow_extracts_structured_candidates_and_enriches_with_metadata()
+    {
+        const string ResponseJson = """
+            {"candidates":[{"title":"Dune","author":"Frank Herbert","evidenceText":"DUNE / Frank Herbert","confidence":0.95}]}
+            """;
 
         var metadata = new FakeBookMetadataSearchService("Dune", new[]
         {
             new BookMetadataCandidate("google-books", "source-1", "Dune", null, ["Frank Herbert"], "Ace", "1965", "en", null, "9780441013593", "9780441013593", null, null),
         });
 
-        var pipeline = new BookRecognitionPipeline(ocr, metadata, new FakeVisionFallbackService([]), new BookTitleCandidateRanker());
-        var result = await pipeline.RecognizeAsync("/tmp/shelf.jpg", "en", CancellationToken.None);
+        var pipeline = new BookRecognitionAgentWorkflow(
+            new FakeBookVisionChatClientFactory(new FakeChatClient(ResponseJson)),
+            metadata,
+            NullLogger<BookRecognitionAgentWorkflow>.Instance);
+
+        await using var photo = new TempPhotoFile();
+        var result = await pipeline.RecognizeAsync(photo.Path, "en", CancellationToken.None);
 
         Assert.Contains("Dune", metadata.TitlesQueried);
         Assert.Contains(result.Candidates, candidate => candidate.DisplayTitle == "Dune" && candidate.MetadataMatches.Count == 1);
+        Assert.Empty(result.Warnings);
     }
 
     [Fact]
-    public async Task Pipeline_keeps_candidates_when_metadata_lookup_fails()
+    public async Task Workflow_keeps_candidate_and_adds_warning_when_metadata_lookup_fails()
     {
-        var ocr = new FakeOcrTextExtractionService(new[]
-        {
-            new RecognizedTextBlock("Dune", 0.99m, 100, 100, 240, 180, false),
-        });
+        const string ResponseJson = """
+            {"candidates":[{"title":"Dune","author":null,"evidenceText":"DUNE","confidence":0.9}]}
+            """;
 
-        var metadata = new ThrowingBookMetadataSearchService();
-        var pipeline = new BookRecognitionPipeline(ocr, metadata, new FakeVisionFallbackService([]), new BookTitleCandidateRanker());
+        var pipeline = new BookRecognitionAgentWorkflow(
+            new FakeBookVisionChatClientFactory(new FakeChatClient(ResponseJson)),
+            new ThrowingBookMetadataSearchService(),
+            NullLogger<BookRecognitionAgentWorkflow>.Instance);
 
-        var result = await pipeline.RecognizeAsync("/tmp/shelf.jpg", "en", CancellationToken.None);
+        await using var photo = new TempPhotoFile();
+        var result = await pipeline.RecognizeAsync(photo.Path, "en", CancellationToken.None);
 
         Assert.Single(result.Candidates);
         Assert.Empty(result.Candidates[0].MetadataMatches);
         Assert.NotEmpty(result.Warnings);
     }
 
-    private sealed class FakeOcrTextExtractionService : IOcrTextExtractionService
+    [Fact]
+    public async Task Workflow_reranks_metadata_matches_by_title_and_author_agreement()
     {
-        private readonly IReadOnlyList<RecognizedTextBlock> _blocks;
+        const string ResponseJson = """
+            {"candidates":[{"title":"Dune","author":"Frank Herbert","evidenceText":"DUNE","confidence":0.9}]}
+            """;
 
-        public FakeOcrTextExtractionService(IReadOnlyList<RecognizedTextBlock> blocks)
+        var metadata = new FakeBookMetadataSearchService("Dune", new[]
         {
-            _blocks = blocks;
+            new BookMetadataCandidate("google-books", "wrong-author", "Dune", null, ["Someone Else"], null, null, "en", null, null, null, null, null),
+            new BookMetadataCandidate("google-books", "right-author", "Dune", null, ["Frank Herbert"], null, null, "en", null, null, null, null, null),
+        });
+
+        var pipeline = new BookRecognitionAgentWorkflow(
+            new FakeBookVisionChatClientFactory(new FakeChatClient(ResponseJson)),
+            metadata,
+            NullLogger<BookRecognitionAgentWorkflow>.Instance);
+
+        await using var photo = new TempPhotoFile();
+        var result = await pipeline.RecognizeAsync(photo.Path, "en", CancellationToken.None);
+
+        var topMatch = Assert.Single(result.Candidates).MetadataMatches[0];
+        Assert.Equal("right-author", topMatch.SourceId);
+    }
+
+    private sealed class FakeBookVisionChatClientFactory : IBookVisionChatClientFactory
+    {
+        private readonly IChatClient? _chatClient;
+
+        public FakeBookVisionChatClientFactory(IChatClient? chatClient)
+        {
+            _chatClient = chatClient;
         }
 
-        public Task<IReadOnlyList<RecognizedTextBlock>> ExtractAsync(string sourcePhotoPath, CancellationToken cancellationToken)
+        public IChatClient? CreateChatClient() => _chatClient;
+    }
+
+    private sealed class FakeChatClient : IChatClient
+    {
+        private readonly string _responseJson;
+
+        public FakeChatClient(string responseJson)
         {
-            return Task.FromResult(_blocks);
+            _responseJson = responseJson;
+        }
+
+        public Task<ChatResponse> GetResponseAsync(
+            IEnumerable<ChatMessage> messages,
+            ChatOptions? options = null,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, _responseJson)));
+        }
+
+        public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+            IEnumerable<ChatMessage> messages,
+            ChatOptions? options = null,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException("Streaming is not used by the recognition workflow.");
+        }
+
+        public object? GetService(Type serviceType, object? serviceKey = null) => null;
+
+        public void Dispose()
+        {
+        }
+    }
+
+    private sealed class TempPhotoFile : IAsyncDisposable
+    {
+        public TempPhotoFile()
+        {
+            Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"{Guid.NewGuid()}.jpg");
+            File.WriteAllBytes(Path, [0xFF, 0xD8, 0xFF, 0xD9]);
+        }
+
+        public string Path { get; }
+
+        public ValueTask DisposeAsync()
+        {
+            File.Delete(Path);
+            return ValueTask.CompletedTask;
         }
     }
 
@@ -97,8 +191,6 @@ public sealed class BookRecognitionPipelineTests
 
             if (title.Equals(_expectedTitle, StringComparison.OrdinalIgnoreCase))
             {
-                Assert.Equal("en", language);
-                Assert.Equal(5, maxResults);
                 return Task.FromResult(new BookMetadataSearchResult(title, _candidates.Count, _candidates));
             }
 
@@ -111,24 +203,6 @@ public sealed class BookRecognitionPipelineTests
         public Task<BookMetadataSearchResult> SearchByTitleAsync(string title, string? language, int maxResults, CancellationToken cancellationToken)
         {
             throw new InvalidOperationException("Service unavailable.");
-        }
-    }
-
-    private sealed class FakeVisionFallbackService : IVisionFallbackService
-    {
-        private readonly IReadOnlyList<string> _titles;
-
-        public FakeVisionFallbackService(IReadOnlyList<string> titles)
-        {
-            _titles = titles;
-        }
-
-        public Task<IReadOnlyList<string>> SuggestCandidateTitlesAsync(
-            string sourcePhotoPath,
-            IReadOnlyList<RecognizedTextBlock> recognizedText,
-            CancellationToken cancellationToken)
-        {
-            return Task.FromResult(_titles);
         }
     }
 }

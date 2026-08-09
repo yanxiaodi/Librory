@@ -3,6 +3,7 @@ using Librory.Application.Recognition;
 using Librory.Domain.Models;
 using Librory.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Librory.Infrastructure.Recognition;
 
@@ -14,11 +15,16 @@ public sealed class BookRecognitionJobProcessor
 
     private readonly LibroryDbContext _db;
     private readonly IBookRecognitionPipeline _pipeline;
+    private readonly ILogger<BookRecognitionJobProcessor> _logger;
 
-    public BookRecognitionJobProcessor(LibroryDbContext db, IBookRecognitionPipeline pipeline)
+    public BookRecognitionJobProcessor(
+        LibroryDbContext db,
+        IBookRecognitionPipeline pipeline,
+        ILogger<BookRecognitionJobProcessor> logger)
     {
         _db = db;
         _pipeline = pipeline;
+        _logger = logger;
     }
 
     public async Task<int> ProcessQueuedJobsAsync(CancellationToken cancellationToken)
@@ -27,12 +33,21 @@ public sealed class BookRecognitionJobProcessor
 
         if (queuedJobs.Count == 0)
         {
+            _logger.LogDebug("No queued book recognition jobs were available in this sweep.");
             return 0;
         }
+
+        _logger.LogInformation("Claimed {JobCount} queued book recognition job(s) for processing.", queuedJobs.Count);
 
         var processed = 0;
         foreach (var job in queuedJobs)
         {
+            _logger.LogInformation(
+                "Processing book recognition job {JobId} for family {FamilyId} from {SourcePhotoPath}.",
+                job.Id,
+                job.FamilyId,
+                job.SourcePhotoPath);
+
             job.MarkRunning(DateTimeOffset.UtcNow);
             await _db.SaveChangesAsync(cancellationToken);
 
@@ -40,10 +55,20 @@ public sealed class BookRecognitionJobProcessor
             {
                 var result = await _pipeline.RecognizeAsync(job.SourcePhotoPath, job.Language, cancellationToken);
                 job.MarkSucceeded(JsonSerializer.Serialize(result, JsonOptions), DateTimeOffset.UtcNow);
+                _logger.LogInformation(
+                    "Book recognition job {JobId} succeeded with {CandidateCount} candidate(s) and {WarningCount} warning(s).",
+                    job.Id,
+                    result.Candidates.Count,
+                    result.Warnings.Count);
             }
             catch (Exception exception)
             {
                 job.MarkFailed(CreateFailureMessage(exception), DateTimeOffset.UtcNow);
+                _logger.LogWarning(
+                    exception,
+                    "Book recognition job {JobId} failed for family {FamilyId}.",
+                    job.Id,
+                    job.FamilyId);
             }
 
             await _db.SaveChangesAsync(cancellationToken);
@@ -69,8 +94,11 @@ public sealed class BookRecognitionJobProcessor
 
         if (queuedJobs.Count == 0)
         {
+            _logger.LogDebug("No queued book recognition jobs were found to claim.");
             return queuedJobs;
         }
+
+        _logger.LogInformation("Claiming {JobCount} queued book recognition job(s) from the database.", queuedJobs.Count);
 
         var now = DateTimeOffset.UtcNow;
         foreach (var job in queuedJobs)
