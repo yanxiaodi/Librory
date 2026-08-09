@@ -93,6 +93,8 @@ describe('ScansPage', () => {
     expect(screen.getByText(/language context: english/i)).toBeVisible()
     expect(sessionPayload).toMatchObject({
       shelfPhotoPath: '/tmp/Librory/scan-uploads/shelf.jpg',
+    })
+    expect(sessionPayload).toMatchObject({
       targetMemberId: 'member-2',
       candidates: [{ displayTitle: 'Dune', confidenceLabel: 'DUNE', author: 'Frank Herbert', detectedLanguage: 0 }],
     })
