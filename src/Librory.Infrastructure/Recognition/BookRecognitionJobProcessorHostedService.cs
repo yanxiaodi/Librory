@@ -20,6 +20,7 @@ public sealed class BookRecognitionJobProcessorHostedService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+        _logger.LogInformation("Book recognition job processor hosted service started.");
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -27,7 +28,8 @@ public sealed class BookRecognitionJobProcessorHostedService : BackgroundService
             {
                 using var scope = _scopeFactory.CreateScope();
                 var processor = scope.ServiceProvider.GetRequiredService<BookRecognitionJobProcessor>();
-                await processor.ProcessQueuedJobsAsync(stoppingToken);
+                var processed = await processor.ProcessQueuedJobsAsync(stoppingToken);
+                _logger.LogDebug("Book recognition job processor sweep completed with {ProcessedCount} processed job(s).", processed);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {

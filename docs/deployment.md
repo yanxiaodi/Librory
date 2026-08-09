@@ -51,20 +51,40 @@ If the key is omitted, the app will still start, but the provider may be subject
 
 ### Book Recognition
 
-If you want the book recognition job flow to extract text and fall back to vision-based interpretation, provide:
+The book recognition job flow uses a Microsoft Agent Framework vision agent, running in-process in the API, to extract
+structured book candidates directly from the shelf photo, then enriches and re-ranks them with Google Books. There is no
+separate OCR service in this flow.
 
-- `Recognition:AzureVision:Endpoint`
-- `Recognition:AzureVision:ApiKey`
-- `Recognition:AzureOpenAI:Endpoint`
-- `Recognition:AzureOpenAI:ApiKey`
-- `Recognition:AzureOpenAI:DeploymentName`
+To enable it, provide:
+
+- `AgentFramework:AzureOpenAI:Endpoint`
+- `AgentFramework:AzureOpenAI:ApiKey`
+- `AgentFramework:AzureOpenAI:DeploymentName`
 
 Required Azure resources:
 
-- One Azure AI Vision resource for OCR
-- One Azure OpenAI resource with a vision-capable chat model deployed for fallback interpretation
+- One Azure OpenAI resource with a vision-capable chat model deployed (used for structured candidate extraction)
 
-For local development, put the same keys in user secrets instead of checking real values into `appsettings.json`.
+For local development, put the same keys in user secrets instead of checking real values into `appsettings.json`. If these
+values are left empty, the API still starts; recognition jobs simply return zero candidates and the API logs a warning.
+
+### Local Recognition Test Setup
+
+If you want to test the recognition flow locally with a real Azure OpenAI resource:
+
+- Deploy a vision-capable chat model (e.g. a GPT-4o-class model) and record the deployment name
+- Store the endpoint, API key, and deployment name in user secrets or environment variables, not in source control
+
+Minimum values to set locally:
+
+- `AgentFramework:AzureOpenAI:Endpoint`
+- `AgentFramework:AzureOpenAI:ApiKey`
+- `AgentFramework:AzureOpenAI:DeploymentName`
+
+If you do not want to create an Azure OpenAI resource yet, you can still test the scan-session and intake flow by supplying
+candidates manually in API tests or by using the existing UI after recognition results are mocked.
+
+If a photo upload succeeds but the UI keeps polling and never shows completed results, check the API logs for the recognition job processor. A queued job should normally move to running, then either succeed with candidates or fail with a visible failure message.
 
 ## Redirect URIs
 
@@ -100,11 +120,7 @@ Use environment-specific configuration or environment variables to override the 
   "GoogleBooks": {
     "ApiKey": "..."
   },
-  "Recognition": {
-    "AzureVision": {
-      "Endpoint": "https://<vision-resource>.cognitiveservices.azure.com/",
-      "ApiKey": "..."
-    },
+  "AgentFramework": {
     "AzureOpenAI": {
       "Endpoint": "https://<openai-resource>.openai.azure.com/",
       "ApiKey": "...",
