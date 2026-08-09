@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createScanSession, type CreateScanSessionRequest } from './scansApi'
+import { createScanSession, getLatestScanSession, type CreateScanSessionRequest } from './scansApi'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -48,5 +48,11 @@ describe('scansApi', () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('nope', { status: 400 })))
 
     await expect(createScanSession({ shelfPhotoPath: '/tmp/shelf.jpg' })).rejects.toThrow('Scan session creation failed (400).')
+  })
+
+  it('returns null when no latest scan session exists', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 404 })))
+
+    await expect(getLatestScanSession()).resolves.toBeNull()
   })
 })

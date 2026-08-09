@@ -1,12 +1,34 @@
+import * as React from 'react'
 import { BookOpen, ScanSearch } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { useAuthSession } from '@/auth/AuthSessionContext'
+import { getLatestScanSession, type ScanSessionResponse } from '@/lib/scansApi'
 
-/* TODO: wire Books and Scans to API once data layer is available */
 export function HomePage() {
   const { family } = useAuthSession()
   const familySize = family?.memberCount ?? 1
+  const [latestScanSession, setLatestScanSession] = React.useState<ScanSessionResponse | null>(null)
+
+  React.useEffect(() => {
+    let cancelled = false
+
+    void getLatestScanSession()
+      .then(session => {
+        if (!cancelled) {
+          setLatestScanSession(session)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLatestScanSession(null)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   return (
     <section className="grid gap-6 pb-6">
@@ -65,9 +87,21 @@ export function HomePage() {
           Recent Scans
         </div>
 
-        <p className="py-8 text-center font-[family-name:var(--font-display)] text-sm italic text-[var(--text-tertiary)]">
-          Start with your first shelf scan.
-        </p>
+        {latestScanSession ? (
+          <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-4 py-4 text-left">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-tertiary)]">Latest scan</p>
+            <p className="mt-2 font-[family-name:var(--font-display)] text-[1.05rem] font-normal italic text-[var(--text-primary)]">
+              Scan prepared for {latestScanSession.targetMemberDisplayName || 'the current member'}.
+            </p>
+            <p className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">
+              {latestScanSession.candidates.length} candidate{latestScanSession.candidates.length === 1 ? '' : 's'} saved.
+            </p>
+          </div>
+        ) : (
+          <p className="py-8 text-center font-[family-name:var(--font-display)] text-sm italic text-[var(--text-tertiary)]">
+            Start with your first shelf scan.
+          </p>
+        )}
       </div>
     </section>
   )

@@ -72,6 +72,14 @@ internal static class ScanSessionEndpoints
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status404NotFound);
 
+        group.MapGet("latest", GetLatestScanSessionAsync)
+            .WithName("GetLatestScanSession")
+            .WithSummary("Get the latest scan session.")
+            .WithDescription("Returns the most recent non-expired scan session for the current family.")
+            .Produces<ScanSessionResponse>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status404NotFound);
+
         return app;
     }
 
@@ -311,6 +319,37 @@ internal static class ScanSessionEndpoints
 
         var session = await LoadScanSessionAsync(db, current.FamilyId, scanSessionId, cancellationToken);
         if (session is null || session.IsExpired())
+        {
+            return Results.NotFound();
+        }
+
+        return Results.Ok(ToResponse(family, session));
+    }
+
+    private static async Task<IResult> GetLatestScanSessionAsync(
+        LibroryDbContext db,
+        ICurrentFamilyContextAccessor accessor,
+        CancellationToken cancellationToken)
+    {
+        var current = accessor.Current;
+        if (current is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        var session = await db.ScanSessions
+            .Include(x => x.Candidates)
+            .Where(x => x.FamilyId == current.FamilyId && x.ExpiresAt > DateTimeOffset.UtcNow)
+            .OrderByDescending(x => x.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (session is null)
+        {
+            return Results.NotFound();
+        }
+
+        var family = await LoadFamilyForDuplicateDetectionAsync(db, current.FamilyId, cancellationToken);
+        if (family is null)
         {
             return Results.NotFound();
         }

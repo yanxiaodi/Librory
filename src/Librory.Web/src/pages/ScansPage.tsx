@@ -118,6 +118,7 @@ export function ScansPage() {
     try {
       const candidatesToPersist = reviewedCandidatesInitialized ? reviewedCandidates : completedJob.candidates
       const response = await createScanSession({
+        shelfPhotoPath: completedJob.sourcePhotoPath,
         targetMemberId: activeTargetMemberIdRef.current,
         candidates: candidatesToPersist.map(candidate => ({
           displayTitle: candidate.displayTitle,

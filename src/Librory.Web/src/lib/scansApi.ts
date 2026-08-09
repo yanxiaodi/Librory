@@ -60,3 +60,19 @@ export async function uploadShelfPhoto(file: File): Promise<ScanSessionResponse>
 
   return response.json() as Promise<ScanSessionResponse>
 }
+
+export async function getLatestScanSession(): Promise<ScanSessionResponse | null> {
+  const response = await fetch('/api/family/current/scan-sessions/latest', {
+    credentials: 'include',
+  })
+
+  if (response.status === 404) {
+    return null
+  }
+
+  if (!response.ok) {
+    throw new Error(`Latest scan session lookup failed (${response.status}).`)
+  }
+
+  return response.json() as Promise<ScanSessionResponse>
+}
