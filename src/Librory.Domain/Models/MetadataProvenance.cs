@@ -30,11 +30,9 @@ public sealed record MetadataProvenance
         SourceId = sourceId;
         Confidence = confidence;
         CapturedAt = capturedAt;
-        Exists = true;
     }
 
     public MetadataProvenance()
     {
-        Exists = true;
     }
 }
