@@ -10,7 +10,7 @@ In scope:
 
 - A phone-friendly upload and review flow in the web app
 - Polling the recognition job until results are ready
-- Rendering Document Intelligence-derived candidates with metadata matches
+- Outdated: Rendering Document Intelligence-derived candidates with metadata matches; see Story 18 for the Azure OpenAI vision workflow
 - Showing confidence, warnings, and evidence for each candidate
 - Letting the user remove obvious false positives
 - Letting the user edit the search text for a candidate
@@ -74,7 +74,7 @@ The ready state should show:
 - author or metadata match when available
 - confidence or match strength
 - duplicate or uncertainty warning when available
-- a short evidence summary from Document Intelligence or recognition context
+- a short evidence summary from the recognition context; see Story 18 for the Azure OpenAI vision workflow
 
 The user should be able to:
 
@@ -108,7 +108,7 @@ This story depends on:
 - authenticated web sessions
 - current family context
 - the recognition job API
-- the existing temporary image storage and Document Intelligence pipeline
+- the existing temporary image storage and recognition pipeline; see Story 18 for the Azure OpenAI vision workflow
 
 It does not depend on manual intake or recommendation scoring.
 

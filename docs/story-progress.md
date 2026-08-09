@@ -19,7 +19,7 @@
 | 04b | Candidate Correction | Done | `ScanCandidate.ApplyCorrection` and `ScanSession.CorrectCandidate` are present |
 | 05 | Duplicate Detection | Done | Duplicate detection domain, scan review warnings, and tests are present |
 | 06 | Recommendation Profiles | Done | Recommendation profile domain, API, and tests are present |
-| 13 | Book Recognition Results Web / Job | Done | Recognition job, ranked candidates, and metadata enrichment are present |
+| 13 | Book Recognition Results Web / Job | Outdated | Recognition job docs still exist, but the active recognition workflow moved to Story 18 with Azure OpenAI vision extraction |
 | 15 | Member Recommendation Profiles / Web | Done | Recommendation profile web UI and API are present |
 | 16 | Scan Recommendation Context / Web | Done | Scan target selection and recommendation context are present |
 | 17 | Document Intelligence OCR Migration | Superseded | OCR-based recognition was replaced by the MAF vision workflow in Story 18; OCR services and config were removed |
