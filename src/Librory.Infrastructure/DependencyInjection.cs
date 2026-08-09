@@ -35,7 +35,7 @@ public static class DependencyInjection
         services.AddOptions<RecognitionOptions>()
             .BindConfiguration("Recognition");
         services.AddSingleton<BookTitleCandidateRanker>();
-        services.AddHttpClient<IOcrTextExtractionService, AzureAiVisionTextExtractionService>(client =>
+        services.AddHttpClient<IOcrTextExtractionService, DocumentIntelligenceTextExtractionService>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(20);
         });

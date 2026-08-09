@@ -2,12 +2,12 @@ namespace Librory.Application.Recognition;
 
 public sealed class RecognitionOptions
 {
-    public AzureVisionOptions AzureVision { get; set; } = new();
+    public DocumentIntelligenceOptions DocumentIntelligence { get; set; } = new();
 
     public AzureOpenAiOptions AzureOpenAI { get; set; } = new();
 }
 
-public sealed class AzureVisionOptions
+public sealed class DocumentIntelligenceOptions
 {
     public string Endpoint { get; set; } = string.Empty;
 

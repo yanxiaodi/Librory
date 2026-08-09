@@ -9,7 +9,7 @@ Accept a shelf or book-cover photo, process recognition asynchronously, and retu
 In scope:
 
 - Temporary image storage for uploaded photos
-- OCR-first title extraction with an optional vision fallback
+- Document Intelligence-first title extraction with an optional vision fallback
 - Candidate ranking and noise reduction
 - Metadata lookup for the strongest title candidates
 - Pollable job states

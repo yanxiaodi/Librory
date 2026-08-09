@@ -53,18 +53,41 @@ If the key is omitted, the app will still start, but the provider may be subject
 
 If you want the book recognition job flow to extract text and fall back to vision-based interpretation, provide:
 
-- `Recognition:AzureVision:Endpoint`
-- `Recognition:AzureVision:ApiKey`
+- `Recognition:DocumentIntelligence:Endpoint`
+- `Recognition:DocumentIntelligence:ApiKey`
 - `Recognition:AzureOpenAI:Endpoint`
 - `Recognition:AzureOpenAI:ApiKey`
 - `Recognition:AzureOpenAI:DeploymentName`
 
 Required Azure resources:
 
-- One Azure AI Vision resource for OCR
+- One Azure Document Intelligence resource for OCR and Read extraction
 - One Azure OpenAI resource with a vision-capable chat model deployed for fallback interpretation
 
 For local development, put the same keys in user secrets instead of checking real values into `appsettings.json`.
+
+### Local Recognition Test Setup
+
+If you want to test the recognition flow locally with real Azure services, create these resources first:
+
+- One Azure Document Intelligence resource for OCR text extraction
+- One Azure OpenAI resource for vision fallback interpretation
+
+Recommended configuration:
+
+- Azure Document Intelligence: use the resource endpoint and key from the Azure portal
+- Azure OpenAI: deploy a vision-capable chat model and record the deployment name
+- Local app settings: store the values in user secrets or environment variables, not in source control
+
+Minimum values to set locally:
+
+- `Recognition:DocumentIntelligence:Endpoint`
+- `Recognition:DocumentIntelligence:ApiKey`
+- `Recognition:AzureOpenAI:Endpoint`
+- `Recognition:AzureOpenAI:ApiKey`
+- `Recognition:AzureOpenAI:DeploymentName`
+
+If you do not want to create Azure resources yet, you can still test the scan-session and intake flow by supplying candidates manually in API tests or by using the existing UI after recognition results are mocked.
 
 ## Redirect URIs
 
@@ -101,7 +124,7 @@ Use environment-specific configuration or environment variables to override the 
     "ApiKey": "..."
   },
   "Recognition": {
-    "AzureVision": {
+    "DocumentIntelligence": {
       "Endpoint": "https://<vision-resource>.cognitiveservices.azure.com/",
       "ApiKey": "..."
     },

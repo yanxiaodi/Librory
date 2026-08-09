@@ -80,6 +80,10 @@ This directory contains the standalone story documents for Librory.
 - [Design: Scan Recommendation Context](story-16-scan-recommendation-context-design.md)
 - [Design: Scan Context Web](story-16-scan-context-web-design.md)
 
+### Story 17
+
+- [Design: Document Intelligence OCR Migration](story-17-document-intelligence-ocr-design.md)
+
 ## Notes
 
 - The backend story map remains the numbered implementation overview.

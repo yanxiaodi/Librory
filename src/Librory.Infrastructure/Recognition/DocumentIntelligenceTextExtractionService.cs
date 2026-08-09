@@ -6,14 +6,14 @@ using Microsoft.Extensions.Options;
 
 namespace Librory.Infrastructure.Recognition;
 
-public sealed class AzureAiVisionTextExtractionService : IOcrTextExtractionService
+public sealed class DocumentIntelligenceTextExtractionService : IOcrTextExtractionService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly HttpClient _httpClient;
     private readonly IOptions<RecognitionOptions> _options;
 
-    public AzureAiVisionTextExtractionService(HttpClient httpClient, IOptions<RecognitionOptions> options)
+    public DocumentIntelligenceTextExtractionService(HttpClient httpClient, IOptions<RecognitionOptions> options)
     {
         _httpClient = httpClient;
         _options = options;
@@ -23,13 +23,13 @@ public sealed class AzureAiVisionTextExtractionService : IOcrTextExtractionServi
         string sourcePhotoPath,
         CancellationToken cancellationToken)
     {
-        if (!IsConfigured(_options.Value.AzureVision))
+        if (!IsConfigured(_options.Value.DocumentIntelligence))
         {
-            throw new InvalidOperationException("Azure Vision OCR is not configured.");
+            throw new InvalidOperationException("Document Intelligence OCR is not configured.");
         }
 
-        var endpoint = NormalizeEndpoint(_options.Value.AzureVision.Endpoint);
-        var requestUri = new Uri($"{endpoint}/computervision/imageanalysis:analyze?api-version=2024-02-01&features=read");
+        var endpoint = NormalizeEndpoint(_options.Value.DocumentIntelligence.Endpoint);
+        var requestUri = new Uri($"{endpoint}/documentintelligence/documentModels/prebuilt-read:analyze?api-version=2024-11-30");
 
         await using var stream = File.OpenRead(sourcePhotoPath);
         using var request = new HttpRequestMessage(HttpMethod.Post, requestUri)
@@ -37,7 +37,8 @@ public sealed class AzureAiVisionTextExtractionService : IOcrTextExtractionServi
             Content = new StreamContent(stream),
         };
         request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-        request.Headers.Add("Ocp-Apim-Subscription-Key", _options.Value.AzureVision.ApiKey);
+        request.Headers.Add("Ocp-Apim-Subscription-Key", _options.Value.DocumentIntelligence.ApiKey);
+        request.Headers.Add("Accept", "application/json");
 
         using var response = await _httpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
@@ -47,7 +48,7 @@ public sealed class AzureAiVisionTextExtractionService : IOcrTextExtractionServi
         return ParseRecognizedTextBlocks(document.RootElement);
     }
 
-    private static bool IsConfigured(AzureVisionOptions options)
+    private static bool IsConfigured(DocumentIntelligenceOptions options)
     {
         return !string.IsNullOrWhiteSpace(options.Endpoint) && !string.IsNullOrWhiteSpace(options.ApiKey);
     }
@@ -61,52 +62,24 @@ public sealed class AzureAiVisionTextExtractionService : IOcrTextExtractionServi
     {
         var results = new List<RecognizedTextBlock>();
 
-        if (root.TryGetProperty("readResult", out var readResult)
-            && readResult.TryGetProperty("blocks", out var blocks)
-            && blocks.ValueKind == JsonValueKind.Array)
+        if (root.TryGetProperty("analyzeResult", out var analyzeResult)
+            && analyzeResult.TryGetProperty("pages", out var pages)
+            && pages.ValueKind == JsonValueKind.Array)
         {
-            ParseBlocks(results, blocks);
+            ParsePages(results, pages);
         }
-        else if (root.TryGetProperty("analyzeResult", out var analyzeResult)
-            && analyzeResult.TryGetProperty("readResults", out var readResults)
-            && readResults.ValueKind == JsonValueKind.Array)
+        else if (root.TryGetProperty("pages", out var legacyPages)
+            && legacyPages.ValueKind == JsonValueKind.Array)
         {
-            ParseReadResults(results, readResults);
-        }
-        else if (root.TryGetProperty("readResults", out var legacyReadResults)
-            && legacyReadResults.ValueKind == JsonValueKind.Array)
-        {
-            ParseReadResults(results, legacyReadResults);
+            ParsePages(results, legacyPages);
         }
 
         return results;
     }
 
-    private static void ParseBlocks(List<RecognizedTextBlock> results, JsonElement blocks)
+    private static void ParsePages(List<RecognizedTextBlock> results, JsonElement pages)
     {
-        foreach (var block in blocks.EnumerateArray())
-        {
-            if (!block.TryGetProperty("lines", out var lines) || lines.ValueKind != JsonValueKind.Array)
-            {
-                continue;
-            }
-
-            foreach (var line in lines.EnumerateArray())
-            {
-                var text = GetString(line, "text") ?? GetString(line, "content");
-                if (string.IsNullOrWhiteSpace(text))
-                {
-                    continue;
-                }
-
-                results.Add(CreateTextBlock(text!, line));
-            }
-        }
-    }
-
-    private static void ParseReadResults(List<RecognizedTextBlock> results, JsonElement readResults)
-    {
-        foreach (var page in readResults.EnumerateArray())
+        foreach (var page in pages.EnumerateArray())
         {
             if (!page.TryGetProperty("lines", out var lines) || lines.ValueKind != JsonValueKind.Array)
             {
@@ -115,7 +88,7 @@ public sealed class AzureAiVisionTextExtractionService : IOcrTextExtractionServi
 
             foreach (var line in lines.EnumerateArray())
             {
-                var text = GetString(line, "text") ?? GetString(line, "content");
+                var text = GetString(line, "content") ?? GetString(line, "text");
                 if (string.IsNullOrWhiteSpace(text))
                 {
                     continue;

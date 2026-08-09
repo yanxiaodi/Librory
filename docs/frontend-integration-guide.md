@@ -97,7 +97,7 @@ Notes:
 
 ## Book Metadata Search Flow
 
-Use this when you already have a candidate title from OCR or user input.
+Use this when you already have a candidate title from Document Intelligence or user input.
 
 Recommended sequence:
 
