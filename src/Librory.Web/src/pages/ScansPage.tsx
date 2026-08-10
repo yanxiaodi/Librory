@@ -4,6 +4,7 @@ import { PageFrame } from '@/components/shell/PageFrame'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { BookRecognitionResults } from '@/components/scans/BookRecognitionResults'
+import { ShelfCameraCapture } from '@/components/scans/ShelfCameraCapture'
 import { useAuthSession } from '@/auth/AuthSessionContext'
 import { listMembers, type FamilyMember } from '@/lib/familyApi'
 import {
@@ -91,7 +92,19 @@ export async function compressImageToJpeg(file: File): Promise<File> {
       throw new Error('Image compression is not supported in this browser.')
     }
 
-    context.drawImage(image, 0, 0, width, height)
+    // Resize while decoding instead of decoding the full-resolution photo first: a
+    // 48-108MP camera shot decoded at full size can use several hundred MB and get
+    // the mobile tab killed/reloaded by the OS before the upload even starts.
+    const resizedBitmap = typeof createImageBitmap === 'function'
+      ? await createImageBitmap(file, { resizeWidth: width, resizeHeight: height, resizeQuality: 'medium' })
+      : null
+
+    if (resizedBitmap) {
+      context.drawImage(resizedBitmap, 0, 0, width, height)
+      resizedBitmap.close()
+    } else {
+      context.drawImage(image, 0, 0, width, height)
+    }
 
     const blob = await new Promise<Blob>((resolve, reject) => {
       canvas.toBlob(result => {
@@ -117,6 +130,43 @@ export async function compressImageToJpeg(file: File): Promise<File> {
   }
 }
 
+async function requestWakeLock(): Promise<WakeLockSentinel | null> {
+  try {
+    return (await navigator.wakeLock?.request('screen')) ?? null
+  } catch {
+    // Wake Lock is unsupported or denied (e.g. low battery) — upload continues regardless.
+    return null
+  }
+}
+
+// A mobile OS can reload the tab while the native camera app has it backgrounded, well
+// before the upload finishes. Track the in-flight job here so a fresh page load can pick
+// the recognition job back up instead of stranding the user on a blank idle screen.
+const PENDING_JOB_STORAGE_KEY = 'librory:scan-recognition-pending-job'
+
+type PendingJob = { jobId: string; targetMemberId?: string }
+
+function readPendingJob(): PendingJob | null {
+  try {
+    const raw = sessionStorage.getItem(PENDING_JOB_STORAGE_KEY)
+    return raw ? (JSON.parse(raw) as PendingJob) : null
+  } catch {
+    return null
+  }
+}
+
+function writePendingJob(pending: PendingJob | null) {
+  try {
+    if (pending) {
+      sessionStorage.setItem(PENDING_JOB_STORAGE_KEY, JSON.stringify(pending))
+    } else {
+      sessionStorage.removeItem(PENDING_JOB_STORAGE_KEY)
+    }
+  } catch {
+    // sessionStorage unavailable (private browsing, quota) — resume-after-reload is best-effort only.
+  }
+}
+
 export function ScansPage() {
   const { family, user } = useAuthSession()
   const inputRef = React.useRef<HTMLInputElement>(null)
@@ -132,6 +182,7 @@ export function ScansPage() {
   const [reviewedCandidates, setReviewedCandidates] = React.useState<BookRecognitionJobResponse['candidates']>([])
   const [uploadError, setUploadError] = React.useState<string | null>(null)
   const [reviewedCandidatesInitialized, setReviewedCandidatesInitialized] = React.useState(false)
+  const [isCameraOpen, setIsCameraOpen] = React.useState(false)
   const pollTimerRef = React.useRef<number | null>(null)
   const activeJobIdRef = React.useRef<string | null>(null)
   const activeTargetMemberIdRef = React.useRef<string | undefined>(undefined)
@@ -208,6 +259,7 @@ export function ScansPage() {
         setReviewedCandidates(current.candidates)
         setReviewedCandidatesInitialized(true)
         clearPollTimer()
+        writePendingJob(null)
         if (current.status === 2) void persistScanSession(current)
         return
       }
@@ -225,8 +277,20 @@ export function ScansPage() {
       setUploadError(error instanceof Error ? error.message : 'Book recognition job lookup failed.')
       setState('error')
       clearPollTimer()
+      writePendingJob(null)
     }
   }, [clearPollTimer, persistScanSession])
+
+  React.useEffect(() => {
+    const pending = readPendingJob()
+    if (!pending) return
+
+    activeJobIdRef.current = pending.jobId
+    activeTargetMemberIdRef.current = pending.targetMemberId
+    setState('polling')
+    void schedulePoll(pending.jobId)
+    // Resume once on mount only; schedulePoll itself keeps polling after this.
+  }, [])
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -236,6 +300,15 @@ export function ScansPage() {
       return
     }
 
+    await processSelectedFile(file)
+  }
+
+  const handleCameraCapture = (file: File) => {
+    setIsCameraOpen(false)
+    void processSelectedFile(file)
+  }
+
+  async function processSelectedFile(file: File) {
     setFileName(file.name)
     setJob(null)
     setReviewedCandidates([])
@@ -245,7 +318,12 @@ export function ScansPage() {
     setPersistenceError(null)
     activeJobIdRef.current = null
     activeTargetMemberIdRef.current = selectedMemberId || undefined
+    writePendingJob(null)
     setState('compressing')
+
+    // Best-effort: keep the screen (and tab) awake while compressing/uploading so
+    // mobile OSes are less likely to suspend or discard the tab mid-transfer.
+    const wakeLock = await requestWakeLock()
 
     try {
       const uploadFile = await compressImageToJpeg(file)
@@ -262,12 +340,15 @@ export function ScansPage() {
         return
       }
 
+      writePendingJob({ jobId: response.jobId, targetMemberId: activeTargetMemberIdRef.current })
       setState('polling')
       clearPollTimer()
       void schedulePoll(response.jobId)
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : 'Book recognition upload failed.')
       setState('error')
+    } finally {
+      void wakeLock?.release()
     }
   }
 
@@ -324,7 +405,6 @@ export function ScansPage() {
               ref={inputRef}
               aria-label="Shelf photo"
               accept="image/*"
-              capture="environment"
               className="sr-only"
               disabled={state === 'compressing' || state === 'uploading' || state === 'polling'}
               onChange={handleFileChange}
@@ -339,13 +419,35 @@ export function ScansPage() {
                   return
                 }
 
-                inputRef.current?.click()
+                setIsCameraOpen(true)
               }}
               disabled={state === 'compressing' || state === 'uploading' || state === 'polling'}
             >
               <ScanSearch className="h-[18px] w-[18px]" strokeWidth={1.5} />
               {state === 'compressing' ? 'Preparing...' : state === 'uploading' ? 'Uploading...' : 'Scan a Shelf'}
             </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                if (state === 'compressing' || state === 'uploading' || state === 'polling') {
+                  return
+                }
+
+                inputRef.current?.click()
+              }}
+              disabled={state === 'compressing' || state === 'uploading' || state === 'polling'}
+            >
+              Choose from Library
+            </Button>
+
+            {isCameraOpen ? (
+              <ShelfCameraCapture
+                onCapture={handleCameraCapture}
+                onCancel={() => setIsCameraOpen(false)}
+              />
+            ) : null}
 
             <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-sunken)] px-4 py-3">
               <div className="flex items-center gap-2 text-sm font-medium text-[var(--text-primary)]">

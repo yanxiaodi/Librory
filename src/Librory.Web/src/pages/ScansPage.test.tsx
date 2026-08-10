@@ -7,6 +7,7 @@ import { ScansPage } from './ScansPage'
 afterEach(() => {
   vi.useRealTimers()
   vi.unstubAllGlobals()
+  sessionStorage.clear()
 })
 
 describe('ScansPage', () => {
