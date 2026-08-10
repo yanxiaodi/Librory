@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Hosting;
+
 var builder = DistributedApplication.CreateBuilder(args);
 
 var seq = builder.AddContainer("seq", "datalust/seq:2024.3")
