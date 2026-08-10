@@ -14,13 +14,18 @@ import {
 } from '@/lib/bookRecognitionApi'
 import { createScanSession, type ScanSessionResponse } from '@/lib/scansApi'
 
-type ScanState = 'idle' | 'uploading' | 'polling' | 'ready' | 'error'
+type ScanState = 'idle' | 'compressing' | 'uploading' | 'polling' | 'ready' | 'error'
 type PersistenceState = 'idle' | 'saving' | 'saved' | 'error'
 
 const stateCopy: Record<ScanState, { title: string; description: string; tone: string }> = {
   idle: {
     title: 'Ready for a shelf photo',
     description: 'Tap scan, take a photo, and the app will start an async recognition job.',
+    tone: 'text-[var(--text-secondary)]',
+  },
+  compressing: {
+    title: 'Preparing photo',
+    description: 'Optimizing the image for upload.',
     tone: 'text-[var(--text-secondary)]',
   },
   uploading: {
@@ -57,6 +62,55 @@ function languageLabel(language: number | null) {
   return 'Unknown language'
 }
 
+export async function compressImageToJpeg(file: File): Promise<File> {
+  if (file.type === 'image/jpeg' && file.size <= 10 * 1024 * 1024) {
+    return file
+  }
+
+  const imageUrl = URL.createObjectURL(file)
+
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const element = new Image()
+      element.onload = () => resolve(element)
+      element.onerror = () => reject(new Error('Failed to load image for compression.'))
+      element.src = imageUrl
+    })
+
+    const maxDimension = 1600
+    const scale = Math.min(1, maxDimension / Math.max(image.width, image.height))
+    const width = Math.max(1, Math.round(image.width * scale))
+    const height = Math.max(1, Math.round(image.height * scale))
+
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+
+    const context = canvas.getContext('2d')
+    if (!context) {
+      throw new Error('Image compression is not supported in this browser.')
+    }
+
+    context.drawImage(image, 0, 0, width, height)
+
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(result => {
+        if (!result) {
+          reject(new Error('Failed to compress image.'))
+          return
+        }
+
+        resolve(result)
+      }, 'image/jpeg', 0.82)
+    })
+
+    const baseName = file.name.replace(/\.[^.]+$/, '') || 'photo'
+    return new File([blob], `${baseName}.jpg`, { type: 'image/jpeg', lastModified: file.lastModified })
+  } finally {
+    URL.revokeObjectURL(imageUrl)
+  }
+}
+
 export function ScansPage() {
   const { family, user } = useAuthSession()
   const inputRef = React.useRef<HTMLInputElement>(null)
@@ -71,6 +125,8 @@ export function ScansPage() {
   const [persistenceError, setPersistenceError] = React.useState<string | null>(null)
   const [reviewedCandidates, setReviewedCandidates] = React.useState<BookRecognitionJobResponse['candidates']>([])
   const [uploadError, setUploadError] = React.useState<string | null>(null)
+  const [debugMessage, setDebugMessage] = React.useState<string | null>(null)
+  const [sessionMarker] = React.useState(() => `scan-${Date.now().toString(36)}`)
   const [reviewedCandidatesInitialized, setReviewedCandidatesInitialized] = React.useState(false)
   const pollTimerRef = React.useRef<number | null>(null)
   const activeJobIdRef = React.useRef<string | null>(null)
@@ -97,10 +153,6 @@ export function ScansPage() {
         if (currentMemberId) setSelectedMemberId(currentMemberId)
       })
   }, [currentMemberId])
-
-  const openPicker = () => {
-    inputRef.current?.click()
-  }
 
   const clearPollTimer = React.useCallback(() => {
     if (pollTimerRef.current !== null) {
@@ -172,17 +224,6 @@ export function ScansPage() {
     }
   }, [clearPollTimer, persistScanSession])
 
-  const handlePickerKeyDown = (event: React.KeyboardEvent<HTMLLabelElement>) => {
-    if (state === 'uploading') {
-      return
-    }
-
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault()
-      openPicker()
-    }
-  }
-
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     event.target.value = ''
@@ -198,12 +239,15 @@ export function ScansPage() {
     setScanSession(null)
     setPersistenceState('idle')
     setPersistenceError(null)
+    setDebugMessage(null)
     activeJobIdRef.current = null
     activeTargetMemberIdRef.current = selectedMemberId || undefined
-    setState('uploading')
+    setState('compressing')
 
     try {
-      const response = await createBookRecognitionJob(file)
+      const uploadFile = await compressImageToJpeg(file)
+      setState('uploading')
+      const response = await createBookRecognitionJob(uploadFile)
       setJob(response)
       activeJobIdRef.current = response.jobId
 
@@ -220,6 +264,7 @@ export function ScansPage() {
       void schedulePoll(response.jobId)
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : 'Book recognition upload failed.')
+      setDebugMessage(error instanceof Error ? error.message : 'Book recognition upload failed.')
       setState('error')
     }
   }
@@ -263,7 +308,7 @@ export function ScansPage() {
                 id="scan-target-member"
                 value={selectedMemberId}
                 onChange={event => setSelectedMemberId(event.target.value)}
-                disabled={state === 'uploading' || state === 'polling' || persistenceState === 'saving' || persistenceState === 'error' || members.length === 0}
+                disabled={state === 'compressing' || state === 'uploading' || state === 'polling' || persistenceState === 'saving' || persistenceState === 'error' || members.length === 0}
                 className="h-12 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-3 text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-[var(--accent-subtle)]"
               >
                 {members.length === 0 && currentMemberId ? <option value={currentMemberId}>{user?.displayName ?? 'Current member'}</option> : null}
@@ -279,23 +324,25 @@ export function ScansPage() {
               accept="image/*"
               capture="environment"
               className="sr-only"
-              disabled={state === 'uploading'}
+              disabled={state === 'compressing' || state === 'uploading' || state === 'polling'}
               onChange={handleFileChange}
               type="file"
             />
 
-            <Button asChild size="lg">
-              <label
-                htmlFor="shelf-photo-input"
-                role="button"
-                tabIndex={0}
-                onKeyDown={handlePickerKeyDown}
-                aria-disabled={state === 'uploading'}
-                className={state === 'uploading' ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-              >
-                <ScanSearch className="h-[18px] w-[18px]" strokeWidth={1.5} />
-              {state === 'uploading' ? 'Uploading...' : 'Scan a Shelf'}
-              </label>
+            <Button
+              type="button"
+              size="lg"
+              onClick={() => {
+                if (state === 'compressing' || state === 'uploading' || state === 'polling') {
+                  return
+                }
+
+                inputRef.current?.click()
+              }}
+              disabled={state === 'compressing' || state === 'uploading' || state === 'polling'}
+            >
+              <ScanSearch className="h-[18px] w-[18px]" strokeWidth={1.5} />
+              {state === 'compressing' ? 'Preparing...' : state === 'uploading' ? 'Uploading...' : 'Scan a Shelf'}
             </Button>
 
             <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-sunken)] px-4 py-3">
@@ -329,6 +376,14 @@ export function ScansPage() {
                 Error: {uploadError}
               </p>
             ) : null}
+            {debugMessage ? (
+              <p className="text-sm leading-6 text-[var(--text-secondary)]">
+                Debug: {debugMessage}
+              </p>
+            ) : null}
+            <p className="text-xs leading-5 text-[var(--text-tertiary)]">
+              Session: {sessionMarker}
+            </p>
           </CardContent>
         </Card>
 
@@ -355,7 +410,7 @@ export function ScansPage() {
           </Card>
         ) : null}
 
-        {job && state !== 'uploading' ? <BookRecognitionResults job={job} candidates={reviewedCandidates} onCandidatesChange={setReviewedCandidates} /> : null}
+        {job && state !== 'compressing' && state !== 'uploading' ? <BookRecognitionResults job={job} candidates={reviewedCandidates} onCandidatesChange={setReviewedCandidates} /> : null}
         {job && state === 'polling' ? (
           <Card>
             <CardContent className="grid gap-2">

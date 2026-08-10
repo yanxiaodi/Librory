@@ -167,7 +167,6 @@ describe('ScansPage', () => {
     const file = new File(['fake image'], 'shelf.jpg', { type: 'image/jpeg' })
     await user.upload(screen.getByLabelText(/shelf photo/i), file)
 
-    expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(1)
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/book-recognition-jobs',
       expect.objectContaining({
