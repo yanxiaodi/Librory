@@ -121,10 +121,9 @@ internal static class BookRecognitionJobEndpoints
                 cancellationToken);
 
             logger.LogInformation(
-                "Created book recognition job {JobId} for family {FamilyId} from photo {PhotoFileName} ({PhotoLength} bytes).",
+                "Created book recognition job {JobId} for family {FamilyId} ({PhotoLength} bytes).",
                 dto.JobId,
                 current.FamilyId,
-                photo.FileName,
                 photo.Length);
 
             return Results.Accepted(

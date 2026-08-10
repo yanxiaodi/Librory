@@ -1,10 +1,14 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
-var seq = builder.AddContainer("seq", "datalust/seq:latest")
+var seq = builder.AddContainer("seq", "datalust/seq:2024.3")
     .WithEnvironment("ACCEPT_EULA", "Y")
     .WithEnvironment("SEQ_FIRSTRUN_NOAUTHENTICATION", "true")
-    .WithHttpEndpoint(port: 5341, targetPort: 80)
-    .WithExternalHttpEndpoints();
+    .WithHttpEndpoint(port: 5341, targetPort: 80);
+
+if (builder.Environment.IsDevelopment())
+{
+    seq = seq.WithExternalHttpEndpoints();
+}
 
 var postgres = builder.AddPostgres("postgres")
     .WithDataVolume();

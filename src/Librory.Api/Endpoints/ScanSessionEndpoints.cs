@@ -170,10 +170,9 @@ internal static class ScanSessionEndpoints
                 cancellationToken);
 
             logger.LogInformation(
-                "Created scan session {ScanSessionId} for family {FamilyId} from photo {PhotoFileName} ({PhotoLength} bytes).",
+                "Created scan session {ScanSessionId} for family {FamilyId} ({PhotoLength} bytes).",
                 dto.ScanSessionId,
                 current.FamilyId,
-                photo.FileName,
                 photo.Length);
 
             return Results.Created(

@@ -106,6 +106,12 @@ export async function compressImageToJpeg(file: File): Promise<File> {
 
     const baseName = file.name.replace(/\.[^.]+$/, '') || 'photo'
     return new File([blob], `${baseName}.jpg`, { type: 'image/jpeg', lastModified: file.lastModified })
+  } catch {
+    if (file.size <= 10 * 1024 * 1024) {
+      return file
+    }
+
+    throw new Error('Failed to compress image.')
   } finally {
     URL.revokeObjectURL(imageUrl)
   }
@@ -125,8 +131,6 @@ export function ScansPage() {
   const [persistenceError, setPersistenceError] = React.useState<string | null>(null)
   const [reviewedCandidates, setReviewedCandidates] = React.useState<BookRecognitionJobResponse['candidates']>([])
   const [uploadError, setUploadError] = React.useState<string | null>(null)
-  const [debugMessage, setDebugMessage] = React.useState<string | null>(null)
-  const [sessionMarker] = React.useState(() => `scan-${Date.now().toString(36)}`)
   const [reviewedCandidatesInitialized, setReviewedCandidatesInitialized] = React.useState(false)
   const pollTimerRef = React.useRef<number | null>(null)
   const activeJobIdRef = React.useRef<string | null>(null)
@@ -239,7 +243,6 @@ export function ScansPage() {
     setScanSession(null)
     setPersistenceState('idle')
     setPersistenceError(null)
-    setDebugMessage(null)
     activeJobIdRef.current = null
     activeTargetMemberIdRef.current = selectedMemberId || undefined
     setState('compressing')
@@ -264,7 +267,6 @@ export function ScansPage() {
       void schedulePoll(response.jobId)
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : 'Book recognition upload failed.')
-      setDebugMessage(error instanceof Error ? error.message : 'Book recognition upload failed.')
       setState('error')
     }
   }
@@ -376,14 +378,6 @@ export function ScansPage() {
                 Error: {uploadError}
               </p>
             ) : null}
-            {debugMessage ? (
-              <p className="text-sm leading-6 text-[var(--text-secondary)]">
-                Debug: {debugMessage}
-              </p>
-            ) : null}
-            <p className="text-xs leading-5 text-[var(--text-tertiary)]">
-              Session: {sessionMarker}
-            </p>
           </CardContent>
         </Card>
 
