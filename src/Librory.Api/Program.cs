@@ -133,6 +133,8 @@ app.MapRecommendationProfileEndpoints();
 app.MapScanSessionEndpoints();
 app.MapWishlistEndpoints();
 
+app.Logger.LogInformation("Librory API starting up in {Environment}.", app.Environment.EnvironmentName);
+
 app.MapDefaultEndpoints();
 
 app.Run();

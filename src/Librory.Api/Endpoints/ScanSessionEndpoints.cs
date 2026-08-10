@@ -5,6 +5,7 @@ using Librory.Application.Scanning;
 using Librory.Domain.Models;
 using Librory.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Librory.Api.Endpoints;
 
@@ -88,8 +89,11 @@ internal static class ScanSessionEndpoints
         ICurrentFamilyContextAccessor accessor,
         IScanPhotoStorage photoStorage,
         IScanSessionService scanSessionService,
+        ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
     {
+        var logger = loggerFactory.CreateLogger("Librory.Api.Endpoints.ScanSessionEndpoints");
+
         var current = accessor.Current;
         if (current is null)
         {
@@ -164,6 +168,12 @@ internal static class ScanSessionEndpoints
                     storedPhotoPath,
                     null),
                 cancellationToken);
+
+            logger.LogInformation(
+                "Created scan session {ScanSessionId} for family {FamilyId} ({PhotoLength} bytes).",
+                dto.ScanSessionId,
+                current.FamilyId,
+                photo.Length);
 
             return Results.Created(
                 $"/api/family/current/scan-sessions/{dto.ScanSessionId}",

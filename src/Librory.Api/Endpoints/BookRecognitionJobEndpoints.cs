@@ -120,6 +120,12 @@ internal static class BookRecognitionJobEndpoints
                 ToLanguageCode(current.PreferredLanguage),
                 cancellationToken);
 
+            logger.LogInformation(
+                "Created book recognition job {JobId} for family {FamilyId} ({PhotoLength} bytes).",
+                dto.JobId,
+                current.FamilyId,
+                photo.Length);
+
             return Results.Accepted(
                 $"/api/book-recognition-jobs/{dto.JobId}",
                 ToResponse(dto));
