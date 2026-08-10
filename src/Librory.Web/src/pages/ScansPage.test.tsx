@@ -2,11 +2,12 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AuthSessionProvider } from '@/auth/AuthSessionContext'
-import { ScansPage } from './ScansPage'
+import { PENDING_JOB_STORAGE_KEY, ScansPage } from './ScansPage'
 
 afterEach(() => {
   vi.useRealTimers()
   vi.unstubAllGlobals()
+  sessionStorage.clear()
 })
 
 describe('ScansPage', () => {
@@ -426,5 +427,44 @@ describe('ScansPage', () => {
         },
       ),
     )
+  })
+
+  it('resumes a pending recognition job from sessionStorage and clears it once the job completes', async () => {
+    sessionStorage.setItem(PENDING_JOB_STORAGE_KEY, JSON.stringify({ jobId: 'job-resumed', targetMemberId: 'member-1' }))
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url === '/api/family/current/members') {
+        return new Response(JSON.stringify([]), { status: 200 })
+      }
+
+      if (url === '/api/book-recognition-jobs/job-resumed') {
+        return new Response(JSON.stringify({
+          jobId: 'job-resumed',
+          familyId: 'family-1',
+          status: 3,
+          sourcePhotoPath: '/tmp/Librory/scan-uploads/shelf.jpg',
+          candidates: [],
+          warnings: [],
+          failureMessage: 'Recognition failed.',
+          createdAt: '2026-08-03T00:00:00Z',
+          updatedAt: '2026-08-03T00:00:05Z',
+        }), { status: 200 })
+      }
+
+      throw new Error(`Unexpected fetch request: ${url}`)
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<ScansPage />)
+
+    expect(await screen.findByText(/the recognition job did not complete/i)).toBeVisible()
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/book-recognition-jobs/job-resumed',
+      expect.objectContaining({ credentials: 'include' }),
+    )
+    expect(sessionStorage.getItem(PENDING_JOB_STORAGE_KEY)).toBeNull()
   })
 })
