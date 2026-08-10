@@ -95,9 +95,15 @@ export async function compressImageToJpeg(file: File): Promise<File> {
     // Resize while decoding instead of decoding the full-resolution photo first: a
     // 48-108MP camera shot decoded at full size can use several hundred MB and get
     // the mobile tab killed/reloaded by the OS before the upload even starts.
-    const resizedBitmap = typeof createImageBitmap === 'function'
-      ? await createImageBitmap(file, { resizeWidth: width, resizeHeight: height, resizeQuality: 'medium' })
-      : null
+    let resizedBitmap: ImageBitmap | null = null
+    if (typeof createImageBitmap === 'function') {
+      try {
+        resizedBitmap = await createImageBitmap(file, { resizeWidth: width, resizeHeight: height, resizeQuality: 'medium' })
+      } catch {
+        // Some browsers implement createImageBitmap but reject the resize options — fall back below.
+        resizedBitmap = null
+      }
+    }
 
     if (resizedBitmap) {
       context.drawImage(resizedBitmap, 0, 0, width, height)
@@ -142,7 +148,7 @@ async function requestWakeLock(): Promise<WakeLockSentinel | null> {
 // A mobile OS can reload the tab while the native camera app has it backgrounded, well
 // before the upload finishes. Track the in-flight job here so a fresh page load can pick
 // the recognition job back up instead of stranding the user on a blank idle screen.
-const PENDING_JOB_STORAGE_KEY = 'librory:scan-recognition-pending-job'
+export const PENDING_JOB_STORAGE_KEY = 'librory:scan-recognition-pending-job'
 
 type PendingJob = { jobId: string; targetMemberId?: string }
 
@@ -348,7 +354,7 @@ export function ScansPage() {
       setUploadError(error instanceof Error ? error.message : 'Book recognition upload failed.')
       setState('error')
     } finally {
-      void wakeLock?.release()
+      void wakeLock?.release().catch(() => {})
     }
   }
 

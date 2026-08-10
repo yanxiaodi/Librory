@@ -123,6 +123,7 @@ export function ShelfCameraCapture({ onCapture, onCancel }: ShelfCameraCapturePr
       const file = new File([blob], `shelf-${Date.now()}.jpg`, { type: 'image/jpeg' })
       setReviewImage({ file, url: URL.createObjectURL(blob) })
       setState('review')
+      stopCamera()
     }, 'image/jpeg', 0.9)
   }
 
@@ -130,6 +131,7 @@ export function ShelfCameraCapture({ onCapture, onCancel }: ShelfCameraCapturePr
     if (reviewImage) URL.revokeObjectURL(reviewImage.url)
     setReviewImage(null)
     setState('live')
+    void startCamera(facingMode)
   }
 
   const confirmPhoto = () => {
@@ -152,7 +154,7 @@ export function ShelfCameraCapture({ onCapture, onCancel }: ShelfCameraCapturePr
   // ancestor, letting a tap fall through to whatever is underneath once this
   // overlay closes.
   return createPortal(
-    <div className="fixed inset-0 z-50 bg-black">
+    <div className="fixed inset-0 z-50 bg-black" role="dialog" aria-modal="true" aria-label="Shelf camera capture">
       <video
         ref={videoRef}
         autoPlay
