@@ -40,13 +40,19 @@ public static class ScanSessionRecorder
             ? duplicateDetection.FollowUpHint
             : input.DuplicateMessage;
 
-        return ScanCandidate.Create(
+        var candidate = ScanCandidate.Create(
             input.DisplayTitle,
             input.ConfidenceLabel,
             input.Author,
             input.RecommendationScore,
             input.IsAlreadyOwned || duplicateDetection.HasPotentialDuplicate,
             duplicateMessage,
-            input.DetectedLanguage);
+            input.DetectedLanguage,
+            input.RecognitionRank);
+
+        candidate.ReplaceMetadataMatches(
+            ScanCandidateMetadataSnapshotSerializer.Serialize(input.MetadataMatches, input.RecognitionEvidence));
+
+        return candidate;
     }
 }

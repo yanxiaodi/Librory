@@ -13,7 +13,8 @@ public static class BookWorkResponseFactory
                 edition.Id,
                 edition.Isbn,
                 edition.Format,
-                edition.PublicationYear))
+                edition.PublicationYear,
+                edition.IsProvisional))
             .ToList();
 
         return new BookWorkResponse(

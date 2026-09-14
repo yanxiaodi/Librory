@@ -1,6 +1,7 @@
 using Librory.Api.Contracts;
 using Librory.Api.Validation;
 using Librory.Application.Families;
+using Librory.Application.Metadata;
 using Librory.Application.Scanning;
 using Librory.Domain.Models;
 using Librory.Infrastructure.Persistence;
@@ -273,7 +274,12 @@ internal static class ScanSessionEndpoints
                             candidate.RecommendationScore,
                             candidate.IsAlreadyOwned,
                             candidate.DuplicateMessage,
-                            candidate.DetectedLanguage))
+                            candidate.DetectedLanguage,
+                            candidate.RecognitionEvidence,
+                            candidate.RecognitionRank,
+                            candidate.MetadataMatches?
+                                .Select(ToMetadataCandidate)
+                                .ToArray()))
                         .ToList(),
                     request.TargetMemberId),
                 cancellationToken);
@@ -402,7 +408,12 @@ internal static class ScanSessionEndpoints
                     request.Author,
                     request.RecommendationScore,
                     request.IsAlreadyOwned,
-                    request.DuplicateMessage),
+                    request.DuplicateMessage,
+                    request.RecognitionEvidence,
+                    request.RecognitionRank,
+                    request.MetadataMatches?
+                        .Select(ToMetadataCandidate)
+                        .ToArray()),
                 cancellationToken);
 
             return Results.Ok(ToResponse(dto));
@@ -568,7 +579,13 @@ internal static class ScanSessionEndpoints
                 candidate.IsAlreadyOwned,
                 candidate.DuplicateMessage,
                 candidate.ConfidenceLabel,
-                candidate.DetectedLanguage))
+                candidate.DetectedLanguage,
+                candidate.RecognitionRank,
+                ToMetadataSnapshotResponse(candidate.MetadataSnapshot),
+                candidate.PurchaseStatus,
+                candidate.PurchasedBookCopyId,
+                candidate.PurchaseRequestId,
+                candidate.PurchasedAt))
             .ToList();
 
         return new ScanSessionResponse(
@@ -583,5 +600,51 @@ internal static class ScanSessionEndpoints
             dto.TargetProfileUsed,
             dto.InferredLanguage,
             dto.HasMixedLanguages);
+    }
+
+    private static BookMetadataCandidate ToMetadataCandidate(BookMetadataImportCandidateRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        return new BookMetadataCandidate(
+            request.Source,
+            request.SourceId,
+            request.Title,
+            request.Subtitle,
+            request.Authors ?? [],
+            request.Publisher,
+            request.PublishedDate,
+            request.Language,
+            request.Description,
+            request.Isbn10,
+            request.Isbn13,
+            request.ThumbnailUrl,
+            request.InfoUrl);
+    }
+
+    private static ScanCandidateMetadataSnapshotResponse? ToMetadataSnapshotResponse(
+        ScanCandidateMetadataSnapshot? snapshot)
+    {
+        return snapshot is null
+            ? null
+            : new ScanCandidateMetadataSnapshotResponse(
+                snapshot.SchemaVersion,
+                snapshot.EvidenceText,
+                snapshot.Matches
+                    .Select(candidate => new BookMetadataCandidateResponse(
+                        candidate.Source,
+                        candidate.SourceId,
+                        candidate.Title,
+                        candidate.Subtitle,
+                        candidate.Authors,
+                        candidate.Publisher,
+                        candidate.PublishedDate,
+                        candidate.Language,
+                        candidate.Description,
+                        candidate.Isbn10,
+                        candidate.Isbn13,
+                        candidate.ThumbnailUrl,
+                        candidate.InfoUrl))
+                    .ToList());
     }
 }

@@ -6,6 +6,16 @@ namespace Librory.Domain.Tests;
 public class BookEditionMetadataTests
 {
     [Fact]
+    public void Provisional_book_edition_can_be_confirmed_after_version_metadata_is_added()
+    {
+        var edition = new BookEdition { Isbn = "978-0-06-112495-2", IsProvisional = true };
+
+        edition.ConfirmVersion();
+
+        Assert.False(edition.IsProvisional);
+    }
+
+    [Fact]
     public void Book_edition_can_store_subtitle_and_provenance()
     {
         var provenance = new MetadataProvenance

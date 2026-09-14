@@ -6,6 +6,50 @@ namespace Librory.Domain.Tests;
 public class ScanCandidateTests
 {
     [Fact]
+    public void ScanCandidate_starts_pending_and_can_be_purchased_only_once()
+    {
+        var candidate = ScanCandidate.Create("Charlotte's Web", confidenceLabel: "High", recognitionRank: 2);
+        var copyId = Guid.NewGuid();
+        var requestId = Guid.NewGuid();
+
+        Assert.Equal(2, candidate.RecognitionRank);
+        Assert.Equal(PurchaseStatus.Pending, candidate.PurchaseStatus);
+
+        candidate.MarkPurchased(copyId, requestId, new DateTimeOffset(2026, 9, 14, 1, 0, 0, TimeSpan.Zero));
+
+        Assert.Equal(PurchaseStatus.Purchased, candidate.PurchaseStatus);
+        Assert.Equal(copyId, candidate.PurchasedBookCopyId);
+        Assert.Equal(requestId, candidate.PurchaseRequestId);
+        Assert.Throws<InvalidOperationException>(() => candidate.MarkPurchased(Guid.NewGuid(), Guid.NewGuid(), DateTimeOffset.UtcNow));
+    }
+
+    [Fact]
+    public void ScanCandidate_replacing_metadata_snapshot_clears_stale_duplicate_state()
+    {
+        var candidate = ScanCandidate.Create(
+            "Charlotte's Web",
+            confidenceLabel: "High",
+            isAlreadyOwned: true,
+            duplicateMessage: "Already in the family");
+
+        candidate.ReplaceMetadataMatches("{\"schemaVersion\":1,\"matches\":[]}");
+
+        Assert.Equal("{\"schemaVersion\":1,\"matches\":[]}", candidate.MetadataMatchesJson);
+        Assert.False(candidate.IsAlreadyOwned);
+        Assert.Null(candidate.DuplicateMessage);
+    }
+
+    [Fact]
+    public void Purchased_scan_candidate_rejects_correction_and_snapshot_replacement()
+    {
+        var candidate = ScanCandidate.Create("Charlotte's Web", confidenceLabel: "High");
+        candidate.MarkPurchased(Guid.NewGuid(), Guid.NewGuid(), DateTimeOffset.UtcNow);
+
+        Assert.Throws<InvalidOperationException>(() => candidate.ApplyCorrection("Matilda", confidenceLabel: "High"));
+        Assert.Throws<InvalidOperationException>(() => candidate.ReplaceMetadataMatches("{}"));
+    }
+
+    [Fact]
     public void ScanCandidate_create_trims_and_preserves_values()
     {
         var candidate = ScanCandidate.Create(
@@ -66,6 +110,15 @@ public class ScanCandidateTests
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => ScanCandidate.Create("Charlotte's Web", recommendationScore: -0.01m, confidenceLabel: "Low"));
         Assert.Throws<ArgumentOutOfRangeException>(() => ScanCandidate.Create("Charlotte's Web", recommendationScore: 1.01m, confidenceLabel: "Low"));
+    }
+
+    [Fact]
+    public void ScanCandidate_create_rejects_negative_recognition_rank()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => ScanCandidate.Create(
+            "Charlotte's Web",
+            confidenceLabel: "Low",
+            recognitionRank: -1));
     }
 
     [Fact]

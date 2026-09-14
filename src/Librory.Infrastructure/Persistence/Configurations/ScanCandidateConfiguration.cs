@@ -15,10 +15,13 @@ internal sealed class ScanCandidateConfiguration : IEntityTypeConfiguration<Scan
         builder.Property(x => x.Id).ValueGeneratedNever();
         builder.Property(x => x.DisplayTitle).HasMaxLength(300).IsRequired();
         builder.Property(x => x.Author).HasMaxLength(300);
+        builder.Property(x => x.RecognitionRank);
         builder.Property(x => x.RecommendationScore).HasPrecision(5, 4);
         builder.Property(x => x.DuplicateMessage).HasMaxLength(1000);
         builder.Property(x => x.ConfidenceLabel).HasMaxLength(64).IsRequired();
         builder.Property(x => x.DetectedLanguage).HasConversion<string>().HasMaxLength(32);
+        builder.Property(x => x.MetadataMatchesJson).HasColumnType("jsonb");
+        builder.Property(x => x.PurchaseStatus).HasConversion<string>().HasMaxLength(32).IsRequired();
 
         builder.HasOne(x => x.ScanSession)
             .WithMany(x => x.Candidates)
@@ -26,5 +29,8 @@ internal sealed class ScanCandidateConfiguration : IEntityTypeConfiguration<Scan
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(x => x.ScanSessionId);
+        builder.HasIndex(x => x.PurchaseRequestId)
+            .IsUnique()
+            .HasFilter("\"PurchaseRequestId\" IS NOT NULL");
     }
 }

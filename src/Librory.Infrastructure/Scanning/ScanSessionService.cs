@@ -95,7 +95,14 @@ public sealed class ScanSessionService : IScanSessionService
             request.Author,
             request.RecommendationScore,
             request.IsAlreadyOwned,
-            request.DuplicateMessage);
+            request.DuplicateMessage,
+            recognitionRank: request.RecognitionRank);
+
+        if (request.MetadataMatches is not null || !string.IsNullOrWhiteSpace(request.RecognitionEvidence))
+        {
+            candidate.ReplaceMetadataMatches(
+                ScanCandidateMetadataSnapshotSerializer.Serialize(request.MetadataMatches, request.RecognitionEvidence));
+        }
 
         await _db.SaveChangesAsync(cancellationToken);
 

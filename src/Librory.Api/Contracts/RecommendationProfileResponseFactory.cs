@@ -23,6 +23,7 @@ public static class RecommendationProfileResponseFactory
             dto.PreferredBookLanguages,
             includePrivateNotes ? dto.PreferenceNotes : null,
             dto.ProfileVisibility,
-            dto.UseInFamilyRecommendations);
+            dto.UseInFamilyRecommendations,
+            includePrivateNotes ? dto.UsePrivateNotesInFamilyRecommendations : null);
     }
 }

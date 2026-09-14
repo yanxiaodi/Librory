@@ -10,6 +10,7 @@ public static class ScanCandidateDtoFactory
         ArgumentNullException.ThrowIfNull(candidate);
 
         var duplicateDetection = family.DetectPotentialDuplicate(candidate.DisplayTitle);
+        var metadataSnapshot = ScanCandidateMetadataSnapshotSerializer.Deserialize(candidate.MetadataMatchesJson);
 
         return new ScanCandidateDto(
             candidate.Id,
@@ -19,6 +20,12 @@ public static class ScanCandidateDtoFactory
             candidate.IsAlreadyOwned || duplicateDetection.HasPotentialDuplicate,
             candidate.DuplicateMessage ?? duplicateDetection.FollowUpHint,
             candidate.ConfidenceLabel,
-            candidate.DetectedLanguage);
+            candidate.DetectedLanguage,
+            candidate.RecognitionRank,
+            metadataSnapshot,
+            candidate.PurchaseStatus,
+            candidate.PurchasedBookCopyId,
+            candidate.PurchaseRequestId,
+            candidate.PurchasedAt);
     }
 }

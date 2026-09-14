@@ -16,6 +16,7 @@ Ready for frontend integration:
 - Book metadata title search
 - Recommendation profile read and update
 - Scan session create, read, correct, resolve, and discard
+- Scan candidate metadata review, purchase, duplicate confirmation, and continuation
 - Wishlist list, create, and fetch
 - Book recognition job create and poll
 - Book recognition job result rendering in the scan flow
@@ -145,15 +146,17 @@ Recommended sequence:
 
 1. Create a temporary session with `POST /api/family/current/scan-sessions`.
 2. Load or refresh the session with `GET /api/family/current/scan-sessions/{scanSessionId}`.
-3. Correct a single candidate with `PUT /api/family/current/scan-sessions/{scanSessionId}/candidates/{candidateId}`.
-4. Promote a candidate into canonical catalog data with `POST /api/family/current/scan-sessions/{scanSessionId}/candidates/{candidateId}/resolve`.
-5. Discard a candidate with `DELETE /api/family/current/scan-sessions/{scanSessionId}/candidates/{candidateId}`.
+3. Correct a single candidate and attach re-searched metadata with `PUT /api/family/current/scan-sessions/{scanSessionId}/candidates/{candidateId}`.
+4. Purchase one pending candidate with `POST /api/family/current/scan-sessions/{scanSessionId}/candidates/{candidateId}/purchase`.
+5. If purchase returns `409`, show the three duplicate-resolution choices and retry with the same `purchaseRequestId`.
+6. Keep purchased candidates read-only and continue with other pending candidates in the same session.
 
 Endpoints:
 
 - `POST /api/family/current/scan-sessions`
 - `GET /api/family/current/scan-sessions/{scanSessionId}`
 - `PUT /api/family/current/scan-sessions/{scanSessionId}/candidates/{candidateId}`
+- `POST /api/family/current/scan-sessions/{scanSessionId}/candidates/{candidateId}/purchase`
 - `POST /api/family/current/scan-sessions/{scanSessionId}/candidates/{candidateId}/resolve`
 - `DELETE /api/family/current/scan-sessions/{scanSessionId}/candidates/{candidateId}`
 
@@ -161,7 +164,9 @@ Notes:
 
 - Treat scan sessions as temporary UI state backed by the backend.
 - The session shape is likely to change sooner than the family or book-copy resources.
-- Downstream duplicate/recommendation refresh is not owned by this API slice.
+- Owner selection uses all family members, including deactivated members; scan-target selection keeps its existing active/eligible rules.
+- `purchaseRequestId` must remain stable across retries so a repeated submission cannot create a second copy.
+- Recognition rank is not a personalized recommendation score. AI recommendation polling is a later slice.
 
 ## Wishlist Flow
 

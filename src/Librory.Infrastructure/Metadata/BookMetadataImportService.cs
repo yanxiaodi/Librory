@@ -1,4 +1,3 @@
-using System.Data;
 using Librory.Application.Metadata;
 using Librory.Domain.Models;
 using Librory.Infrastructure.Persistence;
@@ -19,7 +18,8 @@ public sealed class BookMetadataImportService : IBookMetadataImportService
 
     public async Task<BookMetadataImportResult> ImportAsync(
         BookMetadataCandidate candidate,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        BookMetadataImportOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(candidate);
 
@@ -28,10 +28,10 @@ public sealed class BookMetadataImportService : IBookMetadataImportService
             throw new ArgumentException("Title is required.", nameof(candidate));
         }
 
-        var isbn = SelectPreferredIsbn(candidate);
+        options ??= new BookMetadataImportOptions();
+        var isbn = Normalize(options.Isbn) ?? SelectPreferredIsbn(candidate);
         if (!string.IsNullOrWhiteSpace(isbn))
         {
-            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
             var existingEdition = await _db.BookEditions
                 .Include(x => x.BookWork)
                 .ThenInclude(x => x.Editions)
@@ -39,85 +39,70 @@ public sealed class BookMetadataImportService : IBookMetadataImportService
 
             if (existingEdition is not null)
             {
-                await transaction.CommitAsync(cancellationToken);
-                return new BookMetadataImportResult(existingEdition.BookWork, false);
+                return new BookMetadataImportResult(existingEdition.BookWork, false, existingEdition);
             }
-
-            var canonicalAuthor = NormalizeAuthors(candidate.Authors);
-            var work = BookWork.Create(candidate.Title.Trim(), canonicalAuthor);
-            var provenanceCapturedAt = DateTimeOffset.UtcNow;
-            if (!string.IsNullOrWhiteSpace(candidate.Description))
-            {
-                var description = candidate.Description.Trim();
-                work.Summary = new LocalizedText(description);
-                work.SummaryProvenance = CreateProvenance(candidate, provenanceCapturedAt);
-            }
-
-            if (canonicalAuthor is not null)
-            {
-                work.CanonicalAuthorProvenance = CreateProvenance(candidate, provenanceCapturedAt);
-            }
-
-            var publicationYear = ParsePublicationYear(candidate.PublishedDate);
-            if (!string.IsNullOrWhiteSpace(isbn) || !string.IsNullOrWhiteSpace(candidate.Subtitle) || publicationYear.HasValue)
-            {
-                var edition = work.AddEdition(isbn, null, publicationYear);
-
-                if (!string.IsNullOrWhiteSpace(candidate.Subtitle))
-                {
-                    edition.Subtitle = new LocalizedText(candidate.Subtitle.Trim());
-                    edition.SubtitleProvenance = CreateProvenance(candidate, provenanceCapturedAt);
-                }
-
-                if (publicationYear.HasValue)
-                {
-                    edition.PublicationYearProvenance = CreateProvenance(candidate, provenanceCapturedAt);
-                }
-            }
-
-            _db.BookWorks.Add(work);
-            await _db.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-
-            return new BookMetadataImportResult(work, true);
         }
 
-        var noIsbnCanonicalAuthor = NormalizeAuthors(candidate.Authors);
-        var noIsbnWork = BookWork.Create(candidate.Title.Trim(), noIsbnCanonicalAuthor);
-        var noIsbnProvenanceCapturedAt = DateTimeOffset.UtcNow;
+        var canonicalAuthor = NormalizeAuthors(candidate.Authors);
+        var work = BookWork.Create(candidate.Title.Trim(), canonicalAuthor);
+        var provenanceCapturedAt = DateTimeOffset.UtcNow;
+        ApplyWorkMetadata(work, candidate, provenanceCapturedAt);
+
+        var publicationYear = options.PublicationYear ?? ParsePublicationYear(candidate.PublishedDate);
+        var format = Normalize(options.Format);
+        var shouldCreateEdition = options.AllowProvisionalEdition
+            || !string.IsNullOrWhiteSpace(isbn)
+            || !string.IsNullOrWhiteSpace(format)
+            || !string.IsNullOrWhiteSpace(candidate.Subtitle)
+            || publicationYear.HasValue;
+
+        BookEdition? edition = null;
+        if (shouldCreateEdition)
+        {
+            edition = work.AddEdition(isbn, format, publicationYear);
+            edition.IsProvisional = options.AllowProvisionalEdition
+                && string.IsNullOrWhiteSpace(isbn)
+                && string.IsNullOrWhiteSpace(format)
+                && !publicationYear.HasValue;
+            ApplyEditionMetadata(edition, candidate, provenanceCapturedAt);
+        }
+
+        _db.BookWorks.Add(work);
+        return new BookMetadataImportResult(work, true, edition);
+    }
+
+    private static void ApplyWorkMetadata(
+        BookWork work,
+        BookMetadataCandidate candidate,
+        DateTimeOffset capturedAt)
+    {
         if (!string.IsNullOrWhiteSpace(candidate.Description))
         {
-            var description = candidate.Description.Trim();
-            noIsbnWork.Summary = new LocalizedText(description);
-            noIsbnWork.SummaryProvenance = CreateProvenance(candidate, noIsbnProvenanceCapturedAt);
+            work.Summary = new LocalizedText(candidate.Description.Trim());
+            work.SummaryProvenance = CreateProvenance(candidate, capturedAt);
         }
 
-        if (noIsbnCanonicalAuthor is not null)
+        if (!string.IsNullOrWhiteSpace(work.CanonicalAuthor))
         {
-            noIsbnWork.CanonicalAuthorProvenance = CreateProvenance(candidate, noIsbnProvenanceCapturedAt);
+            work.CanonicalAuthorProvenance = CreateProvenance(candidate, capturedAt);
         }
+    }
 
-        var noIsbnPublicationYear = ParsePublicationYear(candidate.PublishedDate);
-        if (!string.IsNullOrWhiteSpace(candidate.Subtitle) || noIsbnPublicationYear.HasValue)
+    private static void ApplyEditionMetadata(
+        BookEdition edition,
+        BookMetadataCandidate candidate,
+        DateTimeOffset capturedAt)
+    {
+        if (!string.IsNullOrWhiteSpace(candidate.Subtitle))
         {
-            var edition = noIsbnWork.AddEdition(null, null, noIsbnPublicationYear);
-
-            if (!string.IsNullOrWhiteSpace(candidate.Subtitle))
-            {
-                edition.Subtitle = new LocalizedText(candidate.Subtitle.Trim());
-                edition.SubtitleProvenance = CreateProvenance(candidate, noIsbnProvenanceCapturedAt);
-            }
-
-            if (noIsbnPublicationYear.HasValue)
-            {
-                edition.PublicationYearProvenance = CreateProvenance(candidate, noIsbnProvenanceCapturedAt);
-            }
+            edition.Subtitle = new LocalizedText(candidate.Subtitle.Trim());
+            edition.SubtitleProvenance = CreateProvenance(candidate, capturedAt);
         }
 
-        _db.BookWorks.Add(noIsbnWork);
-        await _db.SaveChangesAsync(cancellationToken);
-
-        return new BookMetadataImportResult(noIsbnWork, true);
+        if (ParsePublicationYear(candidate.PublishedDate).HasValue)
+        {
+            edition.PublicationYearProvenance = CreateProvenance(candidate, capturedAt);
+        }
     }
 
     private static string? NormalizeAuthors(IReadOnlyList<string>? authors)
@@ -134,14 +119,7 @@ public sealed class BookMetadataImportService : IBookMetadataImportService
 
     private static string? SelectPreferredIsbn(BookMetadataCandidate candidate)
     {
-        if (!string.IsNullOrWhiteSpace(candidate.Isbn13))
-        {
-            return candidate.Isbn13.Trim();
-        }
-
-        return string.IsNullOrWhiteSpace(candidate.Isbn10)
-            ? null
-            : candidate.Isbn10.Trim();
+        return Normalize(candidate.Isbn13) ?? Normalize(candidate.Isbn10);
     }
 
     private static int? ParsePublicationYear(string? publishedDate)
@@ -170,5 +148,10 @@ public sealed class BookMetadataImportService : IBookMetadataImportService
             candidate.SourceId.Trim(),
             1m,
             capturedAt);
+    }
+
+    private static string? Normalize(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 }

@@ -159,6 +159,8 @@ public class RecommendationProfileTests
             ProfileVisibility = ProfileVisibility.Family,
             UseInFamilyRecommendationsSpecified = true,
             UseInFamilyRecommendations = true,
+            UsePrivateNotesInFamilyRecommendationsSpecified = true,
+            UsePrivateNotesInFamilyRecommendations = true,
         });
 
         Assert.Equal(["Author A"], profile.ExcludedAuthors);
@@ -167,6 +169,16 @@ public class RecommendationProfileTests
         Assert.Equal("Prefers thoughtful stories.", profile.PreferenceNotes);
         Assert.Equal(ProfileVisibility.Family, profile.ProfileVisibility);
         Assert.True(profile.UseInFamilyRecommendations);
+        Assert.True(profile.UsePrivateNotesInFamilyRecommendations);
+    }
+
+    [Fact]
+    public void Recommendation_profile_private_notes_consent_defaults_to_false()
+    {
+        var member = Family.Create("The Yans").AddMember("Alice");
+        var profile = RecommendationProfile.Create(member);
+
+        Assert.False(profile.UsePrivateNotesInFamilyRecommendations);
     }
 
     [Fact]

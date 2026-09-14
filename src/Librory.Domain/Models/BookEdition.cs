@@ -8,10 +8,21 @@ public sealed class BookEdition
     public string? Format { get; set; }
     public LocalizedText? Subtitle { get; set; }
     public int? PublicationYear { get; set; }
+    public bool IsProvisional { get; set; }
     public MetadataProvenance? SubtitleProvenance { get; set; }
     public MetadataProvenance? PublicationYearProvenance { get; set; }
     public BookWork BookWork { get; private set; } = null!;
     public bool IsAttachedToWork => BookWorkId != Guid.Empty;
+
+    public void ConfirmVersion()
+    {
+        if (string.IsNullOrWhiteSpace(Isbn) && string.IsNullOrWhiteSpace(Format) && !PublicationYear.HasValue)
+        {
+            throw new InvalidOperationException("At least one version field is required to confirm an edition.");
+        }
+
+        IsProvisional = false;
+    }
 
     public BookEdition()
     {

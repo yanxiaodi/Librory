@@ -6,6 +6,21 @@ namespace Librory.Domain.Tests;
 public class BookCopyOwnershipTests
 {
     [Fact]
+    public void Family_add_book_copy_records_owner_and_distinct_purchaser()
+    {
+        var family = Family.Create("The Yans");
+        var owner = family.AddMember("Alice");
+        var purchaser = family.AddMember("Bob");
+        var edition = BookWork.Create("Charlotte's Web").AddEdition(isbn: "978-0-06-112495-2");
+
+        var copy = family.AddBookCopy(edition, owner, purchasedByMember: purchaser);
+
+        Assert.Equal(owner.Id, copy.MemberId);
+        Assert.Equal(purchaser.Id, copy.PurchasedByMemberId);
+        Assert.Same(purchaser, copy.PurchasedByMember);
+    }
+
+    [Fact]
     public void Family_add_book_copy_registers_family_member_and_edition()
     {
         var family = Family.Create("The Yans");

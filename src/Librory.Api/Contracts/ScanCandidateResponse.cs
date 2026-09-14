@@ -10,4 +10,10 @@ public sealed record ScanCandidateResponse(
     bool IsAlreadyOwned,
     string? DuplicateMessage,
     string ConfidenceLabel,
-    PreferredLanguage? DetectedLanguage = null);
+    PreferredLanguage? DetectedLanguage = null,
+    int RecognitionRank = 0,
+    ScanCandidateMetadataSnapshotResponse? MetadataSnapshot = null,
+    PurchaseStatus PurchaseStatus = PurchaseStatus.Pending,
+    Guid? PurchasedBookCopyId = null,
+    Guid? PurchaseRequestId = null,
+    DateTimeOffset? PurchasedAt = null);
