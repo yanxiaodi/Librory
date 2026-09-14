@@ -19,3 +19,11 @@ public sealed class DuplicateConfirmationRequiredException : InvalidOperationExc
 
     public DuplicateDetectionResult DuplicateDetection { get; }
 }
+
+public sealed class ScanPurchaseRetryableException : Exception
+{
+    public ScanPurchaseRetryableException(string message, Exception innerException)
+        : base(message, innerException)
+    {
+    }
+}

@@ -99,6 +99,7 @@ describe('ScansPage', () => {
       targetMemberId: 'member-2',
       candidates: [{ displayTitle: 'Dune', confidenceLabel: 'DUNE', author: 'Frank Herbert', detectedLanguage: 0 }],
     })
+    expect((sessionPayload?.candidates as Array<Record<string, unknown>>)[0]).not.toHaveProperty('recommendationScore')
   })
 
   it('uploads a shelf photo and renders recognized candidates after polling', async () => {

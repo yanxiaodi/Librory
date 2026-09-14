@@ -30,7 +30,7 @@ public sealed class BookMetadataImportService : IBookMetadataImportService
 
         options ??= new BookMetadataImportOptions();
         var isbn = Normalize(options.Isbn) ?? SelectPreferredIsbn(candidate);
-        if (!string.IsNullOrWhiteSpace(isbn))
+        if (options.ReuseExistingEditionByIsbn && !string.IsNullOrWhiteSpace(isbn))
         {
             var existingEdition = await _db.BookEditions
                 .Include(x => x.BookWork)
@@ -44,9 +44,12 @@ public sealed class BookMetadataImportService : IBookMetadataImportService
         }
 
         var canonicalAuthor = NormalizeAuthors(candidate.Authors);
-        var work = BookWork.Create(candidate.Title.Trim(), canonicalAuthor);
+        var work = options.TargetWork ?? BookWork.Create(candidate.Title.Trim(), canonicalAuthor);
         var provenanceCapturedAt = DateTimeOffset.UtcNow;
-        ApplyWorkMetadata(work, candidate, provenanceCapturedAt);
+        if (options.TargetWork is null)
+        {
+            ApplyWorkMetadata(work, candidate, provenanceCapturedAt);
+        }
 
         var publicationYear = options.PublicationYear ?? ParsePublicationYear(candidate.PublishedDate);
         var format = Normalize(options.Format);
@@ -67,8 +70,12 @@ public sealed class BookMetadataImportService : IBookMetadataImportService
             ApplyEditionMetadata(edition, candidate, provenanceCapturedAt);
         }
 
-        _db.BookWorks.Add(work);
-        return new BookMetadataImportResult(work, true, edition);
+        if (options.TargetWork is null)
+        {
+            _db.BookWorks.Add(work);
+        }
+
+        return new BookMetadataImportResult(work, options.TargetWork is null, edition);
     }
 
     private static void ApplyWorkMetadata(

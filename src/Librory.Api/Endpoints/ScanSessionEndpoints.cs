@@ -504,6 +504,10 @@ internal static class ScanSessionEndpoints
         {
             return Results.NotFound();
         }
+        catch (InvalidOperationException exception)
+        {
+            return Results.Problem(detail: exception.Message, statusCode: StatusCodes.Status400BadRequest);
+        }
     }
 
     private static Task<ScanSession?> LoadScanSessionAsync(

@@ -98,11 +98,13 @@ public sealed class ScanSessionService : IScanSessionService
             request.DuplicateMessage,
             recognitionRank: request.RecognitionRank);
 
-        if (request.MetadataMatches is not null || !string.IsNullOrWhiteSpace(request.RecognitionEvidence))
-        {
-            candidate.ReplaceMetadataMatches(
-                ScanCandidateMetadataSnapshotSerializer.Serialize(request.MetadataMatches, request.RecognitionEvidence));
-        }
+        var hasMetadataRefresh = request.MetadataMatches is not null
+            || !string.IsNullOrWhiteSpace(request.RecognitionEvidence);
+        candidate.ReplaceMetadataMatches(
+            hasMetadataRefresh
+                ? ScanCandidateMetadataSnapshotSerializer.Serialize(request.MetadataMatches, request.RecognitionEvidence)
+                : null,
+            resetReviewState: hasMetadataRefresh);
 
         await _db.SaveChangesAsync(cancellationToken);
 
@@ -136,6 +138,11 @@ public sealed class ScanSessionService : IScanSessionService
             throw new KeyNotFoundException("Scan candidate not found.");
         }
 
+        if (candidate.PurchaseStatus == PurchaseStatus.Purchased)
+        {
+            throw new InvalidOperationException("A purchased scan candidate is read-only.");
+        }
+
         var work = BookWork.Create(title, author);
         if (HasEditionDetails(isbn, format, publicationYear))
         {
@@ -166,6 +173,11 @@ public sealed class ScanSessionService : IScanSessionService
         if (candidate is null)
         {
             throw new KeyNotFoundException("Scan candidate not found.");
+        }
+
+        if (candidate.PurchaseStatus == PurchaseStatus.Purchased)
+        {
+            throw new InvalidOperationException("A purchased scan candidate is read-only.");
         }
 
         session.RemoveCandidate(candidateId);

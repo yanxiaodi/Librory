@@ -38,18 +38,24 @@ public sealed class ScanPurchaseService : IScanPurchaseService
         var current = _currentFamilyContextAccessor.Current
             ?? throw new UnauthorizedAccessException("Current family context is required.");
 
-        for (var retry = 0; ; retry++)
+        Exception? lastRetryableFailure = null;
+        for (var retry = 0; retry <= MaxRetryCount; retry++)
         {
             try
             {
                 return await ExecuteAttemptAsync(request, current, cancellationToken);
             }
-            catch (Exception exception) when (retry < MaxRetryCount && IsRetryablePostgresFailure(exception))
+            catch (Exception exception) when (IsRetryablePostgresFailure(exception))
             {
                 // The failed scope and transaction are disposed by ExecuteAttemptAsync.
                 // The next attempt intentionally resolves a new DbContext and importer.
+                lastRetryableFailure = exception;
             }
         }
+
+        throw new ScanPurchaseRetryableException(
+            "The purchase could not be completed because the database transaction was repeatedly contended. Retry the purchase.",
+            lastRetryableFailure!);
     }
 
     private async Task<ScanPurchaseResult> ExecuteAttemptAsync(
@@ -118,25 +124,28 @@ public sealed class ScanPurchaseService : IScanPurchaseService
 
         var edition = await ResolveEditionAsync(db, importer, request, cancellationToken);
         var duplicateDetection = family.DetectPotentialDuplicate(edition);
+        ValidateSelectedResolution(request, duplicateDetection);
         var duplicateStatus = ResolveDuplicateStatus(request, duplicateDetection);
         var purchasedAt = request.PurchasedAt ?? DateTimeOffset.UtcNow;
-        var copy = family.AddBookCopy(
-            edition,
-            owner,
-            request.Condition,
-            request.PurchaseStore,
-            request.PurchasePrice,
-            request.ShelfLocation,
-            purchasedAt,
-            duplicateStatus,
-            request.IntakeNotes,
-            purchaser);
+        var intake = ManualBookIntakeRecorder.RecordWithDuplicateDetection(
+            family,
+            new ManualBookIntakeRequest(
+                edition,
+                owner,
+                duplicateStatus,
+                request.Condition,
+                request.PurchaseStore,
+                request.PurchasePrice,
+                request.ShelfLocation,
+                purchasedAt,
+                request.IntakeNotes,
+                purchaser));
 
-        candidate.MarkPurchased(copy.Id, request.PurchaseRequestId, purchasedAt);
+        candidate.MarkPurchased(intake.Copy.Id, request.PurchaseRequestId, purchasedAt);
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        return new ScanPurchaseResult(copy, edition.BookWork, edition, duplicateDetection, false);
+        return new ScanPurchaseResult(intake.Copy, edition.BookWork, edition, intake.DuplicateDetection, false);
     }
 
     private static async Task<BookEdition> ResolveEditionAsync(
@@ -145,32 +154,41 @@ public sealed class ScanPurchaseService : IScanPurchaseService
         ScanPurchaseRequest request,
         CancellationToken cancellationToken)
     {
-        if (request.ExistingBookEditionId.HasValue)
+        ValidateResolutionShape(request);
+
+        if (request.DuplicateResolution == DuplicateResolution.ExistingEdition)
         {
             var existingEdition = await db.BookEditions
                 .Include(edition => edition.BookWork)
-                .SingleOrDefaultAsync(edition => edition.Id == request.ExistingBookEditionId.Value, cancellationToken);
+                    .ThenInclude(work => work.Editions)
+                .SingleOrDefaultAsync(edition => edition.Id == request.ExistingBookEditionId!.Value, cancellationToken);
             return existingEdition
                 ?? throw new KeyNotFoundException("Selected book edition not found.");
         }
 
-        if (request.DuplicateResolution == DuplicateResolution.SameWorkNewEdition
-            && request.ExistingBookWorkId.HasValue)
+        if (request.DuplicateResolution == DuplicateResolution.SameWorkNewEdition)
         {
             var existingWork = await db.BookWorks
                 .Include(work => work.Editions)
-                .SingleOrDefaultAsync(work => work.Id == request.ExistingBookWorkId.Value, cancellationToken);
+                .SingleOrDefaultAsync(work => work.Id == request.ExistingBookWorkId!.Value, cancellationToken);
             if (existingWork is null)
             {
                 throw new KeyNotFoundException("Selected book work not found.");
             }
 
-            var edition = existingWork.AddEdition(
-                SelectIsbn(request),
-                Normalize(request.Format),
-                request.PublicationYear ?? ParsePublicationYear(request.SelectedMetadata?.PublishedDate));
-            edition.IsProvisional = IsVersionIncomplete(edition);
-            return edition;
+            var targetMetadata = request.SelectedMetadata ?? CreateManualMetadata(request);
+            var targetImportResult = await importer.ImportAsync(
+                targetMetadata,
+                cancellationToken,
+                new BookMetadataImportOptions(
+                    AllowProvisionalEdition: true,
+                    Isbn: SelectIsbn(request),
+                    Format: request.Format,
+                    PublicationYear: request.PublicationYear,
+                    ReuseExistingEditionByIsbn: false,
+                    TargetWork: existingWork));
+            return targetImportResult.Edition
+                ?? throw new InvalidOperationException("Metadata import did not create a book edition.");
         }
 
         var metadata = request.SelectedMetadata ?? CreateManualMetadata(request);
@@ -181,7 +199,8 @@ public sealed class ScanPurchaseService : IScanPurchaseService
                 AllowProvisionalEdition: true,
                 Isbn: SelectIsbn(request),
                 Format: request.Format,
-                PublicationYear: request.PublicationYear));
+                PublicationYear: request.PublicationYear,
+                ReuseExistingEditionByIsbn: false));
 
         return importResult.Edition
             ?? throw new InvalidOperationException("Metadata import did not create a book edition.");
@@ -228,6 +247,50 @@ public sealed class ScanPurchaseService : IScanPurchaseService
         return BookCopyDuplicateStatus.ConfirmedDuplicate;
     }
 
+    private static void ValidateResolutionShape(ScanPurchaseRequest request)
+    {
+        if (!Enum.IsDefined(request.DuplicateResolution))
+        {
+            throw new ArgumentException("Duplicate resolution is invalid.", nameof(request));
+        }
+
+        if (!Enum.IsDefined(request.DuplicateStatus))
+        {
+            throw new ArgumentException("Duplicate status is invalid.", nameof(request));
+        }
+
+        switch (request.DuplicateResolution)
+        {
+            case DuplicateResolution.ExistingEdition when !request.ExistingBookEditionId.HasValue:
+                throw new ArgumentException("An existing book edition id is required for this resolution.", nameof(request));
+            case DuplicateResolution.ExistingEdition when request.ExistingBookWorkId.HasValue:
+                throw new ArgumentException("A book work id is not valid for an existing edition resolution.", nameof(request));
+            case DuplicateResolution.SameWorkNewEdition when !request.ExistingBookWorkId.HasValue:
+                throw new ArgumentException("An existing book work id is required for this resolution.", nameof(request));
+            case DuplicateResolution.SameWorkNewEdition when request.ExistingBookEditionId.HasValue:
+                throw new ArgumentException("An edition id is not valid for a same-work resolution.", nameof(request));
+            case DuplicateResolution.NewWork when request.ExistingBookEditionId.HasValue || request.ExistingBookWorkId.HasValue:
+                throw new ArgumentException("Existing canonical ids are not valid for a new-work resolution.", nameof(request));
+        }
+    }
+
+    private static void ValidateSelectedResolution(
+        ScanPurchaseRequest request,
+        DuplicateDetectionResult duplicateDetection)
+    {
+        if (request.DuplicateResolution == DuplicateResolution.ExistingEdition
+            && !duplicateDetection.Matches.Any(match => match.BookEditionId == request.ExistingBookEditionId))
+        {
+            throw new ArgumentException("The selected edition is not one of the detected duplicate matches.", nameof(request));
+        }
+
+        if (request.DuplicateResolution == DuplicateResolution.SameWorkNewEdition
+            && !duplicateDetection.Matches.Any(match => match.BookWorkId == request.ExistingBookWorkId))
+        {
+            throw new ArgumentException("The selected work is not one of the detected duplicate matches.", nameof(request));
+        }
+    }
+
     private static async Task<Family?> LoadFamilyAsync(
         LibroryDbContext db,
         Guid familyId,
@@ -238,6 +301,7 @@ public sealed class ScanPurchaseService : IScanPurchaseService
             .Include(family => family.BookCopies)
                 .ThenInclude(copy => copy.BookEdition)
                     .ThenInclude(edition => edition.BookWork)
+                        .ThenInclude(work => work.Editions)
             .SingleOrDefaultAsync(family => family.Id == familyId, cancellationToken);
     }
 
@@ -294,13 +358,6 @@ public sealed class ScanPurchaseService : IScanPurchaseService
         return int.TryParse(publishedDate.Trim()[..4], out var year) && year is >= 1000 and <= 9999
             ? year
             : null;
-    }
-
-    private static bool IsVersionIncomplete(BookEdition edition)
-    {
-        return string.IsNullOrWhiteSpace(edition.Isbn)
-            && string.IsNullOrWhiteSpace(edition.Format)
-            && !edition.PublicationYear.HasValue;
     }
 
     private static string? Normalize(string? value)

@@ -86,7 +86,9 @@ internal static class BookMetadataEndpoints
             TrimToNull(request.Candidate.ThumbnailUrl),
             TrimToNull(request.Candidate.InfoUrl));
 
-        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        await using var transaction = await db.Database.BeginTransactionAsync(
+            System.Data.IsolationLevel.Serializable,
+            cancellationToken);
         var result = await importService.ImportAsync(candidate, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);

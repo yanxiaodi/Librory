@@ -73,14 +73,18 @@ public sealed class ScanCandidate
         }
     }
 
-    public void ReplaceMetadataMatches(string metadataMatchesJson)
+    public void ReplaceMetadataMatches(string? metadataMatchesJson, bool resetReviewState = true)
     {
         EnsurePending();
-        ArgumentException.ThrowIfNullOrWhiteSpace(metadataMatchesJson);
 
-        MetadataMatchesJson = metadataMatchesJson.Trim();
-        IsAlreadyOwned = false;
-        DuplicateMessage = null;
+        MetadataMatchesJson = string.IsNullOrWhiteSpace(metadataMatchesJson)
+            ? null
+            : metadataMatchesJson.Trim();
+        if (resetReviewState)
+        {
+            IsAlreadyOwned = false;
+            DuplicateMessage = null;
+        }
     }
 
     public void MarkPurchased(Guid bookCopyId, Guid purchaseRequestId, DateTimeOffset purchasedAt)

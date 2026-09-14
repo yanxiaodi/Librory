@@ -40,6 +40,36 @@ public class ScanCandidateTests
     }
 
     [Fact]
+    public void Initial_metadata_snapshot_can_preserve_initial_duplicate_state()
+    {
+        var candidate = ScanCandidate.Create(
+            "Charlotte's Web",
+            confidenceLabel: "High",
+            isAlreadyOwned: true,
+            duplicateMessage: "Already in the family");
+
+        candidate.ReplaceMetadataMatches(
+            "{\"schemaVersion\":1,\"matches\":[]}",
+            resetReviewState: false);
+
+        Assert.True(candidate.IsAlreadyOwned);
+        Assert.Equal("Already in the family", candidate.DuplicateMessage);
+    }
+
+    [Fact]
+    public void Title_only_correction_can_clear_old_snapshot_without_clearing_new_review_state()
+    {
+        var candidate = ScanCandidate.Create("Old title", confidenceLabel: "High");
+        candidate.ReplaceMetadataMatches("{\"schemaVersion\":1,\"matches\":[{\"title\":\"Old title\"}]}", resetReviewState: false);
+        candidate.ApplyCorrection("New title", "Medium", duplicateMessage: "Review this title");
+
+        candidate.ReplaceMetadataMatches(null, resetReviewState: false);
+
+        Assert.Null(candidate.MetadataMatchesJson);
+        Assert.Equal("Review this title", candidate.DuplicateMessage);
+    }
+
+    [Fact]
     public void Purchased_scan_candidate_rejects_correction_and_snapshot_replacement()
     {
         var candidate = ScanCandidate.Create("Charlotte's Web", confidenceLabel: "High");

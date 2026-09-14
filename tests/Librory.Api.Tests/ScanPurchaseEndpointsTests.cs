@@ -125,6 +125,175 @@ public sealed class ScanPurchaseEndpointsTests
     }
 
     [Fact]
+    public async Task New_work_resolution_does_not_reuse_an_existing_isbn()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        await LoginAsync(client, "New Work ISBN Family", "Purchaser");
+
+        var firstSession = await CreateSessionAsync(client, "First title");
+        var firstCandidate = Assert.Single(firstSession.Candidates);
+        var firstResponse = await client.PostAsJsonAsync(
+            $"/api/family/current/scan-sessions/{firstSession.ScanSessionId}/candidates/{firstCandidate.Id}/purchase",
+            new ConfirmScanPurchaseRequest(
+                Guid.NewGuid(),
+                firstSession.TargetMemberId!.Value,
+                DuplicateResolution: Librory.Application.Intake.DuplicateResolution.NewWork,
+                ManualTitle: "First title",
+                Isbn: "9780000000001"));
+        Assert.Equal(HttpStatusCode.Created, firstResponse.StatusCode);
+        var first = await firstResponse.Content.ReadFromJsonAsync<ScanPurchaseResponse>();
+
+        var secondSession = await CreateSessionAsync(client, "Second title");
+        var secondCandidate = Assert.Single(secondSession.Candidates);
+        var secondResponse = await client.PostAsJsonAsync(
+            $"/api/family/current/scan-sessions/{secondSession.ScanSessionId}/candidates/{secondCandidate.Id}/purchase",
+            new ConfirmScanPurchaseRequest(
+                Guid.NewGuid(),
+                secondSession.TargetMemberId!.Value,
+                DuplicateResolution: Librory.Application.Intake.DuplicateResolution.NewWork,
+                DuplicateStatus: BookCopyDuplicateStatus.ConfirmedDuplicate,
+                ManualTitle: "Second title",
+                Isbn: "9780000000001"));
+
+        Assert.Equal(HttpStatusCode.Created, secondResponse.StatusCode);
+        var second = await secondResponse.Content.ReadFromJsonAsync<ScanPurchaseResponse>();
+        Assert.NotNull(first);
+        Assert.NotNull(second);
+        Assert.NotEqual(first!.Work.BookWorkId, second!.Work.BookWorkId);
+    }
+
+    [Fact]
+    public async Task Duplicate_resolution_can_reuse_the_selected_edition_or_add_an_edition_to_the_selected_work()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        await LoginAsync(client, "Resolution Branch Family", "Purchaser");
+
+        var firstSession = await CreateSessionAsync(client, "Dune");
+        var firstCandidate = Assert.Single(firstSession.Candidates);
+        var firstResponse = await client.PostAsJsonAsync(
+            $"/api/family/current/scan-sessions/{firstSession.ScanSessionId}/candidates/{firstCandidate.Id}/purchase",
+            new ConfirmScanPurchaseRequest(
+                Guid.NewGuid(),
+                firstSession.TargetMemberId!.Value,
+                DuplicateResolution: Librory.Application.Intake.DuplicateResolution.NewWork,
+                ManualTitle: "Dune",
+                ManualAuthor: "Frank Herbert",
+                Isbn: "9780441013593"));
+        Assert.Equal(HttpStatusCode.Created, firstResponse.StatusCode);
+
+        var existingEditionSession = await CreateSessionAsync(client, "Dune");
+        var existingEditionCandidate = Assert.Single(existingEditionSession.Candidates);
+        var existingEditionWarning = await client.PostAsJsonAsync(
+            $"/api/family/current/scan-sessions/{existingEditionSession.ScanSessionId}/candidates/{existingEditionCandidate.Id}/purchase",
+            new ConfirmScanPurchaseRequest(
+                Guid.NewGuid(),
+                existingEditionSession.TargetMemberId!.Value,
+                DuplicateResolution: Librory.Application.Intake.DuplicateResolution.NewWork,
+                ManualTitle: "Dune",
+                Isbn: "9780441013593"));
+        var existingEditionMatches = await existingEditionWarning.Content.ReadFromJsonAsync<DuplicateConfirmationResponse>();
+        Assert.Equal(HttpStatusCode.Conflict, existingEditionWarning.StatusCode);
+        Assert.NotEmpty(existingEditionMatches!.Matches);
+        var existingEditionMatch = existingEditionMatches.Matches[0];
+
+        var existingEditionPurchase = await client.PostAsJsonAsync(
+            $"/api/family/current/scan-sessions/{existingEditionSession.ScanSessionId}/candidates/{existingEditionCandidate.Id}/purchase",
+            new ConfirmScanPurchaseRequest(
+                Guid.NewGuid(),
+                existingEditionSession.TargetMemberId!.Value,
+                DuplicateResolution: Librory.Application.Intake.DuplicateResolution.ExistingEdition,
+                DuplicateStatus: BookCopyDuplicateStatus.ConfirmedDuplicate,
+                ExistingBookEditionId: existingEditionMatch.BookEditionId,
+                ManualTitle: "Dune"));
+        var existingEditionResult = await existingEditionPurchase.Content.ReadFromJsonAsync<ScanPurchaseResponse>();
+        Assert.Equal(HttpStatusCode.Created, existingEditionPurchase.StatusCode);
+        Assert.Equal(existingEditionMatch.BookEditionId, existingEditionResult!.BookEditionId);
+
+        var sameWorkSession = await CreateSessionAsync(client, "Dune");
+        var sameWorkCandidate = Assert.Single(sameWorkSession.Candidates);
+        var sameWorkWarning = await client.PostAsJsonAsync(
+            $"/api/family/current/scan-sessions/{sameWorkSession.ScanSessionId}/candidates/{sameWorkCandidate.Id}/purchase",
+            new ConfirmScanPurchaseRequest(
+                Guid.NewGuid(),
+                sameWorkSession.TargetMemberId!.Value,
+                DuplicateResolution: Librory.Application.Intake.DuplicateResolution.NewWork,
+                ManualTitle: "Dune",
+                Isbn: "9780441013593"));
+        var sameWorkMatches = await sameWorkWarning.Content.ReadFromJsonAsync<DuplicateConfirmationResponse>();
+        Assert.Equal(HttpStatusCode.Conflict, sameWorkWarning.StatusCode);
+        Assert.NotEmpty(sameWorkMatches!.Matches);
+        var sameWorkMatch = sameWorkMatches.Matches[0];
+
+        var sameWorkPurchase = await client.PostAsJsonAsync(
+            $"/api/family/current/scan-sessions/{sameWorkSession.ScanSessionId}/candidates/{sameWorkCandidate.Id}/purchase",
+            new ConfirmScanPurchaseRequest(
+                Guid.NewGuid(),
+                sameWorkSession.TargetMemberId!.Value,
+                DuplicateResolution: Librory.Application.Intake.DuplicateResolution.SameWorkNewEdition,
+                DuplicateStatus: BookCopyDuplicateStatus.ConfirmedDuplicate,
+                ExistingBookWorkId: sameWorkMatch.BookWorkId,
+                ManualTitle: "Dune",
+                Isbn: "9780441013593"));
+        var sameWorkResult = await sameWorkPurchase.Content.ReadFromJsonAsync<ScanPurchaseResponse>();
+        Assert.Equal(HttpStatusCode.Created, sameWorkPurchase.StatusCode);
+        Assert.Equal(sameWorkMatch.BookWorkId, sameWorkResult!.Work.BookWorkId);
+        Assert.NotEqual(sameWorkMatch.BookEditionId, sameWorkResult.BookEditionId);
+    }
+
+    [Fact]
+    public async Task Purchase_rejects_missing_or_unknown_duplicate_resolution_ids()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        await LoginAsync(client, "Resolution Validation Family", "Purchaser");
+        var session = await CreateSessionAsync(client, "Matilda");
+        var candidate = Assert.Single(session.Candidates);
+        var url = $"/api/family/current/scan-sessions/{session.ScanSessionId}/candidates/{candidate.Id}/purchase";
+
+        var missingId = await client.PostAsJsonAsync(url, new ConfirmScanPurchaseRequest(
+            Guid.NewGuid(),
+            session.TargetMemberId!.Value,
+            DuplicateResolution: Librory.Application.Intake.DuplicateResolution.ExistingEdition,
+            ManualTitle: "Matilda"));
+        Assert.Equal(HttpStatusCode.BadRequest, missingId.StatusCode);
+
+        var unknownValue = await client.PostAsJsonAsync(url, new
+        {
+            purchaseRequestId = Guid.NewGuid(),
+            ownerMemberId = session.TargetMemberId!.Value,
+            duplicateResolution = 99,
+            manualTitle = "Matilda",
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, unknownValue.StatusCode);
+    }
+
+    [Fact]
+    public async Task Purchased_candidates_cannot_be_resolved_or_discarded_again()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        await LoginAsync(client, "Purchased Candidate Mutation Family", "Purchaser");
+        var session = await CreateSessionAsync(client, "Matilda");
+        var candidate = Assert.Single(session.Candidates);
+        var url = $"/api/family/current/scan-sessions/{session.ScanSessionId}/candidates/{candidate.Id}";
+
+        var purchase = await client.PostAsJsonAsync($"{url}/purchase", new ConfirmScanPurchaseRequest(
+            Guid.NewGuid(),
+            session.TargetMemberId!.Value,
+            DuplicateResolution: Librory.Application.Intake.DuplicateResolution.NewWork,
+            ManualTitle: "Matilda"));
+        Assert.Equal(HttpStatusCode.Created, purchase.StatusCode);
+
+        var resolve = await client.PostAsJsonAsync($"{url}/resolve", new ResolveScanCandidateRequest("Different title"));
+        Assert.Equal(HttpStatusCode.BadRequest, resolve.StatusCode);
+
+        var discard = await client.DeleteAsync(url);
+        Assert.Equal(HttpStatusCode.BadRequest, discard.StatusCode);
+    }
+
+    [Fact]
     public async Task Scan_metadata_matches_survive_session_reload()
     {
         await using var factory = await ApiFactory.CreateAsync();

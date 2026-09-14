@@ -239,7 +239,6 @@ export function ScansPage() {
           displayTitle: candidate.displayTitle,
           confidenceLabel: candidate.evidenceText,
           author: candidate.metadataMatches[0]?.authors[0],
-          recommendationScore: Math.min(Math.max(candidate.rank / 1000, 0), 1),
           detectedLanguage: toDetectedLanguage(candidate.metadataMatches[0]?.language ?? null),
           recognitionEvidence: candidate.evidenceText,
           recognitionRank: candidate.rank,
@@ -248,6 +247,10 @@ export function ScansPage() {
       })
       if (activeJobIdRef.current !== completedJob.jobId) return
       setScanSession(response)
+      setReviewedCandidates(current => current.map((candidate, index) => {
+        const persisted = response.candidates[index]
+        return persisted ? { ...candidate, candidateId: persisted.id } : candidate
+      }))
       setPersistenceState('saved')
     } catch {
       if (activeJobIdRef.current !== completedJob.jobId) return
@@ -407,17 +410,16 @@ export function ScansPage() {
   }
 
   const handleMetadataMatchesChange = React.useCallback(async (recognitionCandidateId: string, matches: BookRecognitionJobResponse['candidates'][number]['metadataMatches']) => {
-    if (!scanSession) return
-    const index = reviewedCandidates.findIndex(candidate => candidate.candidateId === recognitionCandidateId)
-    const persisted = index >= 0 ? scanSession.candidates[index] : undefined
-    const currentCandidate = index >= 0 ? reviewedCandidates[index] : undefined
-    if (!persisted || !currentCandidate) return
+    if (!scanSession) throw new Error('The scan session is not ready to save metadata.')
+    const persisted = scanSession.candidates.find(candidate => candidate.id === recognitionCandidateId)
+    const currentCandidate = reviewedCandidates.find(candidate => candidate.candidateId === recognitionCandidateId)
+    if (!persisted || !currentCandidate) throw new Error('The scan candidate could not be found.')
 
     try {
       const updated = await updateScanCandidate(scanSession.scanSessionId, persisted.id, {
         displayTitle: currentCandidate.displayTitle,
         confidenceLabel: currentCandidate.evidenceText,
-        author: currentCandidate.metadataMatches[0]?.authors[0],
+        author: matches[0]?.authors[0],
         recognitionRank: currentCandidate.rank,
         recognitionEvidence: currentCandidate.evidenceText,
         metadataMatches: matches,
@@ -426,6 +428,7 @@ export function ScansPage() {
     } catch {
       setPersistenceError('Metadata matches were found, but the corrected candidate could not be saved.')
       setPersistenceState('error')
+      throw new Error('Metadata matches were found, but the corrected candidate could not be saved.')
     }
   }, [reviewedCandidates, scanSession])
 

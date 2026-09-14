@@ -19,11 +19,16 @@ interface BookRecognitionResultsProps {
   persistedCandidates?: ScanCandidateResponse[]
   members?: FamilyMember[]
   scanTargetMemberId?: string | null
-  onMetadataMatchesChange?: (candidateId: string, matches: BookMetadataCandidateResponse[]) => void
+  onMetadataMatchesChange?: (candidateId: string, matches: BookMetadataCandidateResponse[]) => Promise<void>
   onPurchaseComplete?: (candidateId: string, response: ScanPurchaseResponse) => void
 }
 
 type CandidatePurchaseState = 'idle' | 'searching' | 'purchasing' | 'purchased' | 'error'
+
+function localDateTimeValue(date = new Date()): string {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+  return local.toISOString().slice(0, 16)
+}
 
 export function BookRecognitionResults({
   job,
@@ -48,6 +53,8 @@ export function BookRecognitionResults({
   const [purchaseRequestIdByCandidateId, setPurchaseRequestIdByCandidateId] = React.useState<Record<string, string>>({})
   const [duplicateByCandidateId, setDuplicateByCandidateId] = React.useState<Record<string, DuplicateConfirmationResponse | undefined>>({})
   const [duplicateChoiceByCandidateId, setDuplicateChoiceByCandidateId] = React.useState<Record<string, 1 | 2 | 3>>({})
+  const [duplicateMatchIndexByCandidateId, setDuplicateMatchIndexByCandidateId] = React.useState<Record<string, number>>({})
+  const [purchaseResponseByCandidateId, setPurchaseResponseByCandidateId] = React.useState<Record<string, ScanPurchaseResponse | undefined>>({})
 
   React.useEffect(() => {
     setSearchTextByCandidateId(current => {
@@ -90,9 +97,16 @@ export function BookRecognitionResults({
 
     setPurchaseStateByCandidateId(current => ({ ...current, [candidateId]: 'searching' }))
     setPurchaseErrorByCandidateId(current => ({ ...current, [candidateId]: '' }))
+    setDuplicateByCandidateId(current => ({ ...current, [candidateId]: undefined }))
+    setDuplicateChoiceByCandidateId(current => {
+      const next = { ...current }
+      delete next[candidateId]
+      return next
+    })
+    setDuplicateMatchIndexByCandidateId(current => ({ ...current, [candidateId]: 0 }))
     try {
       const matches = await searchBookMetadata(title)
-      onMetadataMatchesChange?.(candidateId, matches)
+      await onMetadataMatchesChange?.(candidateId, matches)
       onCandidatesChange?.(candidates.map(candidate =>
         candidate.candidateId === candidateId ? { ...candidate, displayTitle: title, metadataMatches: matches } : candidate,
       ))
@@ -104,8 +118,8 @@ export function BookRecognitionResults({
     }
   }
 
-  const purchaseCandidate = async (candidate: BookRecognitionJobResponse['candidates'][number], index: number) => {
-    const persisted = persistedCandidates[index]
+  const purchaseCandidate = async (candidate: BookRecognitionJobResponse['candidates'][number]) => {
+    const persisted = persistedCandidates.find(item => item.id === candidate.candidateId)
     if (!scanSessionId || !persisted || persisted.purchaseStatus === 1) return
 
     const selectedMatch = candidate.metadataMatches[selectedMatchByCandidateId[candidate.candidateId] ?? 0]
@@ -118,7 +132,8 @@ export function BookRecognitionResults({
 
     const duplicateChoice = duplicateChoiceByCandidateId[candidate.candidateId] ?? 3
     const purchaseRequestId = purchaseRequestIdByCandidateId[candidate.candidateId] ?? persisted.purchaseRequestId ?? crypto.randomUUID()
-    const duplicateMatch = duplicateByCandidateId[candidate.candidateId]?.matches[0]
+    const duplicate = duplicateByCandidateId[candidate.candidateId]
+    const duplicateMatch = duplicate?.matches[duplicateMatchIndexByCandidateId[candidate.candidateId] ?? 0]
     setPurchaseRequestIdByCandidateId(current => ({ ...current, [candidate.candidateId]: purchaseRequestId }))
     setPurchaseStateByCandidateId(current => ({ ...current, [candidate.candidateId]: 'purchasing' }))
     setPurchaseErrorByCandidateId(current => ({ ...current, [candidate.candidateId]: '' }))
@@ -141,6 +156,7 @@ export function BookRecognitionResults({
       })
       setPurchaseStateByCandidateId(current => ({ ...current, [candidate.candidateId]: 'purchased' }))
       setDuplicateByCandidateId(current => ({ ...current, [candidate.candidateId]: undefined }))
+      setPurchaseResponseByCandidateId(current => ({ ...current, [candidate.candidateId]: response }))
       onPurchaseComplete?.(persisted.id, response)
     } catch (error) {
       if (error && typeof error === 'object' && 'duplicate' in error) {
@@ -174,13 +190,14 @@ export function BookRecognitionResults({
           ) : candidates.length === 0 ? (
             <p className="text-sm text-[var(--text-secondary)]">No candidates were found yet.</p>
           ) : (
-            candidates.map((candidate, index) => {
-              const persisted = persistedCandidates[index]
+            candidates.map(candidate => {
+              const persisted = persistedCandidates.find(item => item.id === candidate.candidateId)
               const selectedMatchIndex = selectedMatchByCandidateId[candidate.candidateId] ?? 0
               const purchaseState = purchaseStateByCandidateId[candidate.candidateId] ?? (persisted?.purchaseStatus === 1 ? 'purchased' : 'idle')
               const duplicate = duplicateByCandidateId[candidate.candidateId]
               const selectedMatch = candidate.metadataMatches[selectedMatchIndex] ?? candidate.metadataMatches[0]
-              const defaultTime = purchaseTimeByCandidateId[candidate.candidateId] ?? new Date().toISOString().slice(0, 16)
+              const defaultTime = purchaseTimeByCandidateId[candidate.candidateId] ?? localDateTimeValue()
+              const purchaseResponse = purchaseResponseByCandidateId[candidate.candidateId]
 
               return (
                 <div key={candidate.candidateId} className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-sunken)] px-4 py-3">
@@ -275,6 +292,21 @@ export function BookRecognitionResults({
                         <div className="grid gap-2 rounded-[var(--radius-md)] border border-[var(--accent)]/40 bg-[var(--accent)]/5 p-3 text-sm text-[var(--text-secondary)]">
                           <p className="font-medium text-[var(--text-primary)]">Possible duplicate</p>
                           <p>{duplicate.followUpHint ?? duplicate.message}</p>
+                          <label className="grid gap-2" htmlFor={`duplicate-match-${candidate.candidateId}`}>
+                            Matching family copy
+                            <select
+                              id={`duplicate-match-${candidate.candidateId}`}
+                              value={duplicateMatchIndexByCandidateId[candidate.candidateId] ?? 0}
+                              onChange={event => setDuplicateMatchIndexByCandidateId(current => ({ ...current, [candidate.candidateId]: Number(event.target.value) }))}
+                              className="h-11 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-3 text-[var(--text-primary)]"
+                            >
+                              {duplicate.matches.map((match, matchIndex) => (
+                                <option key={`${candidate.candidateId}-duplicate-${match.bookCopyId}`} value={matchIndex}>
+                                  {match.title}{match.format ? ` · ${match.format}` : ''}{match.publicationYear ? ` · ${match.publicationYear}` : ''}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
                           <select
                             aria-label={`Duplicate resolution for ${candidate.displayTitle}`}
                             value={duplicateChoiceByCandidateId[candidate.candidateId] ?? 3}
@@ -287,9 +319,15 @@ export function BookRecognitionResults({
                           </select>
                         </div>
                       ) : null}
-                      <Button type="button" onClick={() => void purchaseCandidate(candidate, index)} disabled={purchaseState === 'purchasing'}>
+                      <Button type="button" onClick={() => void purchaseCandidate(candidate)} disabled={purchaseState === 'purchasing'}>
                         {purchaseState === 'purchasing' ? 'Saving purchase…' : duplicate ? 'Confirm duplicate and buy' : 'Buy this book'}
                       </Button>
+                      {purchaseResponse ? (
+                        <p className="text-sm text-[var(--text-secondary)]">
+                          Added copy {purchaseResponse.copy.bookCopyId} for {members.find(member => member.memberId === purchaseResponse.copy.memberId)?.displayName ?? purchaseResponse.copy.memberId}.
+                          {purchaseResponse.isProvisional ? ' Version details are still provisional.' : ' Edition details confirmed.'}
+                        </p>
+                      ) : null}
                       {purchaseErrorByCandidateId[candidate.candidateId] ? <p className="text-sm text-[var(--text-secondary)]">{purchaseErrorByCandidateId[candidate.candidateId]}</p> : null}
                     </div>
                   ) : null}

@@ -147,7 +147,8 @@ describe('RecommendationProfileSection', () => {
     expect(screen.queryByDisplayValue('Alice private note')).not.toBeInTheDocument()
 
     resolveSecondProfile(new Response(JSON.stringify({ memberId: 'member-2', minimumAge: null, maximumAge: null, favoriteAuthors: [], excludedAuthors: [], favoriteGenres: [], excludedGenres: [], favoriteStyles: [], excludedStyles: [], preferredBookLanguages: [], preferenceNotes: 'Mia note', profileVisibility: 'Family', useInFamilyRecommendations: true }), { status: 200 }))
-    expect(await screen.findByDisplayValue('Mia note')).toBeVisible()
+    await screen.findByText('Mia')
+    expect(screen.queryByDisplayValue('Mia note')).not.toBeInTheDocument()
   })
 
   it('clears members and profile data while the family member list refreshes', async () => {
@@ -215,9 +216,14 @@ describe('RecommendationProfileSection', () => {
 
     const notes = await screen.findByLabelText(/preference notes/i)
     await user.type(notes, 'Keep this value.')
+    await user.click(screen.getByLabelText(/use private notes in family recommendations/i))
     await user.click(screen.getByRole('button', { name: /save preferences/i }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/unable to save/i)
     expect(notes).toHaveValue('Keep this value.')
+    const saveCall = fetchMock.mock.calls.find(([, init]) => init?.method === 'PUT')
+    expect(JSON.parse((saveCall?.[1] as RequestInit).body as string)).toMatchObject({
+      usePrivateNotesInFamilyRecommendations: true,
+    })
   })
 })

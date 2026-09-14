@@ -133,6 +133,16 @@ internal static class ScanPurchaseEndpoints
         {
             return Results.Problem(detail: exception.Message, statusCode: StatusCodes.Status400BadRequest);
         }
+        catch (ScanPurchaseRetryableException exception)
+        {
+            return Results.Problem(
+                detail: exception.Message,
+                statusCode: StatusCodes.Status503ServiceUnavailable,
+                extensions: new Dictionary<string, object?>
+                {
+                    ["retryable"] = true,
+                });
+        }
     }
 
     private static BookMetadataCandidate ToMetadataCandidate(BookMetadataImportCandidateRequest request)

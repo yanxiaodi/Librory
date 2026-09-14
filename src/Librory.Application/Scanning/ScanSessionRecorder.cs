@@ -51,7 +51,8 @@ public static class ScanSessionRecorder
             input.RecognitionRank);
 
         candidate.ReplaceMetadataMatches(
-            ScanCandidateMetadataSnapshotSerializer.Serialize(input.MetadataMatches, input.RecognitionEvidence));
+            ScanCandidateMetadataSnapshotSerializer.Serialize(input.MetadataMatches, input.RecognitionEvidence),
+            resetReviewState: false);
 
         return candidate;
     }
