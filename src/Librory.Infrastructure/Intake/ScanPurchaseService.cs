@@ -94,6 +94,15 @@ public sealed class ScanPurchaseService : IScanPurchaseService
             throw new KeyNotFoundException("Scan candidate not found.");
         }
 
+        var existingRequest = await db.ScanCandidates
+            .SingleOrDefaultAsync(
+                item => item.PurchaseRequestId == request.PurchaseRequestId && item.Id != candidate.Id,
+                cancellationToken);
+        if (existingRequest is not null)
+        {
+            throw new InvalidOperationException("This purchase request id has already been used for another scan candidate.");
+        }
+
         if (candidate.PurchaseStatus == PurchaseStatus.Purchased)
         {
             if (candidate.PurchaseRequestId != request.PurchaseRequestId || !candidate.PurchasedBookCopyId.HasValue)
@@ -142,7 +151,16 @@ public sealed class ScanPurchaseService : IScanPurchaseService
                 purchaser));
 
         candidate.MarkPurchased(intake.Copy.Id, request.PurchaseRequestId, purchasedAt);
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (IsPurchaseRequestUniqueConstraint(exception))
+        {
+            throw new InvalidOperationException(
+                "This purchase request id has already been used for another scan candidate.",
+                exception);
+        }
         await transaction.CommitAsync(cancellationToken);
 
         return new ScanPurchaseResult(intake.Copy, edition.BookWork, edition, intake.DuplicateDetection, false);
@@ -333,6 +351,19 @@ public sealed class ScanPurchaseService : IScanPurchaseService
         for (var current = exception; current is not null; current = current.InnerException)
         {
             if (current is PostgresException { SqlState: "40001" or "40P01" })
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsPurchaseRequestUniqueConstraint(Exception exception)
+    {
+        for (var current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is PostgresException { SqlState: "23505", ConstraintName: "IX_scan_candidates_PurchaseRequestId" })
             {
                 return true;
             }

@@ -67,7 +67,7 @@ public sealed class BookMetadataImportService : IBookMetadataImportService
                 && string.IsNullOrWhiteSpace(isbn)
                 && string.IsNullOrWhiteSpace(format)
                 && !publicationYear.HasValue;
-            ApplyEditionMetadata(edition, candidate, provenanceCapturedAt);
+            ApplyEditionMetadata(edition, candidate, provenanceCapturedAt, options.PublicationYear.HasValue);
         }
 
         if (options.TargetWork is null)
@@ -98,7 +98,8 @@ public sealed class BookMetadataImportService : IBookMetadataImportService
     private static void ApplyEditionMetadata(
         BookEdition edition,
         BookMetadataCandidate candidate,
-        DateTimeOffset capturedAt)
+        DateTimeOffset capturedAt,
+        bool publicationYearWasManuallySpecified)
     {
         if (!string.IsNullOrWhiteSpace(candidate.Subtitle))
         {
@@ -106,9 +107,11 @@ public sealed class BookMetadataImportService : IBookMetadataImportService
             edition.SubtitleProvenance = CreateProvenance(candidate, capturedAt);
         }
 
-        if (ParsePublicationYear(candidate.PublishedDate).HasValue)
+        if (edition.PublicationYear.HasValue)
         {
-            edition.PublicationYearProvenance = CreateProvenance(candidate, capturedAt);
+            edition.PublicationYearProvenance = publicationYearWasManuallySpecified
+                ? new MetadataProvenance("Manual", "publication-year", 1m, capturedAt)
+                : CreateProvenance(candidate, capturedAt);
         }
     }
 

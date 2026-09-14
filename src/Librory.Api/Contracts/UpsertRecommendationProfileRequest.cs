@@ -85,7 +85,7 @@ public sealed class UpsertRecommendationProfileRequest
     };
 
     public bool HasPrivatePreferenceFields =>
-        IsNonNullSpecified(PreferenceNotes) || IsNonNullSpecified(UsePrivateNotesInFamilyRecommendations);
+        IsSpecified(PreferenceNotes) || IsNonNullSpecified(UsePrivateNotesInFamilyRecommendations);
 
     private static bool IsSpecified(JsonElement element) => element.ValueKind != JsonValueKind.Undefined;
 

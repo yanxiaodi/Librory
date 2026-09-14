@@ -7,7 +7,7 @@ public sealed record ScanCandidateInput(
     string DisplayTitle,
     string ConfidenceLabel,
     string? Author = null,
-    decimal RecommendationScore = 0m,
+    decimal? RecommendationScore = null,
     bool IsAlreadyOwned = false,
     string? DuplicateMessage = null,
     PreferredLanguage? DetectedLanguage = null,

@@ -12,7 +12,7 @@ export type ScanCandidateResponse = {
   id: string
   displayTitle: string
   author: string | null
-  recommendationScore: number
+  recommendationScore: number | null
   isAlreadyOwned: boolean
   duplicateMessage: string | null
   confidenceLabel: string
@@ -43,7 +43,7 @@ export interface CreateScanCandidateRequest {
   displayTitle: string
   confidenceLabel: string
   author?: string
-  recommendationScore?: number
+  recommendationScore?: number | null
   isAlreadyOwned?: boolean
   duplicateMessage?: string
   detectedLanguage?: number
@@ -95,6 +95,14 @@ export type ScanPurchaseResponse = {
   isProvisional: boolean
   duplicateStatus: 0 | 1 | 2
   isReplay: boolean
+}
+
+export type BookEditionVersionResponse = {
+  bookEditionId: string
+  isbn: string | null
+  format: string | null
+  publicationYear: number | null
+  isProvisional: boolean
 }
 
 export type DuplicateConfirmationResponse = {
@@ -191,6 +199,20 @@ export async function updateScanCandidate(
   })
   if (!response.ok) throw new Error(`Scan candidate update failed (${response.status}).`)
   return response.json() as Promise<ScanSessionResponse>
+}
+
+export async function updateBookEditionVersion(
+  bookEditionId: string,
+  input: { isbn?: string; format?: string; publicationYear?: number },
+): Promise<BookEditionVersionResponse> {
+  const response = await fetch(`/api/family/current/book-editions/${bookEditionId}/version`, {
+    method: 'PUT',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+  if (!response.ok) throw new Error(`Book edition version update failed (${response.status}).`)
+  return response.json() as Promise<BookEditionVersionResponse>
 }
 
 export async function purchaseScanCandidate(

@@ -100,6 +100,14 @@ public class ScanCandidateTests
     }
 
     [Fact]
+    public void ScanCandidate_create_leaves_recommendation_score_unset_by_default()
+    {
+        var candidate = ScanCandidate.Create("Dune", "High");
+
+        Assert.Null(candidate.RecommendationScore);
+    }
+
+    [Fact]
     public void ScanCandidate_apply_correction_trims_and_updates_values()
     {
         var candidate = ScanCandidate.Create(

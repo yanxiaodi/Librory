@@ -36,7 +36,8 @@ export type RecommendationProfile = {
   usePrivateNotesInFamilyRecommendations: boolean | null
 }
 
-export type RecommendationProfileUpdate = Omit<RecommendationProfile, 'memberId' | 'usePrivateNotesInFamilyRecommendations'> & {
+export type RecommendationProfileUpdate = Omit<RecommendationProfile, 'memberId' | 'preferenceNotes' | 'usePrivateNotesInFamilyRecommendations'> & {
+  preferenceNotes?: string | null
   usePrivateNotesInFamilyRecommendations?: boolean | null
 }
 

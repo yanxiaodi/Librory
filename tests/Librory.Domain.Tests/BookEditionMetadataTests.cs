@@ -16,6 +16,19 @@ public class BookEditionMetadataTests
     }
 
     [Fact]
+    public void Updating_version_metadata_normalizes_values_and_confirms_the_edition()
+    {
+        var edition = new BookEdition { IsProvisional = true };
+
+        edition.UpdateVersion(" 978-0-06-112495-2 ", " Paperback ", 2006);
+
+        Assert.Equal("978-0-06-112495-2", edition.Isbn);
+        Assert.Equal("Paperback", edition.Format);
+        Assert.Equal(2006, edition.PublicationYear);
+        Assert.False(edition.IsProvisional);
+    }
+
+    [Fact]
     public void Book_edition_can_store_subtitle_and_provenance()
     {
         var provenance = new MetadataProvenance

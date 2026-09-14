@@ -5,6 +5,7 @@ import type { BookMetadataCandidateResponse, BookRecognitionJobResponse } from '
 import {
   purchaseScanCandidate,
   searchBookMetadata,
+  updateBookEditionVersion,
   type DuplicateConfirmationResponse,
   type ScanCandidateResponse,
   type ScanPurchaseResponse,
@@ -19,6 +20,7 @@ interface BookRecognitionResultsProps {
   persistedCandidates?: ScanCandidateResponse[]
   members?: FamilyMember[]
   scanTargetMemberId?: string | null
+  persistencePending?: boolean
   onMetadataMatchesChange?: (candidateId: string, matches: BookMetadataCandidateResponse[]) => Promise<void>
   onPurchaseComplete?: (candidateId: string, response: ScanPurchaseResponse) => void
 }
@@ -38,6 +40,7 @@ export function BookRecognitionResults({
   persistedCandidates = [],
   members = [],
   scanTargetMemberId,
+  persistencePending = false,
   onMetadataMatchesChange,
   onPurchaseComplete,
 }: BookRecognitionResultsProps) {
@@ -48,6 +51,10 @@ export function BookRecognitionResults({
   const [ownerByCandidateId, setOwnerByCandidateId] = React.useState<Record<string, string>>({})
   const [purchaseTimeByCandidateId, setPurchaseTimeByCandidateId] = React.useState<Record<string, string>>({})
   const [storeByCandidateId, setStoreByCandidateId] = React.useState<Record<string, string>>({})
+  const [conditionByCandidateId, setConditionByCandidateId] = React.useState<Record<string, string>>({})
+  const [priceByCandidateId, setPriceByCandidateId] = React.useState<Record<string, string>>({})
+  const [shelfLocationByCandidateId, setShelfLocationByCandidateId] = React.useState<Record<string, string>>({})
+  const [intakeNotesByCandidateId, setIntakeNotesByCandidateId] = React.useState<Record<string, string>>({})
   const [purchaseStateByCandidateId, setPurchaseStateByCandidateId] = React.useState<Record<string, CandidatePurchaseState>>({})
   const [purchaseErrorByCandidateId, setPurchaseErrorByCandidateId] = React.useState<Record<string, string>>({})
   const [purchaseRequestIdByCandidateId, setPurchaseRequestIdByCandidateId] = React.useState<Record<string, string>>({})
@@ -55,6 +62,9 @@ export function BookRecognitionResults({
   const [duplicateChoiceByCandidateId, setDuplicateChoiceByCandidateId] = React.useState<Record<string, 1 | 2 | 3>>({})
   const [duplicateMatchIndexByCandidateId, setDuplicateMatchIndexByCandidateId] = React.useState<Record<string, number>>({})
   const [purchaseResponseByCandidateId, setPurchaseResponseByCandidateId] = React.useState<Record<string, ScanPurchaseResponse | undefined>>({})
+  const [versionByCandidateId, setVersionByCandidateId] = React.useState<Record<string, { isbn: string; format: string; publicationYear: string }>>({})
+  const [versionStateByCandidateId, setVersionStateByCandidateId] = React.useState<Record<string, 'idle' | 'saving' | 'saved' | 'error'>>({})
+  const [versionErrorByCandidateId, setVersionErrorByCandidateId] = React.useState<Record<string, string>>({})
 
   React.useEffect(() => {
     setSearchTextByCandidateId(current => {
@@ -80,11 +90,13 @@ export function BookRecognitionResults({
   const isFailed = job.failureMessage !== null
 
   const removeCandidate = (candidateId: string) => {
+    if (persistencePending) return
     const nextCandidates = candidates.filter(candidate => candidate.candidateId !== candidateId)
     onCandidatesChange?.(nextCandidates)
   }
 
   const updateSearchText = (candidateId: string, value: string) => {
+    if (persistencePending) return
     setSearchTextByCandidateId(current => ({ ...current, [candidateId]: value }))
     onCandidatesChange?.(candidates.map(candidate =>
       candidate.candidateId === candidateId ? { ...candidate, displayTitle: value } : candidate,
@@ -92,6 +104,7 @@ export function BookRecognitionResults({
   }
 
   const searchMetadata = async (candidateId: string) => {
+    if (persistencePending) return
     const title = searchTextByCandidateId[candidateId]?.trim()
     if (!title) return
 
@@ -119,6 +132,7 @@ export function BookRecognitionResults({
   }
 
   const purchaseCandidate = async (candidate: BookRecognitionJobResponse['candidates'][number]) => {
+    if (persistencePending) return
     const persisted = persistedCandidates.find(item => item.id === candidate.candidateId)
     if (!scanSessionId || !persisted || persisted.purchaseStatus === 1) return
 
@@ -150,9 +164,15 @@ export function BookRecognitionResults({
         manualTitle: selectedMatch ? undefined : searchTextByCandidateId[candidate.candidateId],
         manualAuthor: selectedMatch?.authors[0] ?? undefined,
         purchaseStore: storeByCandidateId[candidate.candidateId] || undefined,
+        condition: conditionByCandidateId[candidate.candidateId] || undefined,
+        purchasePrice: priceByCandidateId[candidate.candidateId]?.trim()
+          ? Number(priceByCandidateId[candidate.candidateId])
+          : undefined,
+        shelfLocation: shelfLocationByCandidateId[candidate.candidateId] || undefined,
         purchasedAt: purchaseTimeByCandidateId[candidate.candidateId]
           ? new Date(purchaseTimeByCandidateId[candidate.candidateId]).toISOString()
           : new Date().toISOString(),
+        intakeNotes: intakeNotesByCandidateId[candidate.candidateId] || undefined,
       })
       setPurchaseStateByCandidateId(current => ({ ...current, [candidate.candidateId]: 'purchased' }))
       setDuplicateByCandidateId(current => ({ ...current, [candidate.candidateId]: undefined }))
@@ -169,6 +189,47 @@ export function BookRecognitionResults({
       }
       setPurchaseStateByCandidateId(current => ({ ...current, [candidate.candidateId]: 'error' }))
       setPurchaseErrorByCandidateId(current => ({ ...current, [candidate.candidateId]: error instanceof Error ? error.message : 'Purchase failed.' }))
+    }
+  }
+
+  const confirmVersion = async (candidateId: string, purchaseResponse: ScanPurchaseResponse) => {
+    const edition = purchaseResponse.work.editions.find(item => item.bookEditionId === purchaseResponse.bookEditionId)
+    const version = versionByCandidateId[candidateId] ?? {
+      isbn: edition?.isbn ?? '',
+      format: edition?.format ?? '',
+      publicationYear: edition?.publicationYear?.toString() ?? '',
+    }
+    if (!version.isbn.trim() && !version.format.trim() && !version.publicationYear.trim()) {
+      setVersionStateByCandidateId(current => ({ ...current, [candidateId]: 'error' }))
+      setVersionErrorByCandidateId(current => ({ ...current, [candidateId]: 'Add an ISBN, format, or publication year first.' }))
+      return
+    }
+
+    setVersionStateByCandidateId(current => ({ ...current, [candidateId]: 'saving' }))
+    setVersionErrorByCandidateId(current => ({ ...current, [candidateId]: '' }))
+    try {
+      const updatedEdition = await updateBookEditionVersion(purchaseResponse.bookEditionId, {
+        isbn: version.isbn.trim() || undefined,
+        format: version.format.trim() || undefined,
+        publicationYear: version.publicationYear.trim() ? Number(version.publicationYear) : undefined,
+      })
+      setPurchaseResponseByCandidateId(current => ({
+        ...current,
+        [candidateId]: {
+          ...purchaseResponse,
+          isProvisional: updatedEdition.isProvisional,
+          work: {
+            ...purchaseResponse.work,
+            editions: purchaseResponse.work.editions.map(item => item.bookEditionId === updatedEdition.bookEditionId
+              ? { ...item, ...updatedEdition }
+              : item),
+          },
+        },
+      }))
+      setVersionStateByCandidateId(current => ({ ...current, [candidateId]: 'saved' }))
+    } catch (error) {
+      setVersionStateByCandidateId(current => ({ ...current, [candidateId]: 'error' }))
+      setVersionErrorByCandidateId(current => ({ ...current, [candidateId]: error instanceof Error ? error.message : 'Version confirmation failed.' }))
     }
   }
 
@@ -198,16 +259,23 @@ export function BookRecognitionResults({
               const selectedMatch = candidate.metadataMatches[selectedMatchIndex] ?? candidate.metadataMatches[0]
               const defaultTime = purchaseTimeByCandidateId[candidate.candidateId] ?? localDateTimeValue()
               const purchaseResponse = purchaseResponseByCandidateId[candidate.candidateId]
+              const purchasedEdition = purchaseResponse?.work.editions.find(item => item.bookEditionId === purchaseResponse.bookEditionId)
+              const version = versionByCandidateId[candidate.candidateId] ?? {
+                isbn: purchasedEdition?.isbn ?? '',
+                format: purchasedEdition?.format ?? '',
+                publicationYear: purchasedEdition?.publicationYear?.toString() ?? '',
+              }
+              const versionState = versionStateByCandidateId[candidate.candidateId] ?? 'idle'
 
               return (
                 <div key={candidate.candidateId} className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-sunken)] px-4 py-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="text-base font-semibold text-[var(--text-primary)]">{candidate.displayTitle}</h3>
                     <span className="rounded-full border border-[var(--border-subtle)] px-2 py-0.5 text-xs font-medium text-[var(--text-secondary)]">
-                      Recognition match #{candidate.rank}
+                      {candidate.rank > 0 ? `Recognition score: ${candidate.rank}/1000` : 'Recognition score unavailable'}
                     </span>
                     {purchaseState === 'purchased' ? <span className="text-xs font-semibold text-[var(--accent)]">Purchased</span> : null}
-                    <Button type="button" variant="outline" size="default" onClick={() => removeCandidate(candidate.candidateId)} disabled={purchaseState === 'purchased'}>
+                    <Button type="button" variant="outline" size="default" onClick={() => removeCandidate(candidate.candidateId)} disabled={persistencePending || purchaseState === 'purchased'}>
                       Remove
                     </Button>
                   </div>
@@ -218,11 +286,11 @@ export function BookRecognitionResults({
                       id={`search-text-${candidate.candidateId}`}
                       value={searchTextByCandidateId[candidate.candidateId] ?? candidate.displayTitle}
                       onChange={event => updateSearchText(candidate.candidateId, event.target.value)}
-                      disabled={purchaseState === 'purchased'}
+                      disabled={persistencePending || purchaseState === 'purchased'}
                       className="h-11 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-3 text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-[var(--accent-subtle)]"
                     />
                   </label>
-                  <Button type="button" variant="outline" className="mt-2" onClick={() => void searchMetadata(candidate.candidateId)} disabled={purchaseState === 'purchased' || purchaseState === 'searching'}>
+                  <Button type="button" variant="outline" className="mt-2" onClick={() => void searchMetadata(candidate.candidateId)} disabled={persistencePending || purchaseState === 'purchased' || purchaseState === 'searching'}>
                     {purchaseState === 'searching' ? 'Searching…' : 'Re-search metadata'}
                   </Button>
                   {candidate.metadataMatches.length > 0 ? (
@@ -242,7 +310,7 @@ export function BookRecognitionResults({
                           id={`metadata-match-${candidate.candidateId}`}
                           value={selectedMatchIndex}
                           onChange={event => setSelectedMatchByCandidateId(current => ({ ...current, [candidate.candidateId]: Number(event.target.value) }))}
-                          disabled={purchaseState === 'purchased'}
+                          disabled={persistencePending || purchaseState === 'purchased'}
                           className="h-11 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-3 text-[var(--text-primary)]"
                         >
                           {candidate.metadataMatches.map((metadata, metadataIndex) => (
@@ -288,6 +356,46 @@ export function BookRecognitionResults({
                           className="h-11 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-3 text-[var(--text-primary)]"
                         />
                       </label>
+                      <label className="grid gap-2 text-sm text-[var(--text-secondary)]" htmlFor={`purchase-condition-${candidate.candidateId}`}>
+                        Condition (optional)
+                        <input
+                          id={`purchase-condition-${candidate.candidateId}`}
+                          value={conditionByCandidateId[candidate.candidateId] ?? ''}
+                          onChange={event => setConditionByCandidateId(current => ({ ...current, [candidate.candidateId]: event.target.value }))}
+                          className="h-11 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-3 text-[var(--text-primary)]"
+                        />
+                      </label>
+                      <label className="grid gap-2 text-sm text-[var(--text-secondary)]" htmlFor={`purchase-price-${candidate.candidateId}`}>
+                        Price (optional)
+                        <input
+                          id={`purchase-price-${candidate.candidateId}`}
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={priceByCandidateId[candidate.candidateId] ?? ''}
+                          onChange={event => setPriceByCandidateId(current => ({ ...current, [candidate.candidateId]: event.target.value }))}
+                          className="h-11 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-3 text-[var(--text-primary)]"
+                        />
+                      </label>
+                      <label className="grid gap-2 text-sm text-[var(--text-secondary)]" htmlFor={`purchase-shelf-location-${candidate.candidateId}`}>
+                        Shelf location (optional)
+                        <input
+                          id={`purchase-shelf-location-${candidate.candidateId}`}
+                          value={shelfLocationByCandidateId[candidate.candidateId] ?? ''}
+                          onChange={event => setShelfLocationByCandidateId(current => ({ ...current, [candidate.candidateId]: event.target.value }))}
+                          className="h-11 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-3 text-[var(--text-primary)]"
+                        />
+                      </label>
+                      <label className="grid gap-2 text-sm text-[var(--text-secondary)]" htmlFor={`purchase-intake-notes-${candidate.candidateId}`}>
+                        Intake notes (optional)
+                        <textarea
+                          id={`purchase-intake-notes-${candidate.candidateId}`}
+                          value={intakeNotesByCandidateId[candidate.candidateId] ?? ''}
+                          onChange={event => setIntakeNotesByCandidateId(current => ({ ...current, [candidate.candidateId]: event.target.value }))}
+                          rows={3}
+                          className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-3 py-2 text-[var(--text-primary)]"
+                        />
+                      </label>
                       {duplicate ? (
                         <div className="grid gap-2 rounded-[var(--radius-md)] border border-[var(--accent)]/40 bg-[var(--accent)]/5 p-3 text-sm text-[var(--text-secondary)]">
                           <p className="font-medium text-[var(--text-primary)]">Possible duplicate</p>
@@ -319,14 +427,47 @@ export function BookRecognitionResults({
                           </select>
                         </div>
                       ) : null}
-                      <Button type="button" onClick={() => void purchaseCandidate(candidate)} disabled={purchaseState === 'purchasing'}>
+                      <Button type="button" onClick={() => void purchaseCandidate(candidate)} disabled={persistencePending || purchaseState === 'purchasing'}>
                         {purchaseState === 'purchasing' ? 'Saving purchase…' : duplicate ? 'Confirm duplicate and buy' : 'Buy this book'}
                       </Button>
                       {purchaseResponse ? (
-                        <p className="text-sm text-[var(--text-secondary)]">
+                        <div className="grid gap-2 text-sm text-[var(--text-secondary)]">
+                          <p>
                           Added copy {purchaseResponse.copy.bookCopyId} for {members.find(member => member.memberId === purchaseResponse.copy.memberId)?.displayName ?? purchaseResponse.copy.memberId}.
                           {purchaseResponse.isProvisional ? ' Version details are still provisional.' : ' Edition details confirmed.'}
-                        </p>
+                          </p>
+                          {purchaseResponse.isProvisional ? (
+                            <div className="grid gap-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] p-3">
+                              <p className="font-medium text-[var(--text-primary)]">Confirm version details</p>
+                              <input
+                                aria-label={`ISBN for ${candidate.displayTitle}`}
+                                placeholder="ISBN"
+                                value={version.isbn}
+                                onChange={event => setVersionByCandidateId(current => ({ ...current, [candidate.candidateId]: { ...version, isbn: event.target.value } }))}
+                                className="h-11 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-3 text-[var(--text-primary)]"
+                              />
+                              <input
+                                aria-label={`Format for ${candidate.displayTitle}`}
+                                placeholder="Format"
+                                value={version.format}
+                                onChange={event => setVersionByCandidateId(current => ({ ...current, [candidate.candidateId]: { ...version, format: event.target.value } }))}
+                                className="h-11 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-3 text-[var(--text-primary)]"
+                              />
+                              <input
+                                aria-label={`Publication year for ${candidate.displayTitle}`}
+                                placeholder="Publication year"
+                                inputMode="numeric"
+                                value={version.publicationYear}
+                                onChange={event => setVersionByCandidateId(current => ({ ...current, [candidate.candidateId]: { ...version, publicationYear: event.target.value } }))}
+                                className="h-11 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-3 text-[var(--text-primary)]"
+                              />
+                              <Button type="button" variant="outline" onClick={() => void confirmVersion(candidate.candidateId, purchaseResponse)} disabled={versionState === 'saving'}>
+                                {versionState === 'saving' ? 'Confirming version…' : 'Confirm version'}
+                              </Button>
+                              {versionErrorByCandidateId[candidate.candidateId] ? <p>{versionErrorByCandidateId[candidate.candidateId]}</p> : null}
+                            </div>
+                          ) : null}
+                        </div>
                       ) : null}
                       {purchaseErrorByCandidateId[candidate.candidateId] ? <p className="text-sm text-[var(--text-secondary)]">{purchaseErrorByCandidateId[candidate.candidateId]}</p> : null}
                     </div>

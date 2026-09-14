@@ -24,6 +24,14 @@ public sealed class BookEdition
         IsProvisional = false;
     }
 
+    public void UpdateVersion(string? isbn, string? format, int? publicationYear)
+    {
+        Isbn = Normalize(isbn);
+        Format = Normalize(format);
+        PublicationYear = publicationYear;
+        ConfirmVersion();
+    }
+
     public BookEdition()
     {
         Id = Guid.NewGuid();
@@ -41,5 +49,10 @@ public sealed class BookEdition
         BookWorkId = work.Id;
         BookWork = work;
         work.RegisterEdition(this);
+    }
+
+    private static string? Normalize(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 }

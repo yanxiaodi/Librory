@@ -126,6 +126,7 @@ if (app.Environment.IsDevelopment())
 app.MapAuthEndpoints();
 app.MapFamilyEndpoints();
 app.MapBookWorkEndpoints();
+app.MapBookEditionEndpoints();
 app.MapBookCopyEndpoints();
 app.MapBookMetadataEndpoints();
 app.MapBookRecognitionJobEndpoints();

@@ -43,6 +43,7 @@ public static class ScanCandidateMetadataSnapshotSerializer
         {
             var snapshot = JsonSerializer.Deserialize<ScanCandidateMetadataSnapshot>(json, Options);
             return snapshot is { SchemaVersion: CurrentSchemaVersion }
+                && snapshot.Matches is not null
                 ? snapshot
                 : null;
         }

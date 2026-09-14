@@ -608,6 +608,7 @@ export function ScansPage() {
             persistedCandidates={scanSession?.candidates}
             members={allMembers}
             scanTargetMemberId={scanSession?.targetMemberId ?? selectedMemberId}
+            persistencePending={persistenceState === 'saving'}
             onMetadataMatchesChange={handleMetadataMatchesChange}
             onPurchaseComplete={handlePurchaseComplete}
           />

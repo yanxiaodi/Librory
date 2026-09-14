@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createScanSession, getLatestScanSession, purchaseScanCandidate, type CreateScanSessionRequest } from './scansApi'
+import { createScanSession, getLatestScanSession, purchaseScanCandidate, updateBookEditionVersion, type CreateScanSessionRequest } from './scansApi'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -84,5 +84,24 @@ describe('scansApi', () => {
       purchaseRequestId: 'request-1',
       existingBookEditionId: 'edition-1',
     })
+  })
+
+  it('updates provisional edition version details', async () => {
+    const responseBody = {
+      bookEditionId: 'edition-1',
+      isbn: '9780441013593',
+      format: 'Paperback',
+      publicationYear: 1965,
+      isProvisional: false,
+    }
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify(responseBody), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(updateBookEditionVersion('edition-1', { isbn: '9780441013593', format: 'Paperback', publicationYear: 1965 })).resolves.toEqual(responseBody)
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/family/current/book-editions/edition-1/version', expect.objectContaining({
+      method: 'PUT',
+      credentials: 'include',
+    }))
   })
 })

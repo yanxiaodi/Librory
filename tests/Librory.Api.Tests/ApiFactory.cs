@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -14,17 +15,19 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncDisposabl
 {
     private readonly PostgresTestDatabase _database;
     private readonly string _connectionString;
+    private readonly DbCommandInterceptor? _databaseInterceptor;
 
-    private ApiFactory(PostgresTestDatabase database)
+    private ApiFactory(PostgresTestDatabase database, DbCommandInterceptor? databaseInterceptor)
     {
         _database = database;
         _connectionString = database.ConnectionString;
+        _databaseInterceptor = databaseInterceptor;
     }
 
-    public static async Task<ApiFactory> CreateAsync()
+    public static async Task<ApiFactory> CreateAsync(DbCommandInterceptor? databaseInterceptor = null)
     {
         var database = await PostgresTestDatabase.CreateAsync();
-        return new ApiFactory(database);
+        return new ApiFactory(database, databaseInterceptor);
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -52,6 +55,10 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncDisposabl
             services.AddDbContext<LibroryDbContext>((_, options) =>
             {
                 options.UseNpgsql(_connectionString);
+                if (_databaseInterceptor is not null)
+                {
+                    options.AddInterceptors(_databaseInterceptor);
+                }
             });
         });
     }

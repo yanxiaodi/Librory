@@ -53,6 +53,26 @@ internal static class ScanPurchaseEndpoints
             return validationProblem;
         }
 
+        if (request.SelectedMetadata is not null)
+        {
+            if (ApiValidation.Required(
+                    new ValidationField("selectedMetadata.source", request.SelectedMetadata.Source, "Metadata source is required."),
+                    new ValidationField("selectedMetadata.sourceId", request.SelectedMetadata.SourceId, "Metadata source id is required."),
+                    new ValidationField("selectedMetadata.title", request.SelectedMetadata.Title, "Metadata title is required."))
+                is IResult metadataValidationProblem)
+            {
+                return metadataValidationProblem;
+            }
+
+            if (request.SelectedMetadata.Authors?.Any(string.IsNullOrWhiteSpace) == true)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["selectedMetadata.authors"] = ["Author entries must not be blank."],
+                });
+            }
+        }
+
         var current = accessor.Current;
         if (current is null)
         {
@@ -148,18 +168,23 @@ internal static class ScanPurchaseEndpoints
     private static BookMetadataCandidate ToMetadataCandidate(BookMetadataImportCandidateRequest request)
     {
         return new BookMetadataCandidate(
-            request.Source,
-            request.SourceId,
-            request.Title,
-            request.Subtitle,
-            request.Authors ?? [],
-            request.Publisher,
-            request.PublishedDate,
-            request.Language,
-            request.Description,
-            request.Isbn10,
-            request.Isbn13,
-            request.ThumbnailUrl,
-            request.InfoUrl);
+            request.Source.Trim(),
+            request.SourceId.Trim(),
+            request.Title.Trim(),
+            TrimToNull(request.Subtitle),
+            (request.Authors ?? []).Select(author => author.Trim()).ToArray(),
+            TrimToNull(request.Publisher),
+            TrimToNull(request.PublishedDate),
+            TrimToNull(request.Language),
+            TrimToNull(request.Description),
+            TrimToNull(request.Isbn10),
+            TrimToNull(request.Isbn13),
+            TrimToNull(request.ThumbnailUrl),
+            TrimToNull(request.InfoUrl));
+    }
+
+    private static string? TrimToNull(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 }

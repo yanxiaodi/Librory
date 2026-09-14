@@ -123,6 +123,33 @@ describe('RecommendationProfileSection', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/family/current/members/member-2/recommendation-profile', { credentials: 'include' })
   })
 
+  it('does not send private fields when an administrator saves another member profile', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/family/current/members') {
+        return new Response(JSON.stringify([
+          { memberId: 'member-1', displayName: 'Alice', role: 'Admin', preferredLanguage: 0, isActive: true, hasAccount: true },
+          { memberId: 'member-2', displayName: 'Mia', role: 'Member', preferredLanguage: 1, isActive: true, hasAccount: false },
+        ]), { status: 200 })
+      }
+      if (init?.method === 'PUT') {
+        return new Response(JSON.stringify({ memberId: 'member-2', minimumAge: null, maximumAge: null, favoriteAuthors: [], excludedAuthors: [], favoriteGenres: [], excludedGenres: [], favoriteStyles: [], excludedStyles: [], preferredBookLanguages: [], preferenceNotes: null, profileVisibility: 'Family', useInFamilyRecommendations: true }), { status: 200 })
+      }
+      return new Response(JSON.stringify({ memberId: 'member-2', minimumAge: null, maximumAge: null, favoriteAuthors: [], excludedAuthors: [], favoriteGenres: [], excludedGenres: [], favoriteStyles: [], excludedStyles: [], preferredBookLanguages: [], preferenceNotes: null, profileVisibility: 'Family', useInFamilyRecommendations: true }), { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<RecommendationProfileSection isAdmin currentMemberId="member-1" />)
+    await user.selectOptions(await screen.findByLabelText(/^member$/i), 'member-2')
+    await user.click(await screen.findByRole('button', { name: /save preferences/i }))
+
+    const saveCall = fetchMock.mock.calls.find(([, init]) => init?.method === 'PUT')
+    const payload = JSON.parse((saveCall?.[1] as RequestInit).body as string) as Record<string, unknown>
+    expect(payload).not.toHaveProperty('preferenceNotes')
+    expect(payload).not.toHaveProperty('usePrivateNotesInFamilyRecommendations')
+  })
+
   it('clears the previous member form while the next profile is loading', async () => {
     const user = userEvent.setup()
     let resolveSecondProfile: (response: Response) => void = () => undefined

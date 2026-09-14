@@ -44,4 +44,12 @@ public sealed class ScanCandidateMetadataSnapshotTests
         Assert.Null(ScanCandidateMetadataSnapshotSerializer.Deserialize(null));
         Assert.Null(ScanCandidateMetadataSnapshotSerializer.Deserialize(" "));
     }
+
+    [Theory]
+    [InlineData("{\"schemaVersion\":1,\"evidenceText\":\"DUNE\"}")]
+    [InlineData("{\"schemaVersion\":1,\"evidenceText\":\"DUNE\",\"matches\":null}")]
+    public void Metadata_snapshot_deserializer_rejects_snapshots_without_matches(string json)
+    {
+        Assert.Null(ScanCandidateMetadataSnapshotSerializer.Deserialize(json));
+    }
 }

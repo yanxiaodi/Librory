@@ -88,7 +88,7 @@ function toForm(profile: RecommendationProfile | null): ProfileFormState {
   }
 }
 
-function toPayload(form: ProfileFormState): RecommendationProfileUpdate {
+function toPayload(form: ProfileFormState, includePrivateFields: boolean): RecommendationProfileUpdate {
   const numberOrNull = (value: string) => value.trim() ? Number(value) : null
 
   return {
@@ -101,10 +101,12 @@ function toPayload(form: ProfileFormState): RecommendationProfileUpdate {
     favoriteStyles: splitCommaList(form.favoriteStyles),
     excludedStyles: splitCommaList(form.excludedStyles),
     preferredBookLanguages: form.preferredBookLanguages.map(language => language === 'Chinese' ? 1 : 0),
-    preferenceNotes: form.preferenceNotes.trim() || null,
     profileVisibility: form.profileVisibility === 'Private' ? 1 : 0,
     useInFamilyRecommendations: form.useInFamilyRecommendations,
-    usePrivateNotesInFamilyRecommendations: form.usePrivateNotesInFamilyRecommendations,
+    ...(includePrivateFields ? {
+      preferenceNotes: form.preferenceNotes.trim() || null,
+      usePrivateNotesInFamilyRecommendations: form.usePrivateNotesInFamilyRecommendations,
+    } : {}),
   }
 }
 
@@ -253,7 +255,7 @@ export function RecommendationProfileSection({ isAdmin, currentMemberId, refresh
     setSaved(false)
     setError(null)
     try {
-      const profile = await updateMemberRecommendationProfile(selectedMemberId, toPayload(form))
+      const profile = await updateMemberRecommendationProfile(selectedMemberId, toPayload(form, isProfileOwner))
       setForm(toForm(profile))
       setSaved(true)
     } catch {

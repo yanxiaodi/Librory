@@ -7,7 +7,7 @@ public sealed class ScanCandidate
     public string DisplayTitle { get; private set; } = string.Empty;
     public string? Author { get; private set; }
     public int RecognitionRank { get; private set; }
-    public decimal RecommendationScore { get; private set; }
+    public decimal? RecommendationScore { get; private set; }
     public bool IsAlreadyOwned { get; private set; }
     public string? DuplicateMessage { get; private set; }
     public string ConfidenceLabel { get; private set; } = string.Empty;
@@ -23,7 +23,7 @@ public sealed class ScanCandidate
         string displayTitle,
         string confidenceLabel,
         string? author = null,
-        decimal recommendationScore = 0m,
+        decimal? recommendationScore = null,
         bool isAlreadyOwned = false,
         string? duplicateMessage = null,
         PreferredLanguage? detectedLanguage = null,
@@ -51,7 +51,7 @@ public sealed class ScanCandidate
         string displayTitle,
         string confidenceLabel,
         string? author = null,
-        decimal recommendationScore = 0m,
+        decimal? recommendationScore = null,
         bool isAlreadyOwned = false,
         string? duplicateMessage = null,
         PreferredLanguage? detectedLanguage = null,
@@ -133,7 +133,7 @@ public sealed class ScanCandidate
         }
     }
 
-    private static void Validate(string displayTitle, string confidenceLabel, decimal recommendationScore, int recognitionRank)
+    private static void Validate(string displayTitle, string confidenceLabel, decimal? recommendationScore, int recognitionRank)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(displayTitle);
         ArgumentException.ThrowIfNullOrWhiteSpace(confidenceLabel);
