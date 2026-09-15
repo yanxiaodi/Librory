@@ -133,11 +133,9 @@ public sealed class ScanPurchaseService : IScanPurchaseService
             throw new KeyNotFoundException("Owner member not found in the current family.");
         }
 
-        var candidateDuplicateDetection = family.DetectPotentialDuplicate(candidate.DisplayTitle);
-        ValidateSelectedResolution(request, candidateDuplicateDetection);
-
         var edition = await ResolveEditionAsync(db, importer, request, cancellationToken);
         var duplicateDetection = family.DetectPotentialDuplicate(edition);
+        ValidateSelectedResolution(request, duplicateDetection);
         var duplicateStatus = ResolveDuplicateStatus(request, duplicateDetection);
         var purchasedAt = request.PurchasedAt ?? DateTimeOffset.UtcNow;
         var intake = ManualBookIntakeRecorder.RecordWithDuplicateDetection(

@@ -16,7 +16,7 @@ import type { FamilyMember } from '@/lib/familyApi'
 interface BookRecognitionResultsProps {
   job: BookRecognitionJobResponse
   candidates: BookRecognitionJobResponse['candidates']
-  onCandidatesChange?: (candidates: BookRecognitionJobResponse['candidates']) => void
+  onCandidatesChange?: React.Dispatch<React.SetStateAction<BookRecognitionJobResponse['candidates']>>
   scanSessionId?: string
   persistedCandidates?: ScanCandidateResponse[]
   members?: FamilyMember[]
@@ -108,8 +108,7 @@ export function BookRecognitionResults({
       }
     }
 
-    const nextCandidates = candidates.filter(candidate => candidate.candidateId !== candidateId)
-    onCandidatesChange?.(nextCandidates)
+    onCandidatesChange?.(current => current.filter(candidate => candidate.candidateId !== candidateId))
   }
 
   const updateSearchText = (candidateId: string, value: string) => {
@@ -130,7 +129,7 @@ export function BookRecognitionResults({
       delete next[candidateId]
       return next
     })
-    onCandidatesChange?.(candidates.map(candidate =>
+    onCandidatesChange?.(current => current.map(candidate =>
       candidate.candidateId === candidateId
         ? { ...candidate, displayTitle: value, metadataMatches: [] }
         : candidate,
@@ -158,7 +157,7 @@ export function BookRecognitionResults({
       if (metadataSearchRequestIdByCandidateId.current[candidateId] !== requestId) return
       await onMetadataMatchesChange?.(candidateId, matches)
       if (metadataSearchRequestIdByCandidateId.current[candidateId] !== requestId) return
-      onCandidatesChange?.(candidates.map(candidate =>
+      onCandidatesChange?.(current => current.map(candidate =>
         candidate.candidateId === candidateId ? { ...candidate, displayTitle: title, metadataMatches: matches } : candidate,
       ))
       setSelectedMatchByCandidateId(current => ({ ...current, [candidateId]: 0 }))

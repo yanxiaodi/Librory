@@ -12,7 +12,7 @@ afterEach(() => {
 })
 
 describe('ScansPage', () => {
-  it('defaults the scan target to the current member and allows an eligible member', async () => {
+  it('only offers active scan targets and allows an eligible member', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       if (String(input) === '/api/family/current/members') {
@@ -38,8 +38,8 @@ describe('ScansPage', () => {
     )
 
     const target = await screen.findByLabelText(/scan for member/i)
-    expect(target).toHaveValue('member-1')
-    expect(screen.getByRole('option', { name: 'Alice' })).toBeVisible()
+    expect(target).toHaveValue('member-2')
+    expect(screen.queryByRole('option', { name: 'Alice' })).not.toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'Bob' })).toBeVisible()
     expect(screen.queryByRole('option', { name: 'Inactive' })).not.toBeInTheDocument()
 

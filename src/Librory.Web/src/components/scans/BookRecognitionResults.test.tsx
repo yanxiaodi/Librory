@@ -1,6 +1,7 @@
-import { render, screen } from '@testing-library/react'
+import * as React from 'react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { BookRecognitionResults } from './BookRecognitionResults'
 import type { BookRecognitionJobResponse } from '@/lib/bookRecognitionApi'
 import type { ScanCandidateResponse } from '@/lib/scansApi'
@@ -219,4 +220,79 @@ describe('BookRecognitionResults', () => {
       }),
     )
   })
+
+  it('merges metadata searches that complete out of order', async () => {
+    const user = userEvent.setup()
+    const firstSearch = deferred<Response>()
+    const secondSearch = deferred<Response>()
+    const twoCandidateJob = {
+      ...job,
+      candidates: [
+        job.candidates[0],
+        { ...job.candidates[0], candidateId: 'candidate-2', displayTitle: 'Matilda' },
+      ],
+    }
+    const twoPendingCandidates = [
+      pendingCandidate,
+      { ...pendingCandidate, id: 'candidate-2' },
+    ]
+    const matildaMetadata = { ...metadata, title: 'Matilda', sourceId: 'matilda-result' }
+    let searchCount = 0
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === '/api/book-metadata/search?title=Dune') {
+        searchCount += 1
+        return firstSearch.promise
+      }
+      if (String(input) === '/api/book-metadata/search?title=Matilda') {
+        searchCount += 1
+        return secondSearch.promise
+      }
+      throw new Error(`Unexpected fetch request: ${String(input)}`)
+    }))
+
+    function Harness() {
+      const [candidates, setCandidates] = React.useState(twoCandidateJob.candidates)
+      return (
+        <BookRecognitionResults
+          job={twoCandidateJob}
+          candidates={candidates}
+          onCandidatesChange={setCandidates}
+          scanSessionId="scan-1"
+          persistedCandidates={twoPendingCandidates}
+          members={members}
+          scanTargetMemberId="member-1"
+        />
+      )
+    }
+
+    render(<Harness />)
+    const searchInputs = screen.getAllByLabelText(/search text/i)
+    const searchButtons = screen.getAllByRole('button', { name: /re-search metadata/i })
+    expect(searchButtons).toHaveLength(2)
+    await user.click(searchButtons[0])
+    await user.click(searchButtons[1])
+    expect((vi.mocked(fetch).mock.calls as Array<[RequestInfo | URL]>).map(([input]) => String(input))).toEqual([
+      '/api/book-metadata/search?title=Dune',
+      '/api/book-metadata/search?title=Matilda',
+    ])
+
+    secondSearch.resolve(new Response(JSON.stringify({ candidates: [matildaMetadata] }), { status: 200 }))
+    await waitFor(() => expect(screen.getByRole('option', { name: /Matilda · Frank Herbert/ })).toBeVisible())
+    firstSearch.resolve(new Response(JSON.stringify({ candidates: [{ ...metadata, sourceId: 'dune-result' }] }), { status: 200 }))
+
+    expect(searchInputs).toHaveLength(2)
+    await waitFor(() => expect(screen.getByRole('option', { name: /Dune · Frank Herbert/ })).toBeVisible())
+    expect(screen.getByRole('option', { name: /Matilda · Frank Herbert/ })).toBeVisible()
+    expect(searchCount).toBe(2)
+  })
 })
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+  return { promise, resolve, reject }
+}

@@ -174,7 +174,7 @@ function writePendingJob(pending: PendingJob | null) {
 }
 
 export function ScansPage() {
-  const { family, user } = useAuthSession()
+  const { family } = useAuthSession()
   const inputRef = React.useRef<HTMLInputElement>(null)
   const [state, setState] = React.useState<ScanState>('idle')
   const [fileName, setFileName] = React.useState<string | null>(null)
@@ -201,19 +201,19 @@ export function ScansPage() {
       .then(result => {
         setAllMembers(result)
         const eligible = result.filter(member =>
-          member.memberId === currentMemberId || (member.isActive && member.canUseForFamilyRecommendations === true),
+          member.isActive && (member.memberId === currentMemberId || member.canUseForFamilyRecommendations === true),
         )
         setMembers(eligible)
         setSelectedMemberId(previous => {
           if (eligible.some(member => member.memberId === previous)) return previous
           if (currentMemberId && eligible.some(member => member.memberId === currentMemberId)) return currentMemberId
-          return eligible[0]?.memberId ?? currentMemberId ?? ''
+          return eligible[0]?.memberId ?? ''
         })
         setMemberError(null)
       })
       .catch(() => {
         setMemberError('Family members could not be loaded. Scanning will use the current member.')
-        if (currentMemberId) setSelectedMemberId(currentMemberId)
+        setSelectedMemberId('')
       })
   }, [currentMemberId])
 
@@ -495,7 +495,6 @@ export function ScansPage() {
                 disabled={state === 'compressing' || state === 'uploading' || state === 'polling' || persistenceState === 'saving' || persistenceState === 'error' || members.length === 0}
                 className="h-12 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-3 text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-[var(--accent-subtle)]"
               >
-                {members.length === 0 && currentMemberId ? <option value={currentMemberId}>{user?.displayName ?? 'Current member'}</option> : null}
                 {members.map(member => <option key={member.memberId} value={member.memberId}>{member.displayName}</option>)}
               </select>
               {memberError ? <p className="text-sm leading-6 text-[var(--text-secondary)]">{memberError}</p> : null}

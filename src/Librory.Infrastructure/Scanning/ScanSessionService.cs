@@ -103,11 +103,12 @@ public sealed class ScanSessionService : IScanSessionService
 
         var hasMetadataRefresh = request.MetadataMatches is not null
             || !string.IsNullOrWhiteSpace(request.RecognitionEvidence);
-        candidate.ReplaceMetadataMatches(
-            hasMetadataRefresh
-                ? ScanCandidateMetadataSnapshotSerializer.Serialize(request.MetadataMatches, request.RecognitionEvidence)
-                : null,
-            resetReviewState: hasMetadataRefresh);
+        if (hasMetadataRefresh)
+        {
+            candidate.ReplaceMetadataMatches(
+                ScanCandidateMetadataSnapshotSerializer.Serialize(request.MetadataMatches, request.RecognitionEvidence),
+                resetReviewState: true);
+        }
 
         await _db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
