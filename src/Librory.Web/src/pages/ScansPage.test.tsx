@@ -8,10 +8,11 @@ afterEach(() => {
   vi.useRealTimers()
   vi.unstubAllGlobals()
   sessionStorage.clear()
+  window.history.pushState({}, '', '/')
 })
 
 describe('ScansPage', () => {
-  it('defaults the scan target to the current member and allows an eligible member', async () => {
+  it('only offers active scan targets and allows an eligible member', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       if (String(input) === '/api/family/current/members') {
@@ -37,8 +38,8 @@ describe('ScansPage', () => {
     )
 
     const target = await screen.findByLabelText(/scan for member/i)
-    expect(target).toHaveValue('member-1')
-    expect(screen.getByRole('option', { name: 'Alice' })).toBeVisible()
+    expect(target).toHaveValue('member-2')
+    expect(screen.queryByRole('option', { name: 'Alice' })).not.toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'Bob' })).toBeVisible()
     expect(screen.queryByRole('option', { name: 'Inactive' })).not.toBeInTheDocument()
 
@@ -99,6 +100,7 @@ describe('ScansPage', () => {
       targetMemberId: 'member-2',
       candidates: [{ displayTitle: 'Dune', confidenceLabel: 'DUNE', author: 'Frank Herbert', detectedLanguage: 0 }],
     })
+    expect((sessionPayload?.candidates as Array<Record<string, unknown>>)[0]).not.toHaveProperty('recommendationScore')
   })
 
   it('uploads a shelf photo and renders recognized candidates after polling', async () => {
@@ -466,5 +468,26 @@ describe('ScansPage', () => {
       expect.objectContaining({ credentials: 'include' }),
     )
     expect(sessionStorage.getItem(PENDING_JOB_STORAGE_KEY)).toBeNull()
+  })
+
+  it('surfaces a continuation lookup failure instead of staying idle', async () => {
+    window.history.pushState({}, '', '?continue=1')
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === '/api/family/current/members') {
+        return new Response(JSON.stringify([]), { status: 200 })
+      }
+
+      if (String(input) === '/api/family/current/scan-sessions/latest') {
+        return new Response('nope', { status: 500 })
+      }
+
+      throw new Error(`Unexpected fetch request: ${String(input)}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<ScansPage />)
+
+    expect(await screen.findByText(/^recognition failed$/i)).toBeVisible()
+    expect(screen.getByText(/latest scan session lookup failed/i)).toBeVisible()
   })
 })

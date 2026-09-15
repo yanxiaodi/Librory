@@ -4,5 +4,6 @@ public interface IBookMetadataImportService
 {
     Task<BookMetadataImportResult> ImportAsync(
         BookMetadataCandidate candidate,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        BookMetadataImportOptions? options = null);
 }

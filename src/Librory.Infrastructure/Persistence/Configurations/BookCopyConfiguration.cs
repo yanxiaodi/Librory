@@ -13,6 +13,7 @@ internal sealed class BookCopyConfiguration : IEntityTypeConfiguration<BookCopy>
         builder.ToTable("book_copies");
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).ValueGeneratedNever();
+        builder.Property(x => x.PurchasedByMemberId);
         builder.Property(x => x.DuplicateStatus).HasConversion<string>().HasMaxLength(32);
         builder.Property(x => x.Condition).HasMaxLength(200);
         builder.Property(x => x.PurchaseStore).HasMaxLength(200);
@@ -28,6 +29,11 @@ internal sealed class BookCopyConfiguration : IEntityTypeConfiguration<BookCopy>
         builder.HasOne(x => x.Member)
             .WithMany()
             .HasForeignKey(x => x.MemberId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        builder.HasOne(x => x.PurchasedByMember)
+            .WithMany()
+            .HasForeignKey(x => x.PurchasedByMemberId)
             .OnDelete(DeleteBehavior.NoAction);
 
         builder.HasOne(x => x.BookEdition)

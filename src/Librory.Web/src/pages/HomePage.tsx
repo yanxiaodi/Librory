@@ -96,6 +96,9 @@ export function HomePage() {
             <p className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">
               {latestScanSession.candidates.length} candidate{latestScanSession.candidates.length === 1 ? '' : 's'} saved.
             </p>
+            <Button className="mt-3" variant="outline" asChild>
+              <Link to="/app/scans?continue=1">Continue latest scan</Link>
+            </Button>
           </div>
         ) : (
           <p className="py-8 text-center font-[family-name:var(--font-display)] text-sm italic text-[var(--text-tertiary)]">

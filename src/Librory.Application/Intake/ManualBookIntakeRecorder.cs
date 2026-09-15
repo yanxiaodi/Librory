@@ -27,7 +27,8 @@ public static class ManualBookIntakeRecorder
             request.ShelfLocation,
             request.PurchasedAt,
             request.DuplicateStatus,
-            request.IntakeNotes);
+            request.IntakeNotes,
+            request.PurchasedByMember);
 
         return new ManualBookIntakeResult(copy, duplicateDetection);
     }

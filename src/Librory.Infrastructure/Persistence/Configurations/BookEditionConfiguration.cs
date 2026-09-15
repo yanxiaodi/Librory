@@ -16,6 +16,7 @@ internal sealed class BookEditionConfiguration : IEntityTypeConfiguration<BookEd
         builder.Property(x => x.Isbn).HasMaxLength(32);
         builder.Property(x => x.Format).HasMaxLength(64);
         builder.Property(x => x.PublicationYear);
+        builder.Property(x => x.IsProvisional).IsRequired();
 
         builder.OwnsOne(x => x.Subtitle, owned =>
         {

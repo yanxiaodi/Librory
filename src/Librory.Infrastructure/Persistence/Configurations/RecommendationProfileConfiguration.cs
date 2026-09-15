@@ -57,6 +57,7 @@ internal sealed class RecommendationProfileConfiguration : IEntityTypeConfigurat
                 value => value.ToList()));
         builder.Property(x => x.PreferenceNotes).HasMaxLength(1000);
         builder.Property(x => x.ProfileVisibility).HasConversion<string>().HasMaxLength(32).IsRequired();
+        builder.Property(x => x.UsePrivateNotesInFamilyRecommendations).IsRequired();
 
         builder.HasOne(x => x.Member)
             .WithMany()

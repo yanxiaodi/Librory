@@ -15,4 +15,5 @@ public sealed record RecommendationProfileResponse(
     IReadOnlyList<PreferredLanguage> PreferredBookLanguages,
     string? PreferenceNotes,
     ProfileVisibility ProfileVisibility,
-    bool UseInFamilyRecommendations);
+    bool UseInFamilyRecommendations,
+    bool? UsePrivateNotesInFamilyRecommendations = null);

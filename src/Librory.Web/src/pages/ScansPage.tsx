@@ -13,7 +13,7 @@ import {
   isRecognitionJobComplete,
   type BookRecognitionJobResponse,
 } from '@/lib/bookRecognitionApi'
-import { createScanSession, type ScanSessionResponse } from '@/lib/scansApi'
+import { createScanSession, getLatestScanSession, updateScanCandidate, type ScanPurchaseResponse, type ScanSessionResponse } from '@/lib/scansApi'
 
 type ScanState = 'idle' | 'compressing' | 'uploading' | 'polling' | 'ready' | 'error'
 type PersistenceState = 'idle' | 'saving' | 'saved' | 'error'
@@ -174,11 +174,12 @@ function writePendingJob(pending: PendingJob | null) {
 }
 
 export function ScansPage() {
-  const { family, user } = useAuthSession()
+  const { family } = useAuthSession()
   const inputRef = React.useRef<HTMLInputElement>(null)
   const [state, setState] = React.useState<ScanState>('idle')
   const [fileName, setFileName] = React.useState<string | null>(null)
   const [job, setJob] = React.useState<BookRecognitionJobResponse | null>(null)
+  const [allMembers, setAllMembers] = React.useState<FamilyMember[]>([])
   const [members, setMembers] = React.useState<FamilyMember[]>([])
   const [selectedMemberId, setSelectedMemberId] = React.useState(family?.memberId ?? '')
   const [memberError, setMemberError] = React.useState<string | null>(null)
@@ -198,20 +199,21 @@ export function ScansPage() {
   React.useEffect(() => {
     void listMembers()
       .then(result => {
+        setAllMembers(result)
         const eligible = result.filter(member =>
-          member.memberId === currentMemberId || (member.isActive && member.canUseForFamilyRecommendations === true),
+          member.isActive && (member.memberId === currentMemberId || member.canUseForFamilyRecommendations === true),
         )
         setMembers(eligible)
         setSelectedMemberId(previous => {
           if (eligible.some(member => member.memberId === previous)) return previous
           if (currentMemberId && eligible.some(member => member.memberId === currentMemberId)) return currentMemberId
-          return eligible[0]?.memberId ?? currentMemberId ?? ''
+          return eligible[0]?.memberId ?? ''
         })
         setMemberError(null)
       })
       .catch(() => {
         setMemberError('Family members could not be loaded. Scanning will use the current member.')
-        if (currentMemberId) setSelectedMemberId(currentMemberId)
+        setSelectedMemberId('')
       })
   }, [currentMemberId])
 
@@ -222,14 +224,18 @@ export function ScansPage() {
     }
   }, [])
 
-  const persistScanSession = React.useCallback(async (completedJob: BookRecognitionJobResponse) => {
+  const persistScanSession = React.useCallback(async (
+    completedJob: BookRecognitionJobResponse,
+    initialCandidates?: BookRecognitionJobResponse['candidates'],
+  ) => {
     if (activeJobIdRef.current !== completedJob.jobId) return
 
     setPersistenceState('saving')
     setPersistenceError(null)
 
     try {
-      const candidatesToPersist = reviewedCandidatesInitialized ? reviewedCandidates : completedJob.candidates
+      const candidatesToPersist = initialCandidates
+        ?? (reviewedCandidatesInitialized ? reviewedCandidates : completedJob.candidates)
       const response = await createScanSession({
         shelfPhotoPath: completedJob.sourcePhotoPath,
         targetMemberId: activeTargetMemberIdRef.current,
@@ -237,12 +243,18 @@ export function ScansPage() {
           displayTitle: candidate.displayTitle,
           confidenceLabel: candidate.evidenceText,
           author: candidate.metadataMatches[0]?.authors[0],
-          recommendationScore: Math.min(Math.max(candidate.rank / 1000, 0), 1),
           detectedLanguage: toDetectedLanguage(candidate.metadataMatches[0]?.language ?? null),
+          recognitionEvidence: candidate.evidenceText,
+          recognitionRank: candidate.rank,
+          metadataMatches: candidate.metadataMatches,
         })),
       })
       if (activeJobIdRef.current !== completedJob.jobId) return
       setScanSession(response)
+      setReviewedCandidates(current => current.map((candidate, index) => {
+        const persisted = response.candidates[index]
+        return persisted ? { ...candidate, candidateId: persisted.id } : candidate
+      }))
       setPersistenceState('saved')
     } catch {
       if (activeJobIdRef.current !== completedJob.jobId) return
@@ -266,7 +278,7 @@ export function ScansPage() {
         setReviewedCandidatesInitialized(true)
         clearPollTimer()
         writePendingJob(null)
-        if (current.status === 2) void persistScanSession(current)
+        if (current.status === 2) void persistScanSession(current, current.candidates)
         return
       }
 
@@ -296,6 +308,49 @@ export function ScansPage() {
     setState('polling')
     void schedulePoll(pending.jobId)
     // Resume once on mount only; schedulePoll itself keeps polling after this.
+  }, [])
+
+  React.useEffect(() => {
+    if (!window.location.search.includes('continue=1')) return
+
+    let cancelled = false
+
+    void getLatestScanSession()
+      .then(session => {
+        if (cancelled || !session || activeJobIdRef.current) return
+
+        const resumedJob: BookRecognitionJobResponse = {
+          jobId: `session-${session.scanSessionId}`,
+          familyId: session.familyId,
+          status: 2,
+          sourcePhotoPath: session.shelfPhotoPath,
+          candidates: session.candidates.map(candidate => ({
+            candidateId: candidate.id,
+            displayTitle: candidate.displayTitle,
+            evidenceText: candidate.metadataSnapshot?.evidenceText ?? candidate.confidenceLabel,
+            rank: candidate.recognitionRank,
+            metadataMatches: candidate.metadataSnapshot?.matches ?? [],
+          })),
+          warnings: [],
+          failureMessage: null,
+          createdAt: session.expiresAt,
+          updatedAt: session.expiresAt,
+        }
+        setScanSession(session)
+        setJob(resumedJob)
+        setReviewedCandidates(resumedJob.candidates)
+        setReviewedCandidatesInitialized(true)
+        setState('ready')
+      })
+      .catch(error => {
+        if (cancelled) return
+        setUploadError(error instanceof Error ? error.message : 'The latest scan could not be loaded.')
+        setState('error')
+      })
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -342,7 +397,7 @@ export function ScansPage() {
         setState(response.status === 3 ? 'error' : 'ready')
         setReviewedCandidates(response.candidates)
         setReviewedCandidatesInitialized(true)
-        if (response.status === 2) void persistScanSession(response)
+        if (response.status === 2) void persistScanSession(response, response.candidates)
         return
       }
 
@@ -361,6 +416,46 @@ export function ScansPage() {
   const retryPersistence = () => {
     if (job?.status === 2) void persistScanSession(job)
   }
+
+  const handleMetadataMatchesChange = React.useCallback(async (recognitionCandidateId: string, matches: BookRecognitionJobResponse['candidates'][number]['metadataMatches']) => {
+    if (!scanSession) throw new Error('The scan session is not ready to save metadata.')
+    const persisted = scanSession.candidates.find(candidate => candidate.id === recognitionCandidateId)
+    const currentCandidate = reviewedCandidates.find(candidate => candidate.candidateId === recognitionCandidateId)
+    if (!persisted || !currentCandidate) throw new Error('The scan candidate could not be found.')
+
+    try {
+      const updated = await updateScanCandidate(scanSession.scanSessionId, persisted.id, {
+        displayTitle: currentCandidate.displayTitle,
+        confidenceLabel: currentCandidate.evidenceText,
+        author: matches[0]?.authors[0],
+        recognitionRank: currentCandidate.rank,
+        recognitionEvidence: currentCandidate.evidenceText,
+        metadataMatches: matches,
+      })
+      setScanSession(updated)
+    } catch {
+      setPersistenceError('Metadata matches were found, but the corrected candidate could not be saved.')
+      setPersistenceState('error')
+      throw new Error('Metadata matches were found, but the corrected candidate could not be saved.')
+    }
+  }, [reviewedCandidates, scanSession])
+
+  const handlePurchaseComplete = React.useCallback((candidateId: string, response: ScanPurchaseResponse) => {
+    setScanSession(current => current
+      ? {
+          ...current,
+          candidates: current.candidates.map(candidate => candidate.id === candidateId
+            ? {
+                ...candidate,
+                purchaseStatus: 1,
+                purchasedBookCopyId: response.copy.bookCopyId,
+                purchasedAt: response.copy.purchasedAt,
+                purchaseRequestId: candidate.purchaseRequestId,
+              }
+            : candidate),
+        }
+      : current)
+  }, [])
 
   React.useEffect(() => {
     return () => {
@@ -400,7 +495,6 @@ export function ScansPage() {
                 disabled={state === 'compressing' || state === 'uploading' || state === 'polling' || persistenceState === 'saving' || persistenceState === 'error' || members.length === 0}
                 className="h-12 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-3 text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-[var(--accent-subtle)]"
               >
-                {members.length === 0 && currentMemberId ? <option value={currentMemberId}>{user?.displayName ?? 'Current member'}</option> : null}
                 {members.map(member => <option key={member.memberId} value={member.memberId}>{member.displayName}</option>)}
               </select>
               {memberError ? <p className="text-sm leading-6 text-[var(--text-secondary)]">{memberError}</p> : null}
@@ -501,7 +595,7 @@ export function ScansPage() {
         {scanSession ? (
           <Card>
             <CardHeader>
-              <CardTitle>Recommendation context</CardTitle>
+            <CardTitle>Recommendation context</CardTitle>
               <CardDescription>Scan prepared for {scanSession.targetMemberDisplayName || 'the current member'}.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-2 text-sm leading-6 text-[var(--text-secondary)]">
@@ -512,7 +606,20 @@ export function ScansPage() {
           </Card>
         ) : null}
 
-        {job && state !== 'compressing' && state !== 'uploading' ? <BookRecognitionResults job={job} candidates={reviewedCandidates} onCandidatesChange={setReviewedCandidates} /> : null}
+        {job && state !== 'compressing' && state !== 'uploading' ? (
+          <BookRecognitionResults
+            job={job}
+            candidates={reviewedCandidates}
+            onCandidatesChange={setReviewedCandidates}
+            scanSessionId={scanSession?.scanSessionId}
+            persistedCandidates={scanSession?.candidates}
+            members={allMembers}
+            scanTargetMemberId={scanSession?.targetMemberId ?? selectedMemberId}
+            persistencePending={persistenceState === 'saving'}
+            onMetadataMatchesChange={handleMetadataMatchesChange}
+            onPurchaseComplete={handlePurchaseComplete}
+          />
+        ) : null}
         {job && state === 'polling' ? (
           <Card>
             <CardContent className="grid gap-2">

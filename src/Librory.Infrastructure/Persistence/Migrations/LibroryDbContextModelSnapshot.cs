@@ -61,6 +61,9 @@ namespace Librory.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset?>("PurchasedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("PurchasedByMemberId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("ShelfLocation")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
@@ -72,6 +75,8 @@ namespace Librory.Infrastructure.Persistence.Migrations
                     b.HasIndex("FamilyId");
 
                     b.HasIndex("MemberId");
+
+                    b.HasIndex("PurchasedByMemberId");
 
                     b.ToTable("book_copies", "librory");
                 });
@@ -87,6 +92,9 @@ namespace Librory.Infrastructure.Persistence.Migrations
                     b.Property<string>("Format")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
+
+                    b.Property<bool>("IsProvisional")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Isbn")
                         .HasMaxLength(32)
@@ -350,6 +358,9 @@ namespace Librory.Infrastructure.Persistence.Migrations
                     b.Property<bool>("UseInFamilyRecommendations")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("UsePrivateNotesInFamilyRecommendations")
+                        .HasColumnType("boolean");
+
                     b.HasKey("Id");
 
                     b.HasIndex("MemberId")
@@ -388,7 +399,27 @@ namespace Librory.Infrastructure.Persistence.Migrations
                     b.Property<bool>("IsAlreadyOwned")
                         .HasColumnType("boolean");
 
-                    b.Property<decimal>("RecommendationScore")
+                    b.Property<string>("MetadataMatchesJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid?>("PurchaseRequestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PurchaseStatus")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTimeOffset?>("PurchasedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("PurchasedBookCopyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("RecognitionRank")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("RecommendationScore")
                         .HasPrecision(5, 4)
                         .HasColumnType("numeric(5,4)");
 
@@ -396,6 +427,10 @@ namespace Librory.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("PurchaseRequestId")
+                        .IsUnique()
+                        .HasFilter("\"PurchaseRequestId\" IS NOT NULL");
 
                     b.HasIndex("ScanSessionId");
 
@@ -524,11 +559,18 @@ namespace Librory.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
+                    b.HasOne("Librory.Domain.Models.Member", "PurchasedByMember")
+                        .WithMany()
+                        .HasForeignKey("PurchasedByMemberId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.Navigation("BookEdition");
 
                     b.Navigation("Family");
 
                     b.Navigation("Member");
+
+                    b.Navigation("PurchasedByMember");
                 });
 
             modelBuilder.Entity("Librory.Domain.Models.BookEdition", b =>

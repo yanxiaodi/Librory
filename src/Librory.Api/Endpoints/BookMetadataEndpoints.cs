@@ -2,6 +2,8 @@ using Librory.Api.Contracts;
 using Librory.Api.Validation;
 using Librory.Application.Metadata;
 using Librory.Domain.Models;
+using Librory.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
 namespace Librory.Api.Endpoints;
@@ -41,6 +43,7 @@ internal static class BookMetadataEndpoints
     private static async Task<IResult> ImportAsync(
         BookMetadataImportRequest? request,
         IBookMetadataImportService importService,
+        LibroryDbContext db,
         CancellationToken cancellationToken)
     {
         if (request?.Candidate is null)
@@ -83,7 +86,12 @@ internal static class BookMetadataEndpoints
             TrimToNull(request.Candidate.ThumbnailUrl),
             TrimToNull(request.Candidate.InfoUrl));
 
+        await using var transaction = await db.Database.BeginTransactionAsync(
+            System.Data.IsolationLevel.Serializable,
+            cancellationToken);
         var result = await importService.ImportAsync(candidate, cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
         var payload = BookWorkResponseFactory.Create(result.Work);
 
         return result.CreatedNew

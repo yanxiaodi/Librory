@@ -1,9 +1,9 @@
+using System.Data;
 using Librory.Application.Families;
 using Librory.Application.Scanning;
 using Librory.Domain.Models;
 using Librory.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
-using System.Data;
 using Microsoft.Extensions.Options;
 
 namespace Librory.Infrastructure.Scanning;
@@ -71,6 +71,9 @@ public sealed class ScanSessionService : IScanSessionService
         ArgumentNullException.ThrowIfNull(request);
 
         var current = RequireCurrentContext();
+        await using var transaction = await _db.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            cancellationToken);
         var family = await LoadFamilyForDuplicateDetectionAsync(current.FamilyId, cancellationToken);
         if (family is null)
         {
@@ -95,9 +98,20 @@ public sealed class ScanSessionService : IScanSessionService
             request.Author,
             request.RecommendationScore,
             request.IsAlreadyOwned,
-            request.DuplicateMessage);
+            request.DuplicateMessage,
+            recognitionRank: request.RecognitionRank);
+
+        var hasMetadataRefresh = request.MetadataMatches is not null
+            || !string.IsNullOrWhiteSpace(request.RecognitionEvidence);
+        if (hasMetadataRefresh)
+        {
+            candidate.ReplaceMetadataMatches(
+                ScanCandidateMetadataSnapshotSerializer.Serialize(request.MetadataMatches, request.RecognitionEvidence),
+                resetReviewState: true);
+        }
 
         await _db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
 
         return ScanSessionDtoFactory.Create(family, session);
     }
@@ -127,6 +141,11 @@ public sealed class ScanSessionService : IScanSessionService
         if (candidate is null)
         {
             throw new KeyNotFoundException("Scan candidate not found.");
+        }
+
+        if (candidate.PurchaseStatus == PurchaseStatus.Purchased)
+        {
+            throw new InvalidOperationException("A purchased scan candidate is read-only.");
         }
 
         var work = BookWork.Create(title, author);
@@ -159,6 +178,11 @@ public sealed class ScanSessionService : IScanSessionService
         if (candidate is null)
         {
             throw new KeyNotFoundException("Scan candidate not found.");
+        }
+
+        if (candidate.PurchaseStatus == PurchaseStatus.Purchased)
+        {
+            throw new InvalidOperationException("A purchased scan candidate is read-only.");
         }
 
         session.RemoveCandidate(candidateId);

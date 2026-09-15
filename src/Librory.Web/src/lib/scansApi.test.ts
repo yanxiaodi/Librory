@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createScanSession, getLatestScanSession, type CreateScanSessionRequest } from './scansApi'
+import { createScanSession, discardScanCandidate, getLatestScanSession, purchaseScanCandidate, updateBookEditionVersion, type CreateScanSessionRequest } from './scansApi'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -54,5 +54,66 @@ describe('scansApi', () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 404 })))
 
     await expect(getLatestScanSession()).resolves.toBeNull()
+  })
+
+  it('preserves duplicate confirmation details from a purchase conflict', async () => {
+    const duplicate = {
+      message: 'Possible duplicate.',
+      followUpHint: 'Choose how to resolve it.',
+      matches: [{
+        bookCopyId: 'copy-1',
+        bookEditionId: 'edition-1',
+        bookWorkId: 'work-1',
+        title: 'Dune',
+        isbn: '9780441013593',
+        format: 'Paperback',
+        publicationYear: 1965,
+      }],
+    }
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify(duplicate), { status: 409 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(purchaseScanCandidate('scan-1', 'candidate-1', {
+      purchaseRequestId: 'request-1',
+      ownerMemberId: 'member-1',
+      duplicateResolution: 1,
+      existingBookEditionId: 'edition-1',
+    })).rejects.toMatchObject({ status: 409, duplicate })
+
+    expect(JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string)).toMatchObject({
+      purchaseRequestId: 'request-1',
+      existingBookEditionId: 'edition-1',
+    })
+  })
+
+  it('updates provisional edition version details', async () => {
+    const responseBody = {
+      bookEditionId: 'edition-1',
+      isbn: '9780441013593',
+      format: 'Paperback',
+      publicationYear: 1965,
+      isProvisional: false,
+    }
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify(responseBody), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(updateBookEditionVersion('edition-1', { isbn: '9780441013593', format: 'Paperback', publicationYear: 1965 })).resolves.toEqual(responseBody)
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/family/current/book-editions/edition-1/version', expect.objectContaining({
+      method: 'PUT',
+      credentials: 'include',
+    }))
+  })
+
+  it('discards a persisted scan candidate', async () => {
+    const fetchMock = vi.fn(async () => new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(discardScanCandidate('scan-1', 'candidate-1')).resolves.toBeUndefined()
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/family/current/scan-sessions/scan-1/candidates/candidate-1', expect.objectContaining({
+      method: 'DELETE',
+      credentials: 'include',
+    }))
   })
 })

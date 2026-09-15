@@ -5,6 +5,7 @@ public sealed class BookCopy
     public Guid Id { get; init; } = Guid.NewGuid();
     public Guid FamilyId { get; private set; }
     public Guid MemberId { get; private set; }
+    public Guid? PurchasedByMemberId { get; private set; }
     public Guid BookEditionId { get; private set; }
     public BookCopyDuplicateStatus DuplicateStatus { get; private set; } = BookCopyDuplicateStatus.Unchecked;
     public string? Condition { get; set; }
@@ -15,6 +16,7 @@ public sealed class BookCopy
     public string? IntakeNotes { get; set; }
     public Family Family { get; private set; } = null!;
     public Member Member { get; private set; } = null!;
+    public Member? PurchasedByMember { get; private set; }
     public BookEdition BookEdition { get; private set; } = null!;
 
     public static BookCopy Create(
@@ -27,7 +29,8 @@ public sealed class BookCopy
         string? shelfLocation = null,
         DateTimeOffset? purchasedAt = null,
         BookCopyDuplicateStatus duplicateStatus = BookCopyDuplicateStatus.Unchecked,
-        string? intakeNotes = null)
+        string? intakeNotes = null,
+        Member? purchasedByMember = null)
     {
         ArgumentNullException.ThrowIfNull(bookEdition);
         ArgumentNullException.ThrowIfNull(family);
@@ -43,6 +46,12 @@ public sealed class BookCopy
             throw new InvalidOperationException("Member must belong to the same family as the copy.");
         }
 
+        purchasedByMember ??= member;
+        if (purchasedByMember.FamilyId != family.Id)
+        {
+            throw new InvalidOperationException("Purchaser must belong to the same family as the copy.");
+        }
+
         var copy = new BookCopy
         {
             DuplicateStatus = duplicateStatus,
@@ -54,7 +63,7 @@ public sealed class BookCopy
             IntakeNotes = string.IsNullOrWhiteSpace(intakeNotes) ? null : intakeNotes.Trim(),
         };
 
-        copy.AttachTo(bookEdition, family, member);
+        copy.AttachTo(bookEdition, family, member, purchasedByMember);
         return copy;
     }
 
@@ -68,7 +77,7 @@ public sealed class BookCopy
         DuplicateStatus = duplicateStatus;
     }
 
-    private void AttachTo(BookEdition bookEdition, Family family, Member member)
+    private void AttachTo(BookEdition bookEdition, Family family, Member member, Member purchasedByMember)
     {
         BookEdition = bookEdition;
         BookEditionId = bookEdition.Id;
@@ -76,5 +85,7 @@ public sealed class BookCopy
         FamilyId = family.Id;
         Member = member;
         MemberId = member.Id;
+        PurchasedByMember = purchasedByMember;
+        PurchasedByMemberId = purchasedByMember.Id;
     }
 }
