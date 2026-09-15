@@ -23,6 +23,7 @@ export type ScanCandidateResponse = {
   purchasedBookCopyId: string | null
   purchaseRequestId: string | null
   purchasedAt: string | null
+  purchase: Omit<ScanPurchaseResponse, 'isReplay'> | null
 }
 
 export interface ScanSessionResponse {
@@ -199,6 +200,14 @@ export async function updateScanCandidate(
   })
   if (!response.ok) throw new Error(`Scan candidate update failed (${response.status}).`)
   return response.json() as Promise<ScanSessionResponse>
+}
+
+export async function discardScanCandidate(scanSessionId: string, candidateId: string): Promise<void> {
+  const response = await fetch(`/api/family/current/scan-sessions/${scanSessionId}/candidates/${candidateId}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  })
+  if (!response.ok) throw new Error(`Scan candidate discard failed (${response.status}).`)
 }
 
 export async function updateBookEditionVersion(

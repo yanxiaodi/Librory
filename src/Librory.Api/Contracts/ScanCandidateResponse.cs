@@ -16,4 +16,11 @@ public sealed record ScanCandidateResponse(
     PurchaseStatus PurchaseStatus = PurchaseStatus.Pending,
     Guid? PurchasedBookCopyId = null,
     Guid? PurchaseRequestId = null,
-    DateTimeOffset? PurchasedAt = null);
+    DateTimeOffset? PurchasedAt = null,
+    ScanCandidatePurchaseResponse? Purchase = null);
+
+public sealed record ScanCandidatePurchaseResponse(
+    BookCopyResponse Copy,
+    BookWorkResponse Work,
+    Guid BookEditionId,
+    bool IsProvisional);

@@ -224,14 +224,18 @@ export function ScansPage() {
     }
   }, [])
 
-  const persistScanSession = React.useCallback(async (completedJob: BookRecognitionJobResponse) => {
+  const persistScanSession = React.useCallback(async (
+    completedJob: BookRecognitionJobResponse,
+    initialCandidates?: BookRecognitionJobResponse['candidates'],
+  ) => {
     if (activeJobIdRef.current !== completedJob.jobId) return
 
     setPersistenceState('saving')
     setPersistenceError(null)
 
     try {
-      const candidatesToPersist = reviewedCandidatesInitialized ? reviewedCandidates : completedJob.candidates
+      const candidatesToPersist = initialCandidates
+        ?? (reviewedCandidatesInitialized ? reviewedCandidates : completedJob.candidates)
       const response = await createScanSession({
         shelfPhotoPath: completedJob.sourcePhotoPath,
         targetMemberId: activeTargetMemberIdRef.current,
@@ -274,7 +278,7 @@ export function ScansPage() {
         setReviewedCandidatesInitialized(true)
         clearPollTimer()
         writePendingJob(null)
-        if (current.status === 2) void persistScanSession(current)
+        if (current.status === 2) void persistScanSession(current, current.candidates)
         return
       }
 
@@ -389,7 +393,7 @@ export function ScansPage() {
         setState(response.status === 3 ? 'error' : 'ready')
         setReviewedCandidates(response.candidates)
         setReviewedCandidatesInitialized(true)
-        if (response.status === 2) void persistScanSession(response)
+        if (response.status === 2) void persistScanSession(response, response.candidates)
         return
       }
 

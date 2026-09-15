@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createScanSession, getLatestScanSession, purchaseScanCandidate, updateBookEditionVersion, type CreateScanSessionRequest } from './scansApi'
+import { createScanSession, discardScanCandidate, getLatestScanSession, purchaseScanCandidate, updateBookEditionVersion, type CreateScanSessionRequest } from './scansApi'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -101,6 +101,18 @@ describe('scansApi', () => {
 
     expect(fetchMock).toHaveBeenCalledWith('/api/family/current/book-editions/edition-1/version', expect.objectContaining({
       method: 'PUT',
+      credentials: 'include',
+    }))
+  })
+
+  it('discards a persisted scan candidate', async () => {
+    const fetchMock = vi.fn(async () => new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(discardScanCandidate('scan-1', 'candidate-1')).resolves.toBeUndefined()
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/family/current/scan-sessions/scan-1/candidates/candidate-1', expect.objectContaining({
+      method: 'DELETE',
       credentials: 'include',
     }))
   })

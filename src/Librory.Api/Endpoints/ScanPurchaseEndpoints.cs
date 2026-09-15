@@ -55,21 +55,10 @@ internal static class ScanPurchaseEndpoints
 
         if (request.SelectedMetadata is not null)
         {
-            if (ApiValidation.Required(
-                    new ValidationField("selectedMetadata.source", request.SelectedMetadata.Source, "Metadata source is required."),
-                    new ValidationField("selectedMetadata.sourceId", request.SelectedMetadata.SourceId, "Metadata source id is required."),
-                    new ValidationField("selectedMetadata.title", request.SelectedMetadata.Title, "Metadata title is required."))
-                is IResult metadataValidationProblem)
+            var metadataErrors = MetadataCandidateValidation.Validate(request.SelectedMetadata, "selectedMetadata");
+            if (metadataErrors.Count > 0)
             {
-                return metadataValidationProblem;
-            }
-
-            if (request.SelectedMetadata.Authors?.Any(string.IsNullOrWhiteSpace) == true)
-            {
-                return Results.ValidationProblem(new Dictionary<string, string[]>
-                {
-                    ["selectedMetadata.authors"] = ["Author entries must not be blank."],
-                });
+                return Results.ValidationProblem(metadataErrors);
             }
         }
 

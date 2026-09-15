@@ -26,9 +26,18 @@ public sealed class BookEdition
 
     public void UpdateVersion(string? isbn, string? format, int? publicationYear)
     {
-        Isbn = Normalize(isbn);
-        Format = Normalize(format);
-        PublicationYear = publicationYear;
+        Isbn = Normalize(isbn) ?? Isbn;
+        Format = Normalize(format) ?? Format;
+        if (publicationYear.HasValue)
+        {
+            PublicationYear = publicationYear;
+            PublicationYearProvenance = new MetadataProvenance(
+                "Manual",
+                "publication-year",
+                1m,
+                DateTimeOffset.UtcNow);
+        }
+
         ConfirmVersion();
     }
 

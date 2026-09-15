@@ -259,6 +259,12 @@ internal static class ScanSessionEndpoints
             });
         }
 
+        var metadataErrors = ValidateMetadataMatches(request.Candidates);
+        if (metadataErrors.Count > 0)
+        {
+            return Results.ValidationProblem(metadataErrors);
+        }
+
         try
         {
             var dto = await scanSessionService.StartShelfScanAsync(
@@ -389,6 +395,39 @@ internal static class ScanSessionEndpoints
             is IResult validationProblem)
         {
             return validationProblem;
+        }
+
+        if (request.MetadataMatches is { Count: > MetadataCandidateValidation.MaxMatchCount })
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["metadataMatches"] =
+                [
+                    $"Metadata matches must contain {MetadataCandidateValidation.MaxMatchCount} entries or fewer.",
+                ],
+            });
+        }
+
+        var metadataErrors = new Dictionary<string, string[]>(StringComparer.Ordinal);
+        if (request.MetadataMatches is not null)
+        {
+            for (var index = 0; index < request.MetadataMatches.Count; index++)
+            {
+                if (request.MetadataMatches[index] is null)
+                {
+                    metadataErrors[$"metadataMatches[{index}"] = ["Metadata entries cannot be null."];
+                    continue;
+                }
+
+                MetadataCandidateValidation.Merge(
+                    metadataErrors,
+                    MetadataCandidateValidation.Validate(request.MetadataMatches[index], $"metadataMatches[{index}]"));
+            }
+        }
+
+        if (metadataErrors.Count > 0)
+        {
+            return Results.ValidationProblem(metadataErrors);
         }
 
         var current = accessor.Current;
@@ -527,9 +566,11 @@ internal static class ScanSessionEndpoints
         CancellationToken cancellationToken)
     {
         return db.Families
+            .AsSplitQuery()
             .Include(x => x.BookCopies)
                 .ThenInclude(x => x.BookEdition)
                     .ThenInclude(x => x.BookWork)
+                        .ThenInclude(x => x.Editions)
             .Include(x => x.Members)
             .SingleOrDefaultAsync(x => x.Id == familyId, cancellationToken);
     }
@@ -569,10 +610,15 @@ internal static class ScanSessionEndpoints
     private static ScanSessionResponse ToResponse(Family family, ScanSession session)
     {
         var dto = ScanSessionDtoFactory.Create(family, session);
-        return ToResponse(dto);
+        return ToResponse(family, dto);
     }
 
     private static ScanSessionResponse ToResponse(ScanSessionDto dto)
+    {
+        return ToResponse(null, dto);
+    }
+
+    private static ScanSessionResponse ToResponse(Family? family, ScanSessionDto dto)
     {
         var candidates = dto.Candidates
             .Select(candidate => new ScanCandidateResponse(
@@ -589,7 +635,8 @@ internal static class ScanSessionEndpoints
                 candidate.PurchaseStatus,
                 candidate.PurchasedBookCopyId,
                 candidate.PurchaseRequestId,
-                candidate.PurchasedAt))
+                candidate.PurchasedAt,
+                ToPurchaseResponse(family, candidate)))
             .ToList();
 
         return new ScanSessionResponse(
@@ -604,6 +651,70 @@ internal static class ScanSessionEndpoints
             dto.TargetProfileUsed,
             dto.InferredLanguage,
             dto.HasMixedLanguages);
+    }
+
+    private static Dictionary<string, string[]> ValidateMetadataMatches(
+        IReadOnlyList<CreateScanCandidateRequest>? candidates)
+    {
+        var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
+        if (candidates is null)
+        {
+            return errors;
+        }
+
+        for (var candidateIndex = 0; candidateIndex < candidates.Count; candidateIndex++)
+        {
+            var matches = candidates[candidateIndex].MetadataMatches;
+            if (matches is null)
+            {
+                continue;
+            }
+
+            if (matches.Count > MetadataCandidateValidation.MaxMatchCount)
+            {
+                errors[$"candidates[{candidateIndex}].metadataMatches"] =
+                [
+                    $"Metadata matches must contain {MetadataCandidateValidation.MaxMatchCount} entries or fewer.",
+                ];
+            }
+
+            for (var matchIndex = 0; matchIndex < matches.Count; matchIndex++)
+            {
+                if (matches[matchIndex] is null)
+                {
+                    errors[$"candidates[{candidateIndex}].metadataMatches[{matchIndex}]"] = ["Metadata entries cannot be null."];
+                    continue;
+                }
+
+                MetadataCandidateValidation.Merge(
+                    errors,
+                    MetadataCandidateValidation.Validate(
+                        matches[matchIndex],
+                        $"candidates[{candidateIndex}].metadataMatches[{matchIndex}]"));
+            }
+        }
+
+        return errors;
+    }
+
+    private static ScanCandidatePurchaseResponse? ToPurchaseResponse(Family? family, ScanCandidateDto candidate)
+    {
+        if (family is null || !candidate.PurchasedBookCopyId.HasValue)
+        {
+            return null;
+        }
+
+        var copy = family.BookCopies.SingleOrDefault(item => item.Id == candidate.PurchasedBookCopyId.Value);
+        if (copy is null)
+        {
+            return null;
+        }
+
+        return new ScanCandidatePurchaseResponse(
+            BookCopyResponseFactory.Create(copy),
+            BookWorkResponseFactory.Create(copy.BookEdition.BookWork),
+            copy.BookEditionId,
+            copy.BookEdition.IsProvisional);
     }
 
     private static BookMetadataCandidate ToMetadataCandidate(BookMetadataImportCandidateRequest request)

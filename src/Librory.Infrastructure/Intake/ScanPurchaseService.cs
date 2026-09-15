@@ -315,6 +315,7 @@ public sealed class ScanPurchaseService : IScanPurchaseService
         CancellationToken cancellationToken)
     {
         return await db.Families
+            .AsSplitQuery()
             .Include(family => family.Members)
             .Include(family => family.BookCopies)
                 .ThenInclude(copy => copy.BookEdition)

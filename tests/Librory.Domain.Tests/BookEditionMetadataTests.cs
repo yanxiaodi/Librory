@@ -29,6 +29,29 @@ public class BookEditionMetadataTests
     }
 
     [Fact]
+    public void Updating_version_metadata_preserves_omitted_fields_and_marks_manual_year_provenance()
+    {
+        var providerProvenance = new MetadataProvenance("OpenLibrary", "edition-1", 1m);
+        var edition = new BookEdition
+        {
+            Isbn = "978-0441013593",
+            Format = "Hardcover",
+            PublicationYear = 1965,
+            IsProvisional = true,
+            PublicationYearProvenance = providerProvenance,
+        };
+
+        edition.UpdateVersion(null, " Paperback ", 2026);
+
+        Assert.Equal("978-0441013593", edition.Isbn);
+        Assert.Equal("Paperback", edition.Format);
+        Assert.Equal(2026, edition.PublicationYear);
+        Assert.Equal("Manual", edition.PublicationYearProvenance?.Source);
+        Assert.Equal("publication-year", edition.PublicationYearProvenance?.SourceId);
+        Assert.False(edition.IsProvisional);
+    }
+
+    [Fact]
     public void Book_edition_can_store_subtitle_and_provenance()
     {
         var provenance = new MetadataProvenance
