@@ -9,6 +9,15 @@ namespace Librory.Api.Endpoints;
 
 internal static class ScanPurchaseEndpoints
 {
+    private const int MaxManualTitleLength = 300;
+    private const int MaxManualAuthorLength = 300;
+    private const int MaxIsbnLength = 32;
+    private const int MaxFormatLength = 64;
+    private const int MaxConditionLength = 200;
+    private const int MaxPurchaseStoreLength = 200;
+    private const int MaxShelfLocationLength = 200;
+    private const int MaxIntakeNotesLength = 4000;
+
     public static IEndpointRouteBuilder MapScanPurchaseEndpoints(this IEndpointRouteBuilder app)
     {
         ArgumentNullException.ThrowIfNull(app);
@@ -60,6 +69,12 @@ internal static class ScanPurchaseEndpoints
             {
                 return Results.ValidationProblem(metadataErrors);
             }
+        }
+
+        var purchaseErrors = ValidatePurchaseFields(request);
+        if (purchaseErrors.Count > 0)
+        {
+            return Results.ValidationProblem(purchaseErrors);
         }
 
         var current = accessor.Current;
@@ -175,5 +190,43 @@ internal static class ScanPurchaseEndpoints
     private static string? TrimToNull(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private static Dictionary<string, string[]> ValidatePurchaseFields(ConfirmScanPurchaseRequest request)
+    {
+        var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
+        AddMaxLength(errors, "manualTitle", request.ManualTitle, MaxManualTitleLength);
+        AddMaxLength(errors, "manualAuthor", request.ManualAuthor, MaxManualAuthorLength);
+        AddMaxLength(errors, "isbn", request.Isbn, MaxIsbnLength);
+        AddMaxLength(errors, "format", request.Format, MaxFormatLength);
+        AddMaxLength(errors, "condition", request.Condition, MaxConditionLength);
+        AddMaxLength(errors, "purchaseStore", request.PurchaseStore, MaxPurchaseStoreLength);
+        AddMaxLength(errors, "shelfLocation", request.ShelfLocation, MaxShelfLocationLength);
+        AddMaxLength(errors, "intakeNotes", request.IntakeNotes, MaxIntakeNotesLength);
+
+        if (request.PublicationYear is < 1000 or > 9999)
+        {
+            errors["publicationYear"] = ["Publication year must be between 1000 and 9999."];
+        }
+
+        if (request.PurchasePrice is < 0m or > 9999999999999999.99m
+            || request.PurchasePrice.HasValue && request.PurchasePrice.Value != decimal.Round(request.PurchasePrice.Value, 2))
+        {
+            errors["purchasePrice"] = ["Purchase price must be non-negative and have at most two decimal places."];
+        }
+
+        return errors;
+    }
+
+    private static void AddMaxLength(
+        IDictionary<string, string[]> errors,
+        string key,
+        string? value,
+        int maxLength)
+    {
+        if (value is not null && value.Trim().Length > maxLength)
+        {
+            errors[key] = [$"Value must be {maxLength} characters or fewer."];
+        }
     }
 }

@@ -8,6 +8,7 @@ afterEach(() => {
   vi.useRealTimers()
   vi.unstubAllGlobals()
   sessionStorage.clear()
+  window.history.pushState({}, '', '/')
 })
 
 describe('ScansPage', () => {
@@ -467,5 +468,26 @@ describe('ScansPage', () => {
       expect.objectContaining({ credentials: 'include' }),
     )
     expect(sessionStorage.getItem(PENDING_JOB_STORAGE_KEY)).toBeNull()
+  })
+
+  it('surfaces a continuation lookup failure instead of staying idle', async () => {
+    window.history.pushState({}, '', '?continue=1')
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === '/api/family/current/members') {
+        return new Response(JSON.stringify([]), { status: 200 })
+      }
+
+      if (String(input) === '/api/family/current/scan-sessions/latest') {
+        return new Response('nope', { status: 500 })
+      }
+
+      throw new Error(`Unexpected fetch request: ${String(input)}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<ScansPage />)
+
+    expect(await screen.findByText(/^recognition failed$/i)).toBeVisible()
+    expect(screen.getByText(/latest scan session lookup failed/i)).toBeVisible()
   })
 })

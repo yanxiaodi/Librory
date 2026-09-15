@@ -55,14 +55,17 @@ public sealed class ScanCandidate
         bool isAlreadyOwned = false,
         string? duplicateMessage = null,
         PreferredLanguage? detectedLanguage = null,
-        int recognitionRank = 0)
+        int? recognitionRank = null)
     {
         EnsurePending();
         Validate(displayTitle, confidenceLabel, recommendationScore, recognitionRank);
 
         DisplayTitle = displayTitle.Trim();
         Author = Normalize(author);
-        RecognitionRank = recognitionRank;
+        if (recognitionRank.HasValue)
+        {
+            RecognitionRank = recognitionRank.Value;
+        }
         RecommendationScore = recommendationScore;
         IsAlreadyOwned = isAlreadyOwned;
         DuplicateMessage = Normalize(duplicateMessage);
@@ -133,7 +136,7 @@ public sealed class ScanCandidate
         }
     }
 
-    private static void Validate(string displayTitle, string confidenceLabel, decimal? recommendationScore, int recognitionRank)
+    private static void Validate(string displayTitle, string confidenceLabel, decimal? recommendationScore, int? recognitionRank)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(displayTitle);
         ArgumentException.ThrowIfNullOrWhiteSpace(confidenceLabel);

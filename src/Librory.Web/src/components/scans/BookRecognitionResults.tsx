@@ -48,6 +48,8 @@ export function BookRecognitionResults({
   const [searchTextByCandidateId, setSearchTextByCandidateId] = React.useState<Record<string, string>>(() =>
     Object.fromEntries(candidates.map(candidate => [candidate.candidateId, candidate.displayTitle])),
   )
+  const [metadataSearchRequiredByCandidateId, setMetadataSearchRequiredByCandidateId] = React.useState<Record<string, boolean>>({})
+  const metadataSearchRequestIdByCandidateId = React.useRef<Record<string, number>>({})
   const [selectedMatchByCandidateId, setSelectedMatchByCandidateId] = React.useState<Record<string, number>>({})
   const [ownerByCandidateId, setOwnerByCandidateId] = React.useState<Record<string, string>>({})
   const [purchaseTimeByCandidateId, setPurchaseTimeByCandidateId] = React.useState<Record<string, string>>({})
@@ -112,7 +114,10 @@ export function BookRecognitionResults({
 
   const updateSearchText = (candidateId: string, value: string) => {
     if (persistencePending) return
+    metadataSearchRequestIdByCandidateId.current[candidateId] = (metadataSearchRequestIdByCandidateId.current[candidateId] ?? 0) + 1
     setSearchTextByCandidateId(current => ({ ...current, [candidateId]: value }))
+    setMetadataSearchRequiredByCandidateId(current => ({ ...current, [candidateId]: true }))
+    setPurchaseStateByCandidateId(current => ({ ...current, [candidateId]: 'idle' }))
     setSelectedMatchByCandidateId(current => ({ ...current, [candidateId]: 0 }))
     setDuplicateByCandidateId(current => ({ ...current, [candidateId]: undefined }))
     setDuplicateChoiceByCandidateId(current => {
@@ -137,6 +142,8 @@ export function BookRecognitionResults({
     const title = searchTextByCandidateId[candidateId]?.trim()
     if (!title) return
 
+    const requestId = (metadataSearchRequestIdByCandidateId.current[candidateId] ?? 0) + 1
+    metadataSearchRequestIdByCandidateId.current[candidateId] = requestId
     setPurchaseStateByCandidateId(current => ({ ...current, [candidateId]: 'searching' }))
     setPurchaseErrorByCandidateId(current => ({ ...current, [candidateId]: '' }))
     setDuplicateByCandidateId(current => ({ ...current, [candidateId]: undefined }))
@@ -148,11 +155,14 @@ export function BookRecognitionResults({
     setDuplicateMatchIndexByCandidateId(current => ({ ...current, [candidateId]: 0 }))
     try {
       const matches = await searchBookMetadata(title)
+      if (metadataSearchRequestIdByCandidateId.current[candidateId] !== requestId) return
       await onMetadataMatchesChange?.(candidateId, matches)
+      if (metadataSearchRequestIdByCandidateId.current[candidateId] !== requestId) return
       onCandidatesChange?.(candidates.map(candidate =>
         candidate.candidateId === candidateId ? { ...candidate, displayTitle: title, metadataMatches: matches } : candidate,
       ))
       setSelectedMatchByCandidateId(current => ({ ...current, [candidateId]: 0 }))
+      setMetadataSearchRequiredByCandidateId(current => ({ ...current, [candidateId]: false }))
       setPurchaseStateByCandidateId(current => ({ ...current, [candidateId]: 'idle' }))
     } catch (error) {
       setPurchaseStateByCandidateId(current => ({ ...current, [candidateId]: 'error' }))
@@ -164,6 +174,11 @@ export function BookRecognitionResults({
     if (persistencePending) return
     const persisted = persistedCandidates.find(item => item.id === candidate.candidateId)
     if (!scanSessionId || !persisted || persisted.purchaseStatus === 1) return
+    if (metadataSearchRequiredByCandidateId[candidate.candidateId]) {
+      setPurchaseStateByCandidateId(current => ({ ...current, [candidate.candidateId]: 'error' }))
+      setPurchaseErrorByCandidateId(current => ({ ...current, [candidate.candidateId]: 'Search metadata again before buying this edited title.' }))
+      return
+    }
 
     const selectedMatch = candidate.metadataMatches[selectedMatchByCandidateId[candidate.candidateId] ?? 0]
     const ownerMemberId = ownerByCandidateId[candidate.candidateId] || scanTargetMemberId || members[0]?.memberId
@@ -286,6 +301,7 @@ export function BookRecognitionResults({
               const purchaseState = purchaseStateByCandidateId[candidate.candidateId] ?? (persisted?.purchaseStatus === 1 ? 'purchased' : 'idle')
               const duplicate = duplicateByCandidateId[candidate.candidateId]
               const selectedMatch = candidate.metadataMatches[selectedMatchIndex] ?? candidate.metadataMatches[0]
+              const metadataSearchRequired = metadataSearchRequiredByCandidateId[candidate.candidateId] === true
               const defaultTime = purchaseTimeByCandidateId[candidate.candidateId] ?? localDateTimeValue()
               const purchaseResponse = purchaseResponseByCandidateId[candidate.candidateId]
                 ?? (persisted?.purchase ? { ...persisted.purchase, isReplay: true } : undefined)
@@ -302,7 +318,7 @@ export function BookRecognitionResults({
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="text-base font-semibold text-[var(--text-primary)]">{candidate.displayTitle}</h3>
                     <span className="rounded-full border border-[var(--border-subtle)] px-2 py-0.5 text-xs font-medium text-[var(--text-secondary)]">
-                      {candidate.rank > 0 ? `Recognition score: ${candidate.rank}/1000` : 'Recognition score unavailable'}
+                      {candidate.rank > 0 ? `Recognition score: ${candidate.rank}` : 'Recognition score unavailable'}
                     </span>
                     {purchaseState === 'purchased' ? <span className="text-xs font-semibold text-[var(--accent)]">Purchased</span> : null}
                     <Button type="button" variant="outline" size="default" onClick={() => removeCandidate(candidate.candidateId)} disabled={persistencePending || purchaseState === 'purchased'}>
@@ -316,7 +332,7 @@ export function BookRecognitionResults({
                       id={`search-text-${candidate.candidateId}`}
                       value={searchTextByCandidateId[candidate.candidateId] ?? candidate.displayTitle}
                       onChange={event => updateSearchText(candidate.candidateId, event.target.value)}
-                      disabled={persistencePending || purchaseState === 'purchased'}
+                      disabled={persistencePending || purchaseState === 'purchased' || purchaseState === 'searching'}
                       className="h-11 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-3 text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-[var(--accent-subtle)]"
                     />
                   </label>
@@ -472,7 +488,7 @@ export function BookRecognitionResults({
                           </select>
                         </div>
                       ) : null}
-                      <Button type="button" onClick={() => void purchaseCandidate(candidate)} disabled={persistencePending || purchaseState === 'purchasing'}>
+                      <Button type="button" onClick={() => void purchaseCandidate(candidate)} disabled={persistencePending || purchaseState === 'purchasing' || metadataSearchRequired}>
                         {purchaseState === 'purchasing' ? 'Saving purchase…' : duplicate ? 'Confirm duplicate and buy' : 'Buy this book'}
                       </Button>
                         </>

@@ -1,3 +1,4 @@
+using System.Data;
 using Librory.Api.Contracts;
 using Librory.Api.Validation;
 using Librory.Application.Families;
@@ -7,6 +8,7 @@ using Librory.Domain.Models;
 using Librory.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Npgsql;
 
 namespace Librory.Api.Endpoints;
 
@@ -47,7 +49,8 @@ internal static class ScanSessionEndpoints
             .Produces<ScanSessionResponse>(StatusCodes.Status200OK)
             .ProducesValidationProblem()
             .Produces(StatusCodes.Status401Unauthorized)
-            .Produces(StatusCodes.Status404NotFound);
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status409Conflict);
 
         group.MapPost("{scanSessionId:guid}/candidates/{candidateId:guid}/resolve", ResolveScanCandidateAsync)
             .WithName("ResolveScanCandidate")
@@ -321,6 +324,19 @@ internal static class ScanSessionEndpoints
         return photo.ContentType is not null && ScanPhotoUploadPolicy.AllowedImageContentTypes.Contains(photo.ContentType);
     }
 
+    private static bool IsSerializationFailure(Exception exception)
+    {
+        for (var current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is PostgresException { SqlState: "40001" or "40P01" })
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static async Task<IResult> GetScanSessionAsync(
         Guid scanSessionId,
         LibroryDbContext db,
@@ -383,6 +399,7 @@ internal static class ScanSessionEndpoints
         Guid scanSessionId,
         Guid candidateId,
         UpdateScanCandidateRequest request,
+        LibroryDbContext db,
         IScanSessionService scanSessionService,
         ICurrentFamilyContextAccessor accessor,
         CancellationToken cancellationToken)
@@ -415,7 +432,7 @@ internal static class ScanSessionEndpoints
             {
                 if (request.MetadataMatches[index] is null)
                 {
-                    metadataErrors[$"metadataMatches[{index}"] = ["Metadata entries cannot be null."];
+                    metadataErrors[$"metadataMatches[{index}]"] = ["Metadata entries cannot be null."];
                     continue;
                 }
 
@@ -455,7 +472,14 @@ internal static class ScanSessionEndpoints
                         .ToArray()),
                 cancellationToken);
 
-            return Results.Ok(ToResponse(dto));
+            var family = await LoadFamilyForDuplicateDetectionAsync(db, current.FamilyId, cancellationToken);
+            return family is null
+                ? Results.NotFound()
+                : Results.Ok(ToResponse(family, dto));
+        }
+        catch (InvalidOperationException exception) when (IsSerializationFailure(exception))
+        {
+            return Results.Conflict();
         }
         catch (Exception exception) when (exception is UnauthorizedAccessException or KeyNotFoundException or InvalidOperationException or ArgumentOutOfRangeException or ArgumentException)
         {
@@ -467,6 +491,18 @@ internal static class ScanSessionEndpoints
                     detail: exception.Message,
                     statusCode: StatusCodes.Status400BadRequest),
             };
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Results.Conflict();
+        }
+        catch (DbUpdateException exception) when (IsSerializationFailure(exception))
+        {
+            return Results.Conflict();
+        }
+        catch (PostgresException exception) when (exception.SqlState is "40001" or "40P01")
+        {
+            return Results.Conflict();
         }
     }
 

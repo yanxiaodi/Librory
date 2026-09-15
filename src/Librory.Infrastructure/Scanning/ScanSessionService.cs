@@ -1,9 +1,9 @@
+using System.Data;
 using Librory.Application.Families;
 using Librory.Application.Scanning;
 using Librory.Domain.Models;
 using Librory.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
-using System.Data;
 using Microsoft.Extensions.Options;
 
 namespace Librory.Infrastructure.Scanning;
@@ -71,6 +71,9 @@ public sealed class ScanSessionService : IScanSessionService
         ArgumentNullException.ThrowIfNull(request);
 
         var current = RequireCurrentContext();
+        await using var transaction = await _db.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            cancellationToken);
         var family = await LoadFamilyForDuplicateDetectionAsync(current.FamilyId, cancellationToken);
         if (family is null)
         {
@@ -107,6 +110,7 @@ public sealed class ScanSessionService : IScanSessionService
             resetReviewState: hasMetadataRefresh);
 
         await _db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
 
         return ScanSessionDtoFactory.Create(family, session);
     }

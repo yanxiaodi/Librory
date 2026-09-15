@@ -184,6 +184,35 @@ public sealed class ScanPurchaseEndpointsTests
     }
 
     [Fact]
+    public async Task Purchase_rejects_overlong_manual_and_copy_fields_at_the_api_boundary()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        await LoginAsync(client, "Purchase Field Boundary Family", "Purchaser");
+
+        var session = await CreateSessionAsync(client, "Dune");
+        var candidate = Assert.Single(session.Candidates);
+        var response = await client.PostAsJsonAsync(
+            $"/api/family/current/scan-sessions/{session.ScanSessionId}/candidates/{candidate.Id}/purchase",
+            new ConfirmScanPurchaseRequest(
+                Guid.NewGuid(),
+                session.TargetMemberId!.Value,
+                DuplicateResolution: Librory.Application.Intake.DuplicateResolution.NewWork,
+                ManualTitle: new string('t', 301),
+                ManualAuthor: new string('a', 301),
+                Isbn: new string('9', 33),
+                Format: new string('f', 65),
+                Condition: new string('c', 201),
+                PurchaseStore: new string('s', 201),
+                ShelfLocation: new string('l', 201),
+                IntakeNotes: new string('n', 4001),
+                PurchasePrice: -1m,
+                PublicationYear: 999));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Scan_session_rejects_invalid_nested_metadata_before_persisting_snapshot()
     {
         await using var factory = await ApiFactory.CreateAsync();
@@ -351,6 +380,53 @@ public sealed class ScanPurchaseEndpointsTests
     }
 
     [Fact]
+    public async Task Version_confirmation_returns_conflict_when_the_database_rejects_a_concurrent_update()
+    {
+        var interceptor = new SerializationFailureInterceptor();
+        await using var factory = await ApiFactory.CreateAsync(interceptor);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        await LoginAsync(client, "Concurrent Edition Confirmation Family", "Purchaser");
+
+        var session = await CreateSessionAsync(client, "Dune");
+        var candidate = Assert.Single(session.Candidates);
+        var purchaseResponse = await client.PostAsJsonAsync(
+            $"/api/family/current/scan-sessions/{session.ScanSessionId}/candidates/{candidate.Id}/purchase",
+            new ConfirmScanPurchaseRequest(
+                Guid.NewGuid(),
+                session.TargetMemberId!.Value,
+                DuplicateResolution: Librory.Application.Intake.DuplicateResolution.NewWork,
+                ManualTitle: "Dune"));
+        var purchase = await purchaseResponse.Content.ReadFromJsonAsync<ScanPurchaseResponse>();
+        Assert.NotNull(purchase);
+
+        interceptor.Arm("book_editions");
+        var response = await client.PutAsJsonAsync(
+            $"/api/family/current/book-editions/{purchase!.BookEditionId}/version",
+            new UpdateBookEditionVersionRequest("9780441013593", "Paperback", 1965));
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Candidate_correction_returns_conflict_when_the_database_rejects_a_concurrent_update()
+    {
+        var interceptor = new SerializationFailureInterceptor();
+        await using var factory = await ApiFactory.CreateAsync(interceptor);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        await LoginAsync(client, "Concurrent Candidate Correction Family", "Owner");
+
+        var session = await CreateSessionAsync(client, "Dune");
+        var candidate = Assert.Single(session.Candidates);
+        interceptor.Arm("scan_candidates");
+
+        var response = await client.PutAsJsonAsync(
+            $"/api/family/current/scan-sessions/{session.ScanSessionId}/candidates/{candidate.Id}",
+            new UpdateScanCandidateRequest("Dune revised", "High"));
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Deactivated_member_cannot_confirm_a_purchased_provisional_edition()
     {
         await using var factory = await ApiFactory.CreateAsync();
@@ -436,6 +512,30 @@ public sealed class ScanPurchaseEndpointsTests
         var payload = await response.Content.ReadFromJsonAsync<Dictionary<string, JsonElement>>();
         Assert.True(payload!["retryable"].GetBoolean());
         Assert.Equal(3, interceptor.InjectedFailures);
+    }
+
+    [Fact]
+    public async Task Purchase_retries_after_a_purchase_request_unique_conflict()
+    {
+        var interceptor = new UniquePurchaseRequestFailureInterceptor();
+        await using var factory = await ApiFactory.CreateAsync(interceptor);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        await LoginAsync(client, "Purchase Request Retry Family", "Purchaser");
+
+        var session = await CreateSessionAsync(client, "Dune");
+        var candidate = Assert.Single(session.Candidates);
+        interceptor.Arm();
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/family/current/scan-sessions/{session.ScanSessionId}/candidates/{candidate.Id}/purchase",
+            new ConfirmScanPurchaseRequest(
+                Guid.NewGuid(),
+                session.TargetMemberId!.Value,
+                DuplicateResolution: Librory.Application.Intake.DuplicateResolution.NewWork,
+                ManualTitle: "Dune"));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.Equal(1, interceptor.InjectedFailures);
     }
 
     [Fact]
@@ -636,6 +736,66 @@ public sealed class ScanPurchaseEndpointsTests
     }
 
     [Fact]
+    public async Task Purchase_rejects_existing_canonical_selection_without_a_matching_candidate_duplicate()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        await LoginAsync(client, "Canonical Selection Boundary Family", "Purchaser");
+
+        var existingSession = await CreateSessionAsync(client, "Dune");
+        var existingCandidate = Assert.Single(existingSession.Candidates);
+        var existingPurchaseResponse = await client.PostAsJsonAsync(
+            $"/api/family/current/scan-sessions/{existingSession.ScanSessionId}/candidates/{existingCandidate.Id}/purchase",
+            new ConfirmScanPurchaseRequest(
+                Guid.NewGuid(),
+                existingSession.TargetMemberId!.Value,
+                DuplicateResolution: Librory.Application.Intake.DuplicateResolution.NewWork,
+                ManualTitle: "Dune"));
+        var existingPurchase = await existingPurchaseResponse.Content.ReadFromJsonAsync<ScanPurchaseResponse>();
+        Assert.NotNull(existingPurchase);
+
+        var newSession = await CreateSessionAsync(client, "Matilda");
+        var newCandidate = Assert.Single(newSession.Candidates);
+        var response = await client.PostAsJsonAsync(
+            $"/api/family/current/scan-sessions/{newSession.ScanSessionId}/candidates/{newCandidate.Id}/purchase",
+            new ConfirmScanPurchaseRequest(
+                Guid.NewGuid(),
+                newSession.TargetMemberId!.Value,
+                DuplicateResolution: Librory.Application.Intake.DuplicateResolution.ExistingEdition,
+                DuplicateStatus: BookCopyDuplicateStatus.ConfirmedDuplicate,
+                ExistingBookEditionId: existingPurchase!.BookEditionId,
+                ManualTitle: "Matilda"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Empty_version_confirmation_is_rejected_for_an_empty_provisional_edition()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        await LoginAsync(client, "Empty Version Confirmation Family", "Purchaser");
+
+        var session = await CreateSessionAsync(client, "Dune");
+        var candidate = Assert.Single(session.Candidates);
+        var purchaseResponse = await client.PostAsJsonAsync(
+            $"/api/family/current/scan-sessions/{session.ScanSessionId}/candidates/{candidate.Id}/purchase",
+            new ConfirmScanPurchaseRequest(
+                Guid.NewGuid(),
+                session.TargetMemberId!.Value,
+                DuplicateResolution: Librory.Application.Intake.DuplicateResolution.NewWork,
+                ManualTitle: "Dune"));
+        var purchase = await purchaseResponse.Content.ReadFromJsonAsync<ScanPurchaseResponse>();
+        Assert.NotNull(purchase);
+
+        var response = await client.PutAsJsonAsync(
+            $"/api/family/current/book-editions/{purchase!.BookEditionId}/version",
+            new UpdateBookEditionVersionRequest(null, null, null));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Purchased_candidates_cannot_be_resolved_or_discarded_again()
     {
         await using var factory = await ApiFactory.CreateAsync();
@@ -704,6 +864,81 @@ public sealed class ScanPurchaseEndpointsTests
         var fetched = await reload.Content.ReadFromJsonAsync<ScanSessionResponse>();
         Assert.NotNull(fetched);
         Assert.Equal("volume-1", fetched!.Candidates.Single().MetadataSnapshot!.Matches.Single().SourceId);
+    }
+
+    [Fact]
+    public async Task Correction_preserves_omitted_recognition_rank_and_accepts_explicit_zero()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        await LoginAsync(client, "Correction Rank Compatibility Family", "Owner");
+
+        var createResponse = await client.PostAsJsonAsync(
+            "/api/family/current/scan-sessions",
+            new CreateScanSessionRequest(
+                "shelf.jpg",
+                Candidates: [new CreateScanCandidateRequest("Dune", "High", RecognitionRank: 7)]));
+        var session = await createResponse.Content.ReadFromJsonAsync<ScanSessionResponse>();
+        Assert.NotNull(session);
+        var candidate = Assert.Single(session!.Candidates);
+        var url = $"/api/family/current/scan-sessions/{session.ScanSessionId}/candidates/{candidate.Id}";
+
+        var omittedRank = await client.PutAsJsonAsync(
+            url,
+            new UpdateScanCandidateRequest("Dune revised", "High"));
+        Assert.Equal(HttpStatusCode.OK, omittedRank.StatusCode);
+        var preserved = await omittedRank.Content.ReadFromJsonAsync<ScanSessionResponse>();
+        Assert.Equal(7, Assert.Single(preserved!.Candidates).RecognitionRank);
+
+        var explicitZero = await client.PutAsJsonAsync(
+            url,
+            new UpdateScanCandidateRequest("Dune revised again", "High", RecognitionRank: 0));
+        Assert.Equal(HttpStatusCode.OK, explicitZero.StatusCode);
+        var reset = await explicitZero.Content.ReadFromJsonAsync<ScanSessionResponse>();
+        Assert.Equal(0, Assert.Single(reset!.Candidates).RecognitionRank);
+    }
+
+    [Fact]
+    public async Task Correcting_another_candidate_preserves_purchased_response_data()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        await LoginAsync(client, "Correction Purchase Response Family", "Owner");
+
+        var createResponse = await client.PostAsJsonAsync(
+            "/api/family/current/scan-sessions",
+            new CreateScanSessionRequest(
+                "shelf.jpg",
+                Candidates:
+                [
+                    new CreateScanCandidateRequest("Dune", "High"),
+                    new CreateScanCandidateRequest("Matilda", "High"),
+                ]));
+        var session = await createResponse.Content.ReadFromJsonAsync<ScanSessionResponse>();
+        Assert.NotNull(session);
+        var purchasedCandidate = session!.Candidates[0];
+        var correctedCandidate = session.Candidates[1];
+
+        var purchaseResponse = await client.PostAsJsonAsync(
+            $"/api/family/current/scan-sessions/{session.ScanSessionId}/candidates/{purchasedCandidate.Id}/purchase",
+            new ConfirmScanPurchaseRequest(
+                Guid.NewGuid(),
+                session.TargetMemberId!.Value,
+                DuplicateResolution: Librory.Application.Intake.DuplicateResolution.NewWork,
+                ManualTitle: "Dune"));
+        var purchase = await purchaseResponse.Content.ReadFromJsonAsync<ScanPurchaseResponse>();
+        Assert.Equal(HttpStatusCode.Created, purchaseResponse.StatusCode);
+        Assert.NotNull(purchase);
+
+        var correctionResponse = await client.PutAsJsonAsync(
+            $"/api/family/current/scan-sessions/{session.ScanSessionId}/candidates/{correctedCandidate.Id}",
+            new UpdateScanCandidateRequest("Matilda revised", "High", RecognitionEvidence: "Manual correction"));
+
+        Assert.Equal(HttpStatusCode.OK, correctionResponse.StatusCode);
+        var corrected = await correctionResponse.Content.ReadFromJsonAsync<ScanSessionResponse>();
+        var correctedPurchasedCandidate = corrected!.Candidates.Single(item => item.Id == purchasedCandidate.Id);
+        Assert.NotNull(correctedPurchasedCandidate.Purchase);
+        Assert.Equal(purchase!.BookEditionId, correctedPurchasedCandidate.Purchase!.BookEditionId);
     }
 
     [Fact]
@@ -831,6 +1066,129 @@ public sealed class ScanPurchaseEndpointsTests
                     Volatile.Write(ref _armed, 0);
                 }
                 throw new PostgresException("Serialization failure", "ERROR", "ERROR", "40001");
+            }
+        }
+    }
+
+    private sealed class SerializationFailureInterceptor : DbCommandInterceptor
+    {
+        private string? _table;
+
+        public void Arm(string table)
+        {
+            _table = table;
+        }
+
+        public override InterceptionResult<int> NonQueryExecuting(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<int> result)
+        {
+            ThrowIfArmed(command);
+            return result;
+        }
+
+        public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            ThrowIfArmed(command);
+            return ValueTask.FromResult(result);
+        }
+
+        public override InterceptionResult<DbDataReader> ReaderExecuting(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result)
+        {
+            ThrowIfArmed(command);
+            return result;
+        }
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result,
+            CancellationToken cancellationToken = default)
+        {
+            ThrowIfArmed(command);
+            return ValueTask.FromResult(result);
+        }
+
+        private void ThrowIfArmed(DbCommand command)
+        {
+            if (_table is not null
+                && command.CommandText.Contains(_table, StringComparison.OrdinalIgnoreCase)
+                && command.CommandText.Contains("UPDATE", StringComparison.OrdinalIgnoreCase))
+            {
+                _table = null;
+                throw new PostgresException("Serialization failure", "ERROR", "ERROR", "40001");
+            }
+        }
+    }
+
+    private sealed class UniquePurchaseRequestFailureInterceptor : DbCommandInterceptor
+    {
+        private int _armed;
+
+        public int InjectedFailures { get; private set; }
+
+        public void Arm()
+        {
+            _armed = 1;
+        }
+
+        public override InterceptionResult<int> NonQueryExecuting(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<int> result)
+        {
+            ThrowIfArmed(command);
+            return result;
+        }
+
+        public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            ThrowIfArmed(command);
+            return ValueTask.FromResult(result);
+        }
+
+        public override InterceptionResult<DbDataReader> ReaderExecuting(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result)
+        {
+            ThrowIfArmed(command);
+            return result;
+        }
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result,
+            CancellationToken cancellationToken = default)
+        {
+            ThrowIfArmed(command);
+            return ValueTask.FromResult(result);
+        }
+
+        private void ThrowIfArmed(DbCommand command)
+        {
+            if (Interlocked.Exchange(ref _armed, 0) == 1)
+            {
+                InjectedFailures++;
+                throw new PostgresException(
+                    "Purchase request id conflict",
+                    "ERROR",
+                    "ERROR",
+                    "23505",
+                    constraintName: "IX_scan_candidates_PurchaseRequestId");
             }
         }
     }

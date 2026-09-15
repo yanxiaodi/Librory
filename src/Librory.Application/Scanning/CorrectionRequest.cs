@@ -10,5 +10,5 @@ public sealed record CorrectionRequest(
     bool IsAlreadyOwned = false,
     string? DuplicateMessage = null,
     string? RecognitionEvidence = null,
-    int RecognitionRank = 0,
+    int? RecognitionRank = null,
     IReadOnlyList<BookMetadataCandidate>? MetadataMatches = null);

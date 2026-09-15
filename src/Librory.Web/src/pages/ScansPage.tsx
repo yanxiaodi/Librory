@@ -342,7 +342,11 @@ export function ScansPage() {
         setReviewedCandidatesInitialized(true)
         setState('ready')
       })
-      .catch(() => {})
+      .catch(error => {
+        if (cancelled) return
+        setUploadError(error instanceof Error ? error.message : 'The latest scan could not be loaded.')
+        setState('error')
+      })
 
     return () => {
       cancelled = true

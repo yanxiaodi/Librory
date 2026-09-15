@@ -45,7 +45,9 @@ public sealed class ScanPurchaseService : IScanPurchaseService
             {
                 return await ExecuteAttemptAsync(request, current, cancellationToken);
             }
-            catch (Exception exception) when (IsRetryablePostgresFailure(exception))
+            catch (Exception exception) when (
+                IsRetryablePostgresFailure(exception)
+                || IsPurchaseRequestUniqueConstraint(exception))
             {
                 // The failed scope and transaction are disposed by ExecuteAttemptAsync.
                 // The next attempt intentionally resolves a new DbContext and importer.
@@ -131,9 +133,11 @@ public sealed class ScanPurchaseService : IScanPurchaseService
             throw new KeyNotFoundException("Owner member not found in the current family.");
         }
 
+        var candidateDuplicateDetection = family.DetectPotentialDuplicate(candidate.DisplayTitle);
+        ValidateSelectedResolution(request, candidateDuplicateDetection);
+
         var edition = await ResolveEditionAsync(db, importer, request, cancellationToken);
         var duplicateDetection = family.DetectPotentialDuplicate(edition);
-        ValidateSelectedResolution(request, duplicateDetection);
         var duplicateStatus = ResolveDuplicateStatus(request, duplicateDetection);
         var purchasedAt = request.PurchasedAt ?? DateTimeOffset.UtcNow;
         var intake = ManualBookIntakeRecorder.RecordWithDuplicateDetection(
