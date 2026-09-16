@@ -317,7 +317,7 @@ export function BookRecognitionResults({
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="text-base font-semibold text-[var(--text-primary)]">{candidate.displayTitle}</h3>
                     <span className="rounded-full border border-[var(--border-subtle)] px-2 py-0.5 text-xs font-medium text-[var(--text-secondary)]">
-                      {candidate.rank > 0 ? `Recognition score: ${candidate.rank}` : 'Recognition score unavailable'}
+                      {candidate.rank > 0 ? `Recognition rank: ${candidate.rank}` : 'Recognition rank unavailable'}
                     </span>
                     {purchaseState === 'purchased' ? <span className="text-xs font-semibold text-[var(--accent)]">Purchased</span> : null}
                     <Button type="button" variant="outline" size="default" onClick={() => removeCandidate(candidate.candidateId)} disabled={persistencePending || purchaseState === 'purchased'}>

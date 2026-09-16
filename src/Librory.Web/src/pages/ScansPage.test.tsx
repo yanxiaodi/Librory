@@ -1,8 +1,9 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AuthSessionProvider } from '@/auth/AuthSessionContext'
-import { PENDING_JOB_STORAGE_KEY, ScansPage } from './ScansPage'
+import { mergeScanSessionWithCurrentPurchases, PENDING_JOB_STORAGE_KEY, ScansPage } from './ScansPage'
+import type { ScanSessionResponse } from '@/lib/scansApi'
 
 afterEach(() => {
   vi.useRealTimers()
@@ -12,6 +13,32 @@ afterEach(() => {
 })
 
 describe('ScansPage', () => {
+  it('preserves locally purchased candidates when a metadata response is stale', () => {
+    const current: ScanSessionResponse = {
+      scanSessionId: 'scan-1', familyId: 'family-1', shelfPhotoPath: 'shelf.jpg', expiresAt: '2026-09-17T00:00:00Z',
+      targetMemberId: 'member-1', targetMemberDisplayName: 'Alice', targetProfileAvailable: false, targetProfileUsed: false,
+      inferredLanguage: null, hasMixedLanguages: false,
+      candidates: [{
+        id: 'candidate-1', displayTitle: 'Dune', author: null, recommendationScore: null, isAlreadyOwned: false,
+        duplicateMessage: null, confidenceLabel: 'High', detectedLanguage: null, recognitionRank: 940, metadataSnapshot: null,
+        purchaseStatus: 1, purchasedBookCopyId: 'copy-1', purchaseRequestId: 'request-1', purchasedAt: '2026-09-16T00:00:00Z', purchase: null,
+      }],
+    }
+    const stale: ScanSessionResponse = {
+      ...current,
+      candidates: [{ ...current.candidates[0], purchaseStatus: 0, purchasedBookCopyId: null, purchaseRequestId: null, purchasedAt: null }],
+    }
+
+    const merged = mergeScanSessionWithCurrentPurchases(current, stale)
+
+    expect(merged.candidates[0]).toMatchObject({
+      purchaseStatus: 1,
+      purchasedBookCopyId: 'copy-1',
+      purchaseRequestId: 'request-1',
+      purchasedAt: '2026-09-16T00:00:00Z',
+    })
+  })
+
   it('only offers active scan targets and allows an eligible member', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
@@ -356,6 +383,64 @@ describe('ScansPage', () => {
     expect(screen.getByText(/scan prepared for current member/i)).toBeVisible()
     expect(screen.getByText(/profile: not available/i)).toBeVisible()
     expect(screen.getByText(/language context: english/i)).toBeVisible()
+  })
+
+  it('keeps metadata correction failures out of the scan-session retry flow', async () => {
+    const user = userEvent.setup()
+    let correctionAttempts = 0
+    const metadata = {
+      source: 'google-books', sourceId: 'source-1', title: 'Dune', subtitle: null, authors: ['Frank Herbert'],
+      publisher: null, publishedDate: '1965', language: 'en', description: null, isbn10: null, isbn13: null,
+      thumbnailUrl: null, infoUrl: null,
+    }
+    const session = {
+      scanSessionId: 'scan-1', familyId: 'family-1', shelfPhotoPath: '/tmp/Librory/scan-uploads/shelf.jpg',
+      candidates: [{
+        id: 'candidate-1', displayTitle: 'Dune', author: null, recommendationScore: null, isAlreadyOwned: false,
+        duplicateMessage: null, confidenceLabel: 'DUNE', detectedLanguage: null, recognitionRank: 940,
+        metadataSnapshot: null, purchaseStatus: 0, purchasedBookCopyId: null, purchaseRequestId: null, purchasedAt: null, purchase: null,
+      }],
+      expiresAt: '2026-08-08T00:00:00Z', targetMemberId: 'member-1', targetMemberDisplayName: 'Alice',
+      targetProfileAvailable: false, targetProfileUsed: false, inferredLanguage: 0, hasMixedLanguages: false,
+    }
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/family/current/members') {
+        return new Response(JSON.stringify([{ memberId: 'member-1', displayName: 'Alice', role: 'Admin', preferredLanguage: 0, isActive: true, hasAccount: true, canUseForFamilyRecommendations: true }]), { status: 200 })
+      }
+      if (url === '/api/book-recognition-jobs' && init?.method === 'POST') {
+        return new Response(JSON.stringify({
+          jobId: 'job-1', familyId: 'family-1', status: 2, sourcePhotoPath: '/tmp/Librory/scan-uploads/shelf.jpg',
+          candidates: [{ candidateId: 'candidate-1', displayTitle: 'Dune', evidenceText: 'DUNE', rank: 940, metadataMatches: [] }],
+          warnings: [], failureMessage: null, createdAt: '2026-08-03T00:00:00Z', updatedAt: '2026-08-03T00:00:00Z',
+        }), { status: 202 })
+      }
+      if (url === '/api/family/current/scan-sessions' && init?.method === 'POST') {
+        return new Response(JSON.stringify(session), { status: 201 })
+      }
+      if (url === '/api/book-metadata/search?title=Dune') {
+        return new Response(JSON.stringify({ candidates: [metadata] }), { status: 200 })
+      }
+      if (url === '/api/family/current/scan-sessions/scan-1/candidates/candidate-1' && init?.method === 'PUT') {
+        correctionAttempts += 1
+        if (correctionAttempts === 1) return new Response('save failed', { status: 500 })
+        return new Response(JSON.stringify(session), { status: 200 })
+      }
+      throw new Error(`Unexpected fetch request: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<ScansPage />)
+    await user.upload(screen.getByLabelText(/shelf photo/i), new File(['fake image'], 'shelf.jpg', { type: 'image/jpeg' }))
+    expect(await screen.findByRole('heading', { name: 'Dune' })).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: /re-search metadata/i }))
+    expect(await screen.findByText(/could not be saved/i)).toBeVisible()
+    expect(screen.queryByRole('button', { name: /retry saving context/i })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /re-search metadata/i }))
+    await waitFor(() => expect(correctionAttempts).toBe(2))
+    expect(screen.queryByText(/could not be saved/i)).not.toBeInTheDocument()
   })
 
   it('shows an error when the recognition upload fails', async () => {

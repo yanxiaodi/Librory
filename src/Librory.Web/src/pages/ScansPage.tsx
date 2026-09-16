@@ -18,6 +18,32 @@ import { createScanSession, getLatestScanSession, updateScanCandidate, type Scan
 type ScanState = 'idle' | 'compressing' | 'uploading' | 'polling' | 'ready' | 'error'
 type PersistenceState = 'idle' | 'saving' | 'saved' | 'error'
 
+export function mergeScanSessionWithCurrentPurchases(
+  current: ScanSessionResponse,
+  updated: ScanSessionResponse,
+): ScanSessionResponse {
+  const currentCandidates = new Map(current.candidates.map(candidate => [candidate.id, candidate]))
+
+  return {
+    ...updated,
+    candidates: updated.candidates.map(candidate => {
+      const previous = currentCandidates.get(candidate.id)
+      if (!previous || previous.purchaseStatus !== 1 || candidate.purchaseStatus === 1) {
+        return candidate
+      }
+
+      return {
+        ...candidate,
+        purchaseStatus: previous.purchaseStatus,
+        purchasedBookCopyId: previous.purchasedBookCopyId,
+        purchaseRequestId: previous.purchaseRequestId,
+        purchasedAt: previous.purchasedAt,
+        purchase: previous.purchase ?? candidate.purchase,
+      }
+    }),
+  }
+}
+
 const stateCopy: Record<ScanState, { title: string; description: string; tone: string }> = {
   idle: {
     title: 'Ready for a shelf photo',
@@ -432,10 +458,8 @@ export function ScansPage() {
         recognitionEvidence: currentCandidate.evidenceText,
         metadataMatches: matches,
       })
-      setScanSession(updated)
+      setScanSession(current => current ? mergeScanSessionWithCurrentPurchases(current, updated) : updated)
     } catch {
-      setPersistenceError('Metadata matches were found, but the corrected candidate could not be saved.')
-      setPersistenceState('error')
       throw new Error('Metadata matches were found, but the corrected candidate could not be saved.')
     }
   }, [reviewedCandidates, scanSession])

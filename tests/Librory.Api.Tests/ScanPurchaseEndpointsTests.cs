@@ -769,6 +769,58 @@ public sealed class ScanPurchaseEndpointsTests
     }
 
     [Fact]
+    public async Task Purchase_rejects_an_invalid_purchase_time()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        await LoginAsync(client, "Purchase Time Validation Family", "Purchaser");
+
+        var session = await CreateSessionAsync(client, "Matilda");
+        var candidate = Assert.Single(session.Candidates);
+        var response = await client.PostAsJsonAsync(
+            $"/api/family/current/scan-sessions/{session.ScanSessionId}/candidates/{candidate.Id}/purchase",
+            new ConfirmScanPurchaseRequest(
+                Guid.NewGuid(),
+                session.TargetMemberId!.Value,
+                DuplicateResolution: Librory.Application.Intake.DuplicateResolution.NewWork,
+                ManualTitle: "Matilda",
+                PurchasedAt: DateTimeOffset.MaxValue));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Purchase_rejects_canonical_ids_when_duplicate_resolution_is_not_specified()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        await LoginAsync(client, "Unspecified Resolution Family", "Purchaser");
+
+        Guid canonicalEditionId;
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<LibroryDbContext>();
+            var work = BookWork.Create("Canonical target");
+            var edition = work.AddEdition("9780000000001", "Paperback", 2026);
+            db.BookWorks.Add(work);
+            await db.SaveChangesAsync();
+            canonicalEditionId = edition.Id;
+        }
+
+        var session = await CreateSessionAsync(client, "Matilda");
+        var candidate = Assert.Single(session.Candidates);
+        var response = await client.PostAsJsonAsync(
+            $"/api/family/current/scan-sessions/{session.ScanSessionId}/candidates/{candidate.Id}/purchase",
+            new ConfirmScanPurchaseRequest(
+                Guid.NewGuid(),
+                session.TargetMemberId!.Value,
+                ExistingBookEditionId: canonicalEditionId,
+                ManualTitle: "Matilda"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Empty_version_confirmation_is_rejected_for_an_empty_provisional_edition()
     {
         await using var factory = await ApiFactory.CreateAsync();

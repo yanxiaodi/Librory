@@ -178,6 +178,37 @@ public sealed class BookMetadataImportEndpointsTests
     }
 
     [Fact]
+    public async Task Posting_a_candidate_with_an_overlong_author_returns_validation_problem()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var bootstrapResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        Assert.True(bootstrapResponse.IsSuccessStatusCode);
+
+        var response = await client.PostAsJsonAsync("/api/book-metadata/import", new BookMetadataImportRequest(
+            new BookMetadataImportCandidateRequest(
+                "GoogleBooks",
+                "volume-1",
+                "Dune",
+                null,
+                [new string('A', 301)],
+                "Ace",
+                "1965",
+                "en",
+                null,
+                null,
+                "9780441013593",
+                null,
+                null)));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Posting_import_without_authentication_returns_unauthorized()
     {
         await using var factory = await ApiFactory.CreateAsync();

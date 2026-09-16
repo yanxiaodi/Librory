@@ -281,6 +281,8 @@ public sealed class ScanPurchaseService : IScanPurchaseService
 
         switch (request.DuplicateResolution)
         {
+            case DuplicateResolution.NotSpecified when request.ExistingBookEditionId.HasValue || request.ExistingBookWorkId.HasValue:
+                throw new ArgumentException("Canonical ids require an explicit duplicate resolution.", nameof(request));
             case DuplicateResolution.ExistingEdition when !request.ExistingBookEditionId.HasValue:
                 throw new ArgumentException("An existing book edition id is required for this resolution.", nameof(request));
             case DuplicateResolution.ExistingEdition when request.ExistingBookWorkId.HasValue:

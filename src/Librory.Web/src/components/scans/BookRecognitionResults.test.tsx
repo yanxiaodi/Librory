@@ -118,6 +118,7 @@ describe('BookRecognitionResults', () => {
       />,
     )
 
+    expect(screen.getByText('Recognition rank: 940')).toBeVisible()
     expect(screen.getByText('Confirm version details')).toBeVisible()
     expect(screen.getByText(/Added copy copy-1/)).toBeVisible()
   })
@@ -284,6 +285,41 @@ describe('BookRecognitionResults', () => {
     await waitFor(() => expect(screen.getByRole('option', { name: /Dune · Frank Herbert/ })).toBeVisible())
     expect(screen.getByRole('option', { name: /Matilda · Frank Herbert/ })).toBeVisible()
     expect(searchCount).toBe(2)
+  })
+
+  it('keeps metadata correction retry local to the candidate', async () => {
+    const user = userEvent.setup()
+    let saveAttempts = 0
+    const onMetadataMatchesChange = vi.fn(async () => {
+      saveAttempts += 1
+      if (saveAttempts === 1) throw new Error('Metadata matches were found, but the corrected candidate could not be saved.')
+    })
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === '/api/book-metadata/search?title=Dune') {
+        return new Response(JSON.stringify({ candidates: [metadata] }), { status: 200 })
+      }
+      throw new Error(`Unexpected fetch request: ${String(input)}`)
+    }))
+
+    render(
+      <BookRecognitionResults
+        job={pendingJob}
+        candidates={pendingJob.candidates}
+        scanSessionId="scan-1"
+        persistedCandidates={[pendingCandidate]}
+        members={members}
+        scanTargetMemberId="member-1"
+        onMetadataMatchesChange={onMetadataMatchesChange}
+      />,
+    )
+
+    const searchButton = screen.getByRole('button', { name: /re-search metadata/i })
+    await user.click(searchButton)
+    expect(await screen.findByText(/could not be saved/i)).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: /re-search metadata/i }))
+    await waitFor(() => expect(onMetadataMatchesChange).toHaveBeenCalledTimes(2))
+    expect(screen.queryByText(/could not be saved/i)).not.toBeInTheDocument()
   })
 })
 

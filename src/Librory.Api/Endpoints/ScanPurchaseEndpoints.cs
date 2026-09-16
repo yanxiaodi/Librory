@@ -17,6 +17,8 @@ internal static class ScanPurchaseEndpoints
     private const int MaxPurchaseStoreLength = 200;
     private const int MaxShelfLocationLength = 200;
     private const int MaxIntakeNotesLength = 4000;
+    private static readonly TimeSpan MinimumPurchaseAge = TimeSpan.FromDays(365 * 200);
+    private static readonly TimeSpan MaximumFuturePurchaseSkew = TimeSpan.FromMinutes(5);
 
     public static IEndpointRouteBuilder MapScanPurchaseEndpoints(this IEndpointRouteBuilder app)
     {
@@ -213,6 +215,14 @@ internal static class ScanPurchaseEndpoints
             || request.PurchasePrice.HasValue && request.PurchasePrice.Value != decimal.Round(request.PurchasePrice.Value, 2))
         {
             errors["purchasePrice"] = ["Purchase price must be non-negative and have at most two decimal places."];
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        if (request.PurchasedAt is { } purchasedAt
+            && (purchasedAt < now.Subtract(MinimumPurchaseAge)
+                || purchasedAt > now.Add(MaximumFuturePurchaseSkew)))
+        {
+            errors["purchasedAt"] = ["Purchase time must be within the last 200 years and not more than five minutes in the future."];
         }
 
         return errors;
