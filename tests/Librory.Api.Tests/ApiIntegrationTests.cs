@@ -290,7 +290,28 @@ public sealed class ApiIntegrationTests
                     new string('D', 301),
                     "High",
                     new string('A', 301),
-                    DuplicateMessage: new string('M', 1001))]));
+                    DuplicateMessage: new string('M', 1001),
+                    RecognitionEvidence: new string('E', 4001))]));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Scan_session_rejects_overlong_recognition_evidence()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        var bootstrapResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        await AssertSuccessAsync(bootstrapResponse);
+
+        var response = await client.PostAsJsonAsync(
+            "/api/family/current/scan-sessions",
+            new CreateScanSessionRequest(
+                "shelf-photo.jpg",
+                Candidates: [new CreateScanCandidateRequest(
+                    "Dune",
+                    "High",
+                    RecognitionEvidence: new string('E', 4001))]));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -353,7 +374,7 @@ public sealed class ApiIntegrationTests
         Assert.Equal("The Spider and the Pig", correctedCandidate.DisplayTitle);
         Assert.Equal("Medium", correctedCandidate.ConfidenceLabel);
         Assert.Equal("E. B. White", correctedCandidate.Author);
-        Assert.Equal(0.87m, correctedCandidate.RecommendationScore);
+        Assert.Null(correctedCandidate.RecommendationScore);
         Assert.False(correctedCandidate.IsAlreadyOwned);
         Assert.Equal("Recheck duplicate after correction", correctedCandidate.DuplicateMessage);
 
@@ -387,7 +408,30 @@ public sealed class ApiIntegrationTests
                 new string('D', 301),
                 "High",
                 Author: new string('A', 301),
-                DuplicateMessage: new string('M', 1001)));
+                DuplicateMessage: new string('M', 1001),
+                RecognitionEvidence: new string('E', 4001)));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Scan_session_candidate_correction_rejects_overlong_recognition_evidence()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        var bootstrapResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        await AssertSuccessAsync(bootstrapResponse);
+
+        var createResponse = await client.PostAsJsonAsync(
+            "/api/family/current/scan-sessions",
+            new CreateScanSessionRequest("shelf-photo.jpg", Candidates: [new CreateScanCandidateRequest("Dune", "High")]));
+        var created = await createResponse.Content.ReadFromJsonAsync<ScanSessionResponse>();
+        Assert.NotNull(created);
+
+        var candidateId = Assert.Single(created!.Candidates).Id;
+        var response = await client.PutAsJsonAsync(
+            $"/api/family/current/scan-sessions/{created.ScanSessionId}/candidates/{candidateId}",
+            new UpdateScanCandidateRequest("Dune revised", "High", RecognitionEvidence: new string('E', 4001)));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }

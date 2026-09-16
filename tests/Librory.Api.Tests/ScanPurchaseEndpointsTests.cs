@@ -323,6 +323,36 @@ public sealed class ScanPurchaseEndpointsTests
     }
 
     [Fact]
+    public async Task Version_confirmation_requires_a_family_scoped_purchased_candidate_link()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        await LoginAsync(client, "Unlinked Provisional Edition Family", "Purchaser");
+
+        Guid editionId;
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<LibroryDbContext>();
+            var family = await db.Families
+                .Include(item => item.Members)
+                .SingleAsync(item => item.Name == "Unlinked Provisional Edition Family");
+            var work = BookWork.Create("Unlinked provisional");
+            var edition = work.AddEdition();
+            edition.IsProvisional = true;
+            family.AddBookCopy(edition, family.Members.Single());
+            db.BookWorks.Add(work);
+            await db.SaveChangesAsync();
+            editionId = edition.Id;
+        }
+
+        var response = await client.PutAsJsonAsync(
+            $"/api/family/current/book-editions/{editionId}/version",
+            new UpdateBookEditionVersionRequest("9780441013593", "Paperback", 1965));
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Confirmed_edition_cannot_be_version_updated_again_through_the_family_route()
     {
         await using var factory = await ApiFactory.CreateAsync();

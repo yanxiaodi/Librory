@@ -1,6 +1,7 @@
 using System.Data;
 using Librory.Api.Contracts;
 using Librory.Application.Families;
+using Librory.Domain.Models;
 using Librory.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -115,9 +116,15 @@ internal static class BookEditionEndpoints
             });
         }
 
-        var belongsToFamily = await db.BookCopies
-            .AnyAsync(copy => copy.FamilyId == current.FamilyId && copy.BookEditionId == bookEditionId, cancellationToken);
-        if (!belongsToFamily)
+        var belongsToPurchasedCandidate = await (
+            from candidate in db.ScanCandidates
+            join copy in db.BookCopies on candidate.PurchasedBookCopyId equals (Guid?)copy.Id
+            where candidate.ScanSession.FamilyId == current.FamilyId
+                  && candidate.PurchaseStatus == PurchaseStatus.Purchased
+                  && copy.BookEditionId == bookEditionId
+            select candidate.Id)
+            .AnyAsync(cancellationToken);
+        if (!belongsToPurchasedCandidate)
         {
             return Results.NotFound();
         }

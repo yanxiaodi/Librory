@@ -435,7 +435,8 @@ internal static class ScanSessionEndpoints
             request.DisplayTitle,
             request.ConfidenceLabel,
             request.Author,
-            request.DuplicateMessage);
+            request.DuplicateMessage,
+            request.RecognitionEvidence);
         if (candidateErrors.Count > 0)
         {
             return Results.ValidationProblem(candidateErrors);
@@ -773,6 +774,7 @@ internal static class ScanSessionEndpoints
                     candidate.ConfidenceLabel,
                     candidate.Author,
                     candidate.DuplicateMessage,
+                    candidate.RecognitionEvidence,
                     $"candidates[{index}]"));
         }
 

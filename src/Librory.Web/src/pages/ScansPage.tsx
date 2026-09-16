@@ -219,7 +219,7 @@ function writePendingJob(pending: PendingJob | null) {
 }
 
 export function ScansPage() {
-  const { family } = useAuthSession()
+  const { family, user } = useAuthSession()
   const inputRef = React.useRef<HTMLInputElement>(null)
   const [state, setState] = React.useState<ScanState>('idle')
   const [fileName, setFileName] = React.useState<string | null>(null)
@@ -241,13 +241,14 @@ export function ScansPage() {
   const scanGenerationRef = React.useRef(0)
 
   const currentMemberId = family?.memberId
+  const isAdmin = user?.role?.toLowerCase() === 'admin'
 
   React.useEffect(() => {
     void listMembers()
       .then(result => {
         setAllMembers(result)
         const eligible = result.filter(member =>
-          member.isActive && (member.memberId === currentMemberId || member.canUseForFamilyRecommendations === true),
+          member.isActive && (member.memberId === currentMemberId || isAdmin || member.canUseForFamilyRecommendations === true),
         )
         setMembers(eligible)
         setSelectedMemberId(previous => {
@@ -261,7 +262,7 @@ export function ScansPage() {
         setMemberError('Family members could not be loaded. Scanning will use the current member.')
         setSelectedMemberId('')
       })
-  }, [currentMemberId])
+  }, [currentMemberId, isAdmin])
 
   const clearPollTimer = React.useCallback(() => {
     if (pollTimerRef.current !== null) {

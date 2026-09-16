@@ -59,6 +59,11 @@ internal static class MetadataCandidateValidation
 
                 AddMaxLength(errors, $"{keyPrefix}.authors[{index}]", author, MaxAuthorLength);
             }
+
+            var canonicalAuthor = string.Join(", ", candidate.Authors
+                .Where(author => !string.IsNullOrWhiteSpace(author))
+                .Select(author => author.Trim()));
+            AddMaxLength(errors, $"{keyPrefix}.authors", canonicalAuthor, MaxAuthorLength);
         }
 
         return errors.ToDictionary(

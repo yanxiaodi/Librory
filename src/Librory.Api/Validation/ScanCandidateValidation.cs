@@ -6,12 +6,14 @@ internal static class ScanCandidateValidation
     public const int MaxAuthorLength = 300;
     public const int MaxDuplicateMessageLength = 1000;
     public const int MaxConfidenceLabelLength = 64;
+    public const int MaxRecognitionEvidenceLength = 4000;
 
     public static IReadOnlyDictionary<string, string[]> Validate(
         string? displayTitle,
         string? confidenceLabel,
         string? author,
         string? duplicateMessage,
+        string? recognitionEvidence = null,
         string prefix = "")
     {
         var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
@@ -19,6 +21,7 @@ internal static class ScanCandidateValidation
         AddMaxLength(errors, Key(prefix, "confidenceLabel"), confidenceLabel, MaxConfidenceLabelLength);
         AddMaxLength(errors, Key(prefix, "author"), author, MaxAuthorLength);
         AddMaxLength(errors, Key(prefix, "duplicateMessage"), duplicateMessage, MaxDuplicateMessageLength);
+        AddMaxLength(errors, Key(prefix, "recognitionEvidence"), recognitionEvidence, MaxRecognitionEvidenceLength);
         return errors;
     }
 

@@ -57,13 +57,13 @@ describe('ScansPage', () => {
     expect(shouldApplyContinuation(true, 2, 2, null)).toBe(false)
   })
 
-  it('only offers active scan targets and allows an eligible member', async () => {
+  it('allows an admin to target an active member without recommendation consent', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       if (String(input) === '/api/family/current/members') {
         return new Response(JSON.stringify([
           { memberId: 'member-1', displayName: 'Alice', role: 'Admin', preferredLanguage: 0, isActive: false, hasAccount: true, canUseForFamilyRecommendations: false },
-          { memberId: 'member-2', displayName: 'Bob', role: 'Member', preferredLanguage: 0, isActive: true, hasAccount: false, canUseForFamilyRecommendations: true },
+          { memberId: 'member-2', displayName: 'Bob', role: 'Member', preferredLanguage: 0, isActive: true, hasAccount: false, canUseForFamilyRecommendations: false },
           { memberId: 'member-3', displayName: 'Inactive', role: 'Member', preferredLanguage: 0, isActive: false, hasAccount: false, canUseForFamilyRecommendations: true },
         ]), { status: 200 })
       }
