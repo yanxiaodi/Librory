@@ -27,6 +27,7 @@ interface BookRecognitionResultsProps {
 }
 
 type CandidatePurchaseState = 'idle' | 'searching' | 'purchasing' | 'purchased' | 'error'
+type PurchaseDisplayResponse = Omit<ScanPurchaseResponse, 'duplicateStatus' | 'isReplay'> & { isReplay?: boolean }
 
 function localDateTimeValue(date = new Date()): string {
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
@@ -52,6 +53,7 @@ export function BookRecognitionResults({
   const metadataSearchRequestIdByCandidateId = React.useRef<Record<string, number>>({})
   const [selectedMatchByCandidateId, setSelectedMatchByCandidateId] = React.useState<Record<string, number>>({})
   const [ownerByCandidateId, setOwnerByCandidateId] = React.useState<Record<string, string>>({})
+  const [manualAuthorByCandidateId, setManualAuthorByCandidateId] = React.useState<Record<string, string>>({})
   const [purchaseTimeByCandidateId, setPurchaseTimeByCandidateId] = React.useState<Record<string, string>>({})
   const [storeByCandidateId, setStoreByCandidateId] = React.useState<Record<string, string>>({})
   const [conditionByCandidateId, setConditionByCandidateId] = React.useState<Record<string, string>>({})
@@ -64,7 +66,7 @@ export function BookRecognitionResults({
   const [duplicateByCandidateId, setDuplicateByCandidateId] = React.useState<Record<string, DuplicateConfirmationResponse | undefined>>({})
   const [duplicateChoiceByCandidateId, setDuplicateChoiceByCandidateId] = React.useState<Record<string, 1 | 2 | 3>>({})
   const [duplicateMatchIndexByCandidateId, setDuplicateMatchIndexByCandidateId] = React.useState<Record<string, number>>({})
-  const [purchaseResponseByCandidateId, setPurchaseResponseByCandidateId] = React.useState<Record<string, ScanPurchaseResponse | undefined>>({})
+  const [purchaseResponseByCandidateId, setPurchaseResponseByCandidateId] = React.useState<Record<string, PurchaseDisplayResponse | undefined>>({})
   const [versionByCandidateId, setVersionByCandidateId] = React.useState<Record<string, { isbn: string; format: string; publicationYear: string }>>({})
   const [versionStateByCandidateId, setVersionStateByCandidateId] = React.useState<Record<string, 'idle' | 'saving' | 'saved' | 'error'>>({})
   const [versionErrorByCandidateId, setVersionErrorByCandidateId] = React.useState<Record<string, string>>({})
@@ -205,7 +207,7 @@ export function BookRecognitionResults({
         existingBookEditionId: duplicateChoice === 1 ? duplicateMatch?.bookEditionId : undefined,
         existingBookWorkId: duplicateChoice === 2 ? duplicateMatch?.bookWorkId : undefined,
         manualTitle: selectedMatch ? undefined : searchTextByCandidateId[candidate.candidateId],
-        manualAuthor: selectedMatch?.authors[0] ?? undefined,
+        manualAuthor: selectedMatch?.authors[0] ?? (manualAuthorByCandidateId[candidate.candidateId]?.trim() || undefined),
         purchaseStore: storeByCandidateId[candidate.candidateId] || undefined,
         condition: conditionByCandidateId[candidate.candidateId] || undefined,
         purchasePrice: priceByCandidateId[candidate.candidateId]?.trim()
@@ -235,7 +237,7 @@ export function BookRecognitionResults({
     }
   }
 
-  const confirmVersion = async (candidateId: string, purchaseResponse: ScanPurchaseResponse) => {
+  const confirmVersion = async (candidateId: string, purchaseResponse: PurchaseDisplayResponse) => {
     const edition = purchaseResponse.work.editions.find(item => item.bookEditionId === purchaseResponse.bookEditionId)
     const version = versionByCandidateId[candidateId] ?? {
       isbn: edition?.isbn ?? '',
@@ -304,6 +306,8 @@ export function BookRecognitionResults({
               const defaultTime = purchaseTimeByCandidateId[candidate.candidateId] ?? localDateTimeValue()
               const purchaseResponse = purchaseResponseByCandidateId[candidate.candidateId]
                 ?? (persisted?.purchase ? { ...persisted.purchase, isReplay: true } : undefined)
+              const persistedDuplicateMessage = persisted?.duplicateMessage
+                ?? (persisted?.isAlreadyOwned ? 'This book is already owned by the family.' : null)
               const purchasedEdition = purchaseResponse?.work.editions.find(item => item.bookEditionId === purchaseResponse.bookEditionId)
               const version = versionByCandidateId[candidate.candidateId] ?? {
                 isbn: purchasedEdition?.isbn ?? '',
@@ -325,6 +329,12 @@ export function BookRecognitionResults({
                     </Button>
                   </div>
                   <p className="mt-1 text-sm text-[var(--text-secondary)]">Evidence: {candidate.evidenceText}</p>
+                  {persistedDuplicateMessage ? (
+                    <div className="mt-2 rounded-[var(--radius-md)] border border-[var(--accent)]/40 bg-[var(--accent)]/5 p-3 text-sm text-[var(--text-secondary)]">
+                      <p className="font-medium text-[var(--text-primary)]">Possible duplicate</p>
+                      <p>{persistedDuplicateMessage}</p>
+                    </div>
+                  ) : null}
                   <label className="mt-3 grid gap-2 text-sm text-[var(--text-secondary)]" htmlFor={`search-text-${candidate.candidateId}`}>
                     Search text
                     <input
@@ -397,6 +407,17 @@ export function BookRecognitionResults({
                           {members.map(member => <option key={member.memberId} value={member.memberId}>{member.displayName}{member.isActive ? '' : ' (inactive)'}</option>)}
                         </select>
                       </label>
+                      {!selectedMatch ? (
+                        <label className="grid gap-2 text-sm text-[var(--text-secondary)]" htmlFor={`purchase-author-${candidate.candidateId}`}>
+                          Author (optional)
+                          <input
+                            id={`purchase-author-${candidate.candidateId}`}
+                            value={manualAuthorByCandidateId[candidate.candidateId] ?? persisted?.author ?? ''}
+                            onChange={event => setManualAuthorByCandidateId(current => ({ ...current, [candidate.candidateId]: event.target.value }))}
+                            className="h-11 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-3 text-[var(--text-primary)]"
+                          />
+                        </label>
+                      ) : null}
                       <label className="grid gap-2 text-sm text-[var(--text-secondary)]" htmlFor={`purchase-time-${candidate.candidateId}`}>
                         Purchase time
                         <input

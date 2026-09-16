@@ -162,6 +162,54 @@ describe('BookRecognitionResults', () => {
     })
   })
 
+  it('shows persisted duplicate warnings before the purchase request', () => {
+    render(
+      <BookRecognitionResults
+        job={pendingJob}
+        candidates={pendingJob.candidates}
+        scanSessionId="scan-1"
+        persistedCandidates={[{
+          ...pendingCandidate,
+          isAlreadyOwned: true,
+          duplicateMessage: 'This book is already owned by the family.',
+        }]}
+        members={members}
+        scanTargetMemberId="member-1"
+      />,
+    )
+
+    expect(screen.getByText('This book is already owned by the family.')).toBeVisible()
+  })
+
+  it('sends a manually entered author when no metadata match is selected', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+      if (String(input).includes('/purchase')) {
+        return new Response(JSON.stringify({ ...purchase, isReplay: false }), { status: 201 })
+      }
+      throw new Error(`Unexpected fetch request: ${String(input)}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <BookRecognitionResults
+        job={job}
+        candidates={job.candidates}
+        scanSessionId="scan-1"
+        persistedCandidates={[pendingCandidate]}
+        members={members}
+        scanTargetMemberId="member-1"
+      />,
+    )
+
+    await user.clear(screen.getByLabelText(/author \(optional\)/i))
+    await user.type(screen.getByLabelText(/author \(optional\)/i), 'Frank Herbert')
+    await user.click(screen.getByRole('button', { name: /buy this book/i }))
+
+    const purchaseCall = fetchMock.mock.calls.find(([input]) => String(input).includes('/purchase'))
+    expect(JSON.parse(purchaseCall![1]?.body as string)).toMatchObject({ manualAuthor: 'Frank Herbert' })
+  })
+
   it('requires a fresh metadata search after the title is edited', async () => {
     const user = userEvent.setup()
 

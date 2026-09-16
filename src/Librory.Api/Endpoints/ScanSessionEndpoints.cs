@@ -268,6 +268,12 @@ internal static class ScanSessionEndpoints
             return Results.ValidationProblem(metadataErrors);
         }
 
+        var candidateErrors = ValidateCandidateFields(request.Candidates);
+        if (candidateErrors.Count > 0)
+        {
+            return Results.ValidationProblem(candidateErrors);
+        }
+
         try
         {
             var dto = await scanSessionService.StartShelfScanAsync(
@@ -423,6 +429,16 @@ internal static class ScanSessionEndpoints
                     $"Metadata matches must contain {MetadataCandidateValidation.MaxMatchCount} entries or fewer.",
                 ],
             });
+        }
+
+        var candidateErrors = ScanCandidateValidation.Validate(
+            request.DisplayTitle,
+            request.ConfidenceLabel,
+            request.Author,
+            request.DuplicateMessage);
+        if (candidateErrors.Count > 0)
+        {
+            return Results.ValidationProblem(candidateErrors);
         }
 
         var metadataErrors = new Dictionary<string, string[]>(StringComparer.Ordinal);
@@ -728,6 +744,36 @@ internal static class ScanSessionEndpoints
                         matches[matchIndex],
                         $"candidates[{candidateIndex}].metadataMatches[{matchIndex}]"));
             }
+        }
+
+        return errors;
+    }
+
+    private static Dictionary<string, string[]> ValidateCandidateFields(
+        IReadOnlyList<CreateScanCandidateRequest>? candidates)
+    {
+        var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
+        if (candidates is null)
+        {
+            return errors;
+        }
+
+        for (var index = 0; index < candidates.Count; index++)
+        {
+            var candidate = candidates[index];
+            if (candidate is null)
+            {
+                continue;
+            }
+
+            ScanCandidateValidation.Merge(
+                errors,
+                ScanCandidateValidation.Validate(
+                    candidate.DisplayTitle,
+                    candidate.ConfidenceLabel,
+                    candidate.Author,
+                    candidate.DuplicateMessage,
+                    $"candidates[{index}]"));
         }
 
         return errors;

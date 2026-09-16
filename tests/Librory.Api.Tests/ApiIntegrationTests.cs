@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Librory.Api.Contracts;
@@ -270,6 +271,31 @@ public sealed class ApiIntegrationTests
     }
 
     [Fact]
+    public async Task Scan_session_rejects_overlong_candidate_fields()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var bootstrapResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        await AssertSuccessAsync(bootstrapResponse);
+
+        var response = await client.PostAsJsonAsync(
+            "/api/family/current/scan-sessions",
+            new CreateScanSessionRequest(
+                "shelf-photo.jpg",
+                Candidates: [new CreateScanCandidateRequest(
+                    new string('D', 301),
+                    "High",
+                    new string('A', 301),
+                    DuplicateMessage: new string('M', 1001))]));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Scan_session_candidate_can_be_corrected_in_place()
     {
         await using var factory = await ApiFactory.CreateAsync();
@@ -334,6 +360,36 @@ public sealed class ApiIntegrationTests
         var untouchedCandidate = corrected.Candidates.Single(candidate => candidate.Id != candidateId);
         Assert.Equal("Matilda", untouchedCandidate.DisplayTitle);
         Assert.Equal("Medium", untouchedCandidate.ConfidenceLabel);
+    }
+
+    [Fact]
+    public async Task Scan_session_candidate_correction_rejects_overlong_fields()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var bootstrapResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        await AssertSuccessAsync(bootstrapResponse);
+
+        var createResponse = await client.PostAsJsonAsync(
+            "/api/family/current/scan-sessions",
+            new CreateScanSessionRequest("shelf-photo.jpg", Candidates: [new CreateScanCandidateRequest("Dune", "High")]));
+        var created = await createResponse.Content.ReadFromJsonAsync<ScanSessionResponse>();
+        Assert.NotNull(created);
+
+        var candidateId = Assert.Single(created!.Candidates).Id;
+        var response = await client.PutAsJsonAsync(
+            $"/api/family/current/scan-sessions/{created.ScanSessionId}/candidates/{candidateId}",
+            new UpdateScanCandidateRequest(
+                new string('D', 301),
+                "High",
+                Author: new string('A', 301),
+                DuplicateMessage: new string('M', 1001)));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]

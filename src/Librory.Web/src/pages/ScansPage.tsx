@@ -44,6 +44,25 @@ export function mergeScanSessionWithCurrentPurchases(
   }
 }
 
+export function mergeScanSessionIfCurrent(
+  current: ScanSessionResponse,
+  expectedSessionId: string,
+  updated: ScanSessionResponse,
+): ScanSessionResponse {
+  return current.scanSessionId === expectedSessionId
+    ? mergeScanSessionWithCurrentPurchases(current, updated)
+    : current
+}
+
+export function shouldApplyContinuation(
+  cancelled: boolean,
+  requestGeneration: number,
+  currentGeneration: number,
+  activeJobId: string | null,
+): boolean {
+  return !cancelled && requestGeneration === currentGeneration && !activeJobId
+}
+
 const stateCopy: Record<ScanState, { title: string; description: string; tone: string }> = {
   idle: {
     title: 'Ready for a shelf photo',
@@ -219,6 +238,7 @@ export function ScansPage() {
   const pollTimerRef = React.useRef<number | null>(null)
   const activeJobIdRef = React.useRef<string | null>(null)
   const activeTargetMemberIdRef = React.useRef<string | undefined>(undefined)
+  const scanGenerationRef = React.useRef(0)
 
   const currentMemberId = family?.memberId
 
@@ -340,10 +360,11 @@ export function ScansPage() {
     if (!window.location.search.includes('continue=1')) return
 
     let cancelled = false
+    const continuationGeneration = scanGenerationRef.current
 
     void getLatestScanSession()
       .then(session => {
-        if (cancelled || !session || activeJobIdRef.current) return
+        if (!session || !shouldApplyContinuation(cancelled, continuationGeneration, scanGenerationRef.current, activeJobIdRef.current)) return
 
         const resumedJob: BookRecognitionJobResponse = {
           jobId: `session-${session.scanSessionId}`,
@@ -396,6 +417,7 @@ export function ScansPage() {
   }
 
   async function processSelectedFile(file: File) {
+    scanGenerationRef.current += 1
     setFileName(file.name)
     setJob(null)
     setReviewedCandidates([])
@@ -445,6 +467,7 @@ export function ScansPage() {
 
   const handleMetadataMatchesChange = React.useCallback(async (recognitionCandidateId: string, matches: BookRecognitionJobResponse['candidates'][number]['metadataMatches']) => {
     if (!scanSession) throw new Error('The scan session is not ready to save metadata.')
+    const sessionId = scanSession.scanSessionId
     const persisted = scanSession.candidates.find(candidate => candidate.id === recognitionCandidateId)
     const currentCandidate = reviewedCandidates.find(candidate => candidate.candidateId === recognitionCandidateId)
     if (!persisted || !currentCandidate) throw new Error('The scan candidate could not be found.')
@@ -458,7 +481,7 @@ export function ScansPage() {
         recognitionEvidence: currentCandidate.evidenceText,
         metadataMatches: matches,
       })
-      setScanSession(current => current ? mergeScanSessionWithCurrentPurchases(current, updated) : updated)
+      setScanSession(current => current ? mergeScanSessionIfCurrent(current, sessionId, updated) : updated)
     } catch {
       throw new Error('Metadata matches were found, but the corrected candidate could not be saved.')
     }

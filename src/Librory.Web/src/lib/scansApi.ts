@@ -23,7 +23,7 @@ export type ScanCandidateResponse = {
   purchasedBookCopyId: string | null
   purchaseRequestId: string | null
   purchasedAt: string | null
-  purchase: Omit<ScanPurchaseResponse, 'isReplay'> | null
+  purchase: Omit<ScanPurchaseResponse, 'isReplay' | 'duplicateStatus'> | null
 }
 
 export interface ScanSessionResponse {

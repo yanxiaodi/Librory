@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AuthSessionProvider } from '@/auth/AuthSessionContext'
-import { mergeScanSessionWithCurrentPurchases, PENDING_JOB_STORAGE_KEY, ScansPage } from './ScansPage'
+import { mergeScanSessionIfCurrent, mergeScanSessionWithCurrentPurchases, PENDING_JOB_STORAGE_KEY, ScansPage, shouldApplyContinuation } from './ScansPage'
 import type { ScanSessionResponse } from '@/lib/scansApi'
 
 afterEach(() => {
@@ -37,6 +37,24 @@ describe('ScansPage', () => {
       purchaseRequestId: 'request-1',
       purchasedAt: '2026-09-16T00:00:00Z',
     })
+  })
+
+  it('ignores a metadata response from an older scan session', () => {
+    const current: ScanSessionResponse = {
+      scanSessionId: 'scan-2', familyId: 'family-1', shelfPhotoPath: 'new.jpg', expiresAt: '2026-09-17T00:00:00Z',
+      targetMemberId: 'member-1', targetMemberDisplayName: 'Alice', targetProfileAvailable: false, targetProfileUsed: false,
+      inferredLanguage: null, hasMixedLanguages: false, candidates: [],
+    }
+    const oldResponse = { ...current, scanSessionId: 'scan-1', shelfPhotoPath: 'old.jpg' }
+
+    expect(mergeScanSessionIfCurrent(current, 'scan-1', oldResponse)).toBe(current)
+  })
+
+  it('does not apply continuation results after a new scan starts', () => {
+    expect(shouldApplyContinuation(false, 1, 2, null)).toBe(false)
+    expect(shouldApplyContinuation(false, 2, 2, null)).toBe(true)
+    expect(shouldApplyContinuation(false, 2, 2, 'job-2')).toBe(false)
+    expect(shouldApplyContinuation(true, 2, 2, null)).toBe(false)
   })
 
   it('only offers active scan targets and allows an eligible member', async () => {
