@@ -236,6 +236,53 @@ describe('BookRecognitionResults', () => {
     expect(screen.getByRole('button', { name: /buy this book/i })).toBeDisabled()
   })
 
+  it('keeps manual purchase fallback available when metadata search fails', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/book-metadata/search?title=Dune%20Messiah') {
+        return new Response('provider unavailable', { status: 503 })
+      }
+      if (url.includes('/purchase')) {
+        return new Response(JSON.stringify({ ...purchase, isReplay: false }), { status: 201 })
+      }
+      throw new Error(`Unexpected fetch request: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <BookRecognitionResults
+        job={pendingJob}
+        candidates={pendingJob.candidates.map(candidate => ({ ...candidate, metadataMatches: [] }))}
+        scanSessionId="scan-1"
+        persistedCandidates={[pendingCandidate]}
+        members={members}
+        scanTargetMemberId="member-1"
+      />,
+    )
+
+    const searchText = screen.getByLabelText(/search text/i)
+    await user.clear(searchText)
+    await user.type(searchText, 'Dune Messiah')
+    await user.click(screen.getByRole('button', { name: /re-search metadata/i }))
+
+    expect(await screen.findByText(/book metadata search failed/i)).toBeVisible()
+    const purchaseButton = screen.getByRole('button', { name: /buy this book/i })
+    expect(purchaseButton).toBeEnabled()
+
+    const authorInput = screen.getByLabelText(/author \(optional\)/i)
+    await user.clear(authorInput)
+    await user.type(authorInput, 'Frank Herbert')
+    await user.click(purchaseButton)
+    await waitFor(() => expect(fetchMock.mock.calls.some(([input]) => String(input).includes('/purchase'))).toBe(true))
+
+    const purchaseCall = fetchMock.mock.calls.find(([input]) => String(input).includes('/purchase'))
+    expect(JSON.parse(purchaseCall![1]?.body as string)).toMatchObject({
+      manualTitle: 'Dune Messiah',
+      manualAuthor: 'Frank Herbert',
+    })
+  })
+
   it('submits version confirmation for a reloaded provisional purchase', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {

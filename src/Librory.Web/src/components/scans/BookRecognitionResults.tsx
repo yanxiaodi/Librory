@@ -171,6 +171,7 @@ export function BookRecognitionResults({
       setPurchaseStateByCandidateId(current => ({ ...current, [candidateId]: 'idle' }))
     } catch (error) {
       if (!shouldApplyMetadataSearchState(metadataSearchRequestIdByCandidateId.current[candidateId], requestId)) return
+      setMetadataSearchRequiredByCandidateId(current => ({ ...current, [candidateId]: false }))
       setPurchaseStateByCandidateId(current => ({ ...current, [candidateId]: 'error' }))
       setPurchaseErrorByCandidateId(current => ({ ...current, [candidateId]: error instanceof Error ? error.message : 'Metadata search failed.' }))
     }
