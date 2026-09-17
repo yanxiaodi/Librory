@@ -355,7 +355,7 @@ internal static class ScanSessionEndpoints
             return Results.Unauthorized();
         }
 
-        var family = await LoadFamilyForDuplicateDetectionAsync(db, current.FamilyId, cancellationToken);
+        var family = await LoadFamilyForDuplicateDetectionAsync(db, current.FamilyId, scanSessionId, cancellationToken);
         if (family is null)
         {
             return Results.NotFound();
@@ -392,7 +392,7 @@ internal static class ScanSessionEndpoints
             return Results.NotFound();
         }
 
-        var family = await LoadFamilyForDuplicateDetectionAsync(db, current.FamilyId, cancellationToken);
+        var family = await LoadFamilyForDuplicateDetectionAsync(db, current.FamilyId, session.Id, cancellationToken);
         if (family is null)
         {
             return Results.NotFound();
@@ -489,7 +489,7 @@ internal static class ScanSessionEndpoints
                         .ToArray()),
                 cancellationToken);
 
-            var family = await LoadFamilyForDuplicateDetectionAsync(db, current.FamilyId, cancellationToken);
+            var family = await LoadFamilyForDuplicateDetectionAsync(db, current.FamilyId, scanSessionId, cancellationToken);
             return family is null
                 ? Results.NotFound()
                 : Results.Ok(ToResponse(family, dto));
@@ -613,19 +613,47 @@ internal static class ScanSessionEndpoints
             .SingleOrDefaultAsync(x => x.FamilyId == familyId && x.Id == scanSessionId, cancellationToken);
     }
 
-    private static Task<Family?> LoadFamilyForDuplicateDetectionAsync(
+    private static async Task<Family?> LoadFamilyForDuplicateDetectionAsync(
         LibroryDbContext db,
         Guid familyId,
+        Guid scanSessionId,
         CancellationToken cancellationToken)
     {
-        return db.Families
+        var family = await db.Families
             .AsSplitQuery()
             .Include(x => x.BookCopies)
                 .ThenInclude(x => x.BookEdition)
                     .ThenInclude(x => x.BookWork)
-                        .ThenInclude(x => x.Editions)
             .Include(x => x.Members)
             .SingleOrDefaultAsync(x => x.Id == familyId, cancellationToken);
+
+        if (family is null)
+        {
+            return null;
+        }
+
+        // Duplicate detection needs each copy's edition and work, while the purchase
+        // response needs all editions only for works reached through a purchased scan
+        // candidate. Avoid expanding every family work on ordinary session reads.
+        var purchasedWorkIds = await (
+            from candidate in db.ScanCandidates
+            join copy in db.BookCopies on candidate.PurchasedBookCopyId equals (Guid?)copy.Id
+            join edition in db.BookEditions on copy.BookEditionId equals edition.Id
+            where candidate.ScanSession.FamilyId == familyId
+                  && candidate.ScanSessionId == scanSessionId
+                  && candidate.PurchaseStatus == PurchaseStatus.Purchased
+            select edition.BookWorkId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        if (purchasedWorkIds.Count > 0)
+        {
+            await db.BookEditions
+                .Where(edition => purchasedWorkIds.Contains(edition.BookWorkId))
+                .LoadAsync(cancellationToken);
+        }
+
+        return family;
     }
 
     private static TimeSpan? TryCreateRetentionWindow(int? retentionWindowDays, out IResult? validationProblem)

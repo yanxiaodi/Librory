@@ -76,7 +76,7 @@ internal static class BookCopyEndpoints
         }
 
         var member = family.Members.SingleOrDefault(x => x.Id == current.MemberId);
-        if (member is null)
+        if (member is null || !member.IsActive)
         {
             return Results.Unauthorized();
         }

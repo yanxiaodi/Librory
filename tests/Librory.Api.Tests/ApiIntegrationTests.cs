@@ -789,6 +789,44 @@ public sealed class ApiIntegrationTests
     }
 
     [Fact]
+    public async Task Manual_intake_rejects_a_deactivated_current_member()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var loginResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        await AssertSuccessAsync(loginResponse);
+
+        var login = await loginResponse.Content.ReadFromJsonAsync<DevLoginResponse>();
+        Assert.NotNull(login);
+
+        var workResponse = await client.PostAsJsonAsync(
+            "/api/book-works",
+            new CreateBookWorkRequest("Charlotte's Web", "E. B. White", "978-0-06-112495-2", "Hardcover", 2006));
+        await AssertSuccessAsync(workResponse);
+
+        var work = await workResponse.Content.ReadFromJsonAsync<BookWorkResponse>();
+        Assert.NotNull(work);
+
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<LibroryDbContext>();
+            await db.Members
+                .Where(item => item.Id == login!.MemberId)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.IsActive, false));
+        }
+
+        var response = await client.PostAsJsonAsync(
+            "/api/family/current/book-copies",
+            new CreateBookCopyRequest(work!.Editions[0].BookEditionId));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Manual_intake_reports_duplicates_when_the_family_already_owns_the_title()
     {
         await using var factory = await ApiFactory.CreateAsync();
