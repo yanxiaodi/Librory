@@ -64,9 +64,9 @@ public sealed class BookMetadataImportService : IBookMetadataImportService
         {
             edition = work.AddEdition(isbn, format, publicationYear);
             edition.IsProvisional = options.AllowProvisionalEdition
-                && string.IsNullOrWhiteSpace(isbn)
-                && string.IsNullOrWhiteSpace(format)
-                && !publicationYear.HasValue;
+                && (string.IsNullOrWhiteSpace(isbn)
+                    || string.IsNullOrWhiteSpace(format)
+                    || !publicationYear.HasValue);
             ApplyEditionMetadata(edition, candidate, provenanceCapturedAt, options.PublicationYear.HasValue);
         }
 

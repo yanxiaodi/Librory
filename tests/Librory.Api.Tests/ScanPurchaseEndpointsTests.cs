@@ -293,6 +293,37 @@ public sealed class ScanPurchaseEndpointsTests
     }
 
     [Fact]
+    public async Task Purchase_with_partial_version_metadata_remains_provisional()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        await LoginAsync(client, "Partial Version Family", "Purchaser");
+
+        var session = await CreateSessionAsync(client, "Dune");
+        var candidate = Assert.Single(session.Candidates);
+        var response = await client.PostAsJsonAsync(
+            $"/api/family/current/scan-sessions/{session.ScanSessionId}/candidates/{candidate.Id}/purchase",
+            new ConfirmScanPurchaseRequest(
+                Guid.NewGuid(),
+                session.TargetMemberId!.Value,
+                DuplicateResolution: Librory.Application.Intake.DuplicateResolution.NewWork,
+                ManualTitle: "Dune",
+                PublicationYear: 2024));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var purchase = await response.Content.ReadFromJsonAsync<ScanPurchaseResponse>();
+        Assert.NotNull(purchase);
+        Assert.True(purchase!.IsProvisional);
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<LibroryDbContext>();
+        var edition = await db.BookEditions.FindAsync(purchase.BookEditionId);
+        Assert.NotNull(edition);
+        Assert.True(edition!.IsProvisional);
+        Assert.Equal(2024, edition.PublicationYear);
+    }
+
+    [Fact]
     public async Task Purchased_provisional_edition_can_be_confirmed_through_the_api()
     {
         await using var factory = await ApiFactory.CreateAsync();
