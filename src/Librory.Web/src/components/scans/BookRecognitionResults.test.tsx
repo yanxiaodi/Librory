@@ -2,7 +2,7 @@ import * as React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import { BookRecognitionResults } from './BookRecognitionResults'
+import { BookRecognitionResults, shouldApplyMetadataSearchState } from './BookRecognitionResults'
 import type { BookRecognitionJobResponse } from '@/lib/bookRecognitionApi'
 import type { ScanCandidateResponse } from '@/lib/scansApi'
 
@@ -107,6 +107,11 @@ const pendingCandidate: ScanCandidateResponse = {
 const members = [{ memberId: 'member-1', displayName: 'Alice', role: 'Member', preferredLanguage: 0, isActive: true, hasAccount: true, hasRecommendationProfile: true, recommendationProfileVisibility: 0, canUseForFamilyRecommendations: true }]
 
 describe('BookRecognitionResults', () => {
+  it('does not apply an older metadata search error to a newer request', () => {
+    expect(shouldApplyMetadataSearchState(2, 1)).toBe(false)
+    expect(shouldApplyMetadataSearchState(2, 2)).toBe(true)
+  })
+
   it('keeps provisional version confirmation visible after a purchased session is reloaded', () => {
     render(
       <BookRecognitionResults

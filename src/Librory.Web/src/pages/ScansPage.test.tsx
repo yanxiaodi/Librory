@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AuthSessionProvider } from '@/auth/AuthSessionContext'
-import { mergeScanSessionIfCurrent, mergeScanSessionWithCurrentPurchases, PENDING_JOB_STORAGE_KEY, ScansPage, shouldApplyContinuation } from './ScansPage'
+import { mergeScanSessionCandidate, mergeScanSessionIfCurrent, mergeScanSessionWithCurrentPurchases, PENDING_JOB_STORAGE_KEY, ScansPage, shouldApplyContinuation, shouldApplyScanGeneration } from './ScansPage'
 import type { ScanSessionResponse } from '@/lib/scansApi'
 
 afterEach(() => {
@@ -48,6 +48,43 @@ describe('ScansPage', () => {
     const oldResponse = { ...current, scanSessionId: 'scan-1', shelfPhotoPath: 'old.jpg' }
 
     expect(mergeScanSessionIfCurrent(current, 'scan-1', oldResponse)).toBe(current)
+  })
+
+  it('merges a metadata response into only the corrected candidate', () => {
+    const current: ScanSessionResponse = {
+      scanSessionId: 'scan-1', familyId: 'family-1', shelfPhotoPath: 'shelf.jpg', expiresAt: '2026-09-17T00:00:00Z',
+      targetMemberId: 'member-1', targetMemberDisplayName: 'Alice', targetProfileAvailable: false, targetProfileUsed: false,
+      inferredLanguage: null, hasMixedLanguages: false,
+      candidates: [
+        {
+          id: 'candidate-1', displayTitle: 'Dune', author: 'Frank Herbert', recommendationScore: null, isAlreadyOwned: false,
+          duplicateMessage: null, confidenceLabel: 'High', detectedLanguage: null, recognitionRank: 940, metadataSnapshot: { schemaVersion: 1, evidenceText: 'DUNE', matches: [] },
+          purchaseStatus: 0, purchasedBookCopyId: null, purchaseRequestId: null, purchasedAt: null, purchase: null,
+        },
+        {
+          id: 'candidate-2', displayTitle: 'Matilda', author: 'Roald Dahl', recommendationScore: null, isAlreadyOwned: false,
+          duplicateMessage: null, confidenceLabel: 'High', detectedLanguage: null, recognitionRank: 900, metadataSnapshot: { schemaVersion: 1, evidenceText: 'MATILDA', matches: [] },
+          purchaseStatus: 0, purchasedBookCopyId: null, purchaseRequestId: null, purchasedAt: null, purchase: null,
+        },
+      ],
+    }
+    const updated = {
+      ...current,
+      candidates: [
+        { ...current.candidates[0], author: 'Updated Author', metadataSnapshot: { schemaVersion: 1, evidenceText: 'DUNE', matches: [] } },
+        { ...current.candidates[1], author: 'Stale Author', metadataSnapshot: { schemaVersion: 1, evidenceText: 'MATILDA', matches: [] } },
+      ],
+    }
+
+    const merged = mergeScanSessionCandidate(current, 'scan-1', updated, 'candidate-1')
+
+    expect(merged.candidates[0].author).toBe('Updated Author')
+    expect(merged.candidates[1]).toBe(current.candidates[1])
+  })
+
+  it('does not apply an older scan operation after a newer scan starts', () => {
+    expect(shouldApplyScanGeneration(1, 2)).toBe(false)
+    expect(shouldApplyScanGeneration(2, 2)).toBe(true)
   })
 
   it('does not apply continuation results after a new scan starts', () => {

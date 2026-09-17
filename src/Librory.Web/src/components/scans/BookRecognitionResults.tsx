@@ -29,6 +29,10 @@ interface BookRecognitionResultsProps {
 type CandidatePurchaseState = 'idle' | 'searching' | 'purchasing' | 'purchased' | 'error'
 type PurchaseDisplayResponse = Omit<ScanPurchaseResponse, 'duplicateStatus' | 'isReplay'> & { isReplay?: boolean }
 
+export function shouldApplyMetadataSearchState(currentRequestId: number | undefined, requestId: number): boolean {
+  return currentRequestId === requestId
+}
+
 function localDateTimeValue(date = new Date()): string {
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
   return local.toISOString().slice(0, 16)
@@ -156,9 +160,9 @@ export function BookRecognitionResults({
     setDuplicateMatchIndexByCandidateId(current => ({ ...current, [candidateId]: 0 }))
     try {
       const matches = await searchBookMetadata(title)
-      if (metadataSearchRequestIdByCandidateId.current[candidateId] !== requestId) return
+      if (!shouldApplyMetadataSearchState(metadataSearchRequestIdByCandidateId.current[candidateId], requestId)) return
       await onMetadataMatchesChange?.(candidateId, matches)
-      if (metadataSearchRequestIdByCandidateId.current[candidateId] !== requestId) return
+      if (!shouldApplyMetadataSearchState(metadataSearchRequestIdByCandidateId.current[candidateId], requestId)) return
       onCandidatesChange?.(current => current.map(candidate =>
         candidate.candidateId === candidateId ? { ...candidate, displayTitle: title, metadataMatches: matches } : candidate,
       ))
@@ -166,6 +170,7 @@ export function BookRecognitionResults({
       setMetadataSearchRequiredByCandidateId(current => ({ ...current, [candidateId]: false }))
       setPurchaseStateByCandidateId(current => ({ ...current, [candidateId]: 'idle' }))
     } catch (error) {
+      if (!shouldApplyMetadataSearchState(metadataSearchRequestIdByCandidateId.current[candidateId], requestId)) return
       setPurchaseStateByCandidateId(current => ({ ...current, [candidateId]: 'error' }))
       setPurchaseErrorByCandidateId(current => ({ ...current, [candidateId]: error instanceof Error ? error.message : 'Metadata search failed.' }))
     }

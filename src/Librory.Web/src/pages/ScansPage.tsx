@@ -44,6 +44,35 @@ export function mergeScanSessionWithCurrentPurchases(
   }
 }
 
+export function mergeScanSessionCandidate(
+  current: ScanSessionResponse,
+  expectedSessionId: string,
+  updated: ScanSessionResponse,
+  candidateId: string,
+): ScanSessionResponse {
+  if (current.scanSessionId !== expectedSessionId) return current
+
+  const updatedCandidate = updated.candidates.find(candidate => candidate.id === candidateId)
+  if (!updatedCandidate) return current
+
+  const currentCandidate = current.candidates.find(candidate => candidate.id === candidateId)
+  const mergedCandidate = currentCandidate?.purchaseStatus === 1 && updatedCandidate.purchaseStatus !== 1
+    ? {
+        ...updatedCandidate,
+        purchaseStatus: currentCandidate.purchaseStatus,
+        purchasedBookCopyId: currentCandidate.purchasedBookCopyId,
+        purchaseRequestId: currentCandidate.purchaseRequestId,
+        purchasedAt: currentCandidate.purchasedAt,
+        purchase: currentCandidate.purchase ?? updatedCandidate.purchase,
+      }
+    : updatedCandidate
+
+  return {
+    ...current,
+    candidates: current.candidates.map(candidate => candidate.id === candidateId ? mergedCandidate : candidate),
+  }
+}
+
 export function mergeScanSessionIfCurrent(
   current: ScanSessionResponse,
   expectedSessionId: string,
@@ -61,6 +90,10 @@ export function shouldApplyContinuation(
   activeJobId: string | null,
 ): boolean {
   return !cancelled && requestGeneration === currentGeneration && !activeJobId
+}
+
+export function shouldApplyScanGeneration(requestGeneration: number, currentGeneration: number): boolean {
+  return requestGeneration === currentGeneration
 }
 
 const stateCopy: Record<ScanState, { title: string; description: string; tone: string }> = {
@@ -418,7 +451,8 @@ export function ScansPage() {
   }
 
   async function processSelectedFile(file: File) {
-    scanGenerationRef.current += 1
+    const generation = scanGenerationRef.current + 1
+    scanGenerationRef.current = generation
     setFileName(file.name)
     setJob(null)
     setReviewedCandidates([])
@@ -429,16 +463,24 @@ export function ScansPage() {
     activeJobIdRef.current = null
     activeTargetMemberIdRef.current = selectedMemberId || undefined
     writePendingJob(null)
+    clearPollTimer()
     setState('compressing')
 
     // Best-effort: keep the screen (and tab) awake while compressing/uploading so
     // mobile OSes are less likely to suspend or discard the tab mid-transfer.
-    const wakeLock = await requestWakeLock()
+    let wakeLock: WakeLockSentinel | null = null
 
     try {
+      wakeLock = await requestWakeLock()
+      if (!shouldApplyScanGeneration(generation, scanGenerationRef.current)) return
+
       const uploadFile = await compressImageToJpeg(file)
+      if (!shouldApplyScanGeneration(generation, scanGenerationRef.current)) return
+
       setState('uploading')
       const response = await createBookRecognitionJob(uploadFile)
+      if (!shouldApplyScanGeneration(generation, scanGenerationRef.current)) return
+
       setJob(response)
       activeJobIdRef.current = response.jobId
 
@@ -450,11 +492,13 @@ export function ScansPage() {
         return
       }
 
+      if (!shouldApplyScanGeneration(generation, scanGenerationRef.current)) return
       writePendingJob({ jobId: response.jobId, targetMemberId: activeTargetMemberIdRef.current })
       setState('polling')
       clearPollTimer()
       void schedulePoll(response.jobId)
     } catch (error) {
+      if (!shouldApplyScanGeneration(generation, scanGenerationRef.current)) return
       setUploadError(error instanceof Error ? error.message : 'Book recognition upload failed.')
       setState('error')
     } finally {
@@ -482,7 +526,7 @@ export function ScansPage() {
         recognitionEvidence: currentCandidate.evidenceText,
         metadataMatches: matches,
       })
-      setScanSession(current => current ? mergeScanSessionIfCurrent(current, sessionId, updated) : updated)
+      setScanSession(current => current ? mergeScanSessionCandidate(current, sessionId, updated, persisted.id) : current)
     } catch {
       throw new Error('Metadata matches were found, but the corrected candidate could not be saved.')
     }
