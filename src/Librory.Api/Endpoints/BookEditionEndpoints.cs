@@ -54,6 +54,10 @@ internal static class BookEditionEndpoints
             return Results.Unauthorized();
         }
 
+        await using var transaction = await db.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            cancellationToken);
+
         var activeMember = await db.Members.AnyAsync(
             member => member.Id == current.MemberId
                       && member.FamilyId == current.FamilyId
@@ -63,10 +67,6 @@ internal static class BookEditionEndpoints
         {
             return Results.Unauthorized();
         }
-
-        await using var transaction = await db.Database.BeginTransactionAsync(
-            IsolationLevel.Serializable,
-            cancellationToken);
 
         var isbn = TrimToNull(request.Isbn);
         var format = TrimToNull(request.Format);

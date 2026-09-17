@@ -59,6 +59,7 @@ export function BookRecognitionResults({
   const [ownerByCandidateId, setOwnerByCandidateId] = React.useState<Record<string, string>>({})
   const [manualAuthorByCandidateId, setManualAuthorByCandidateId] = React.useState<Record<string, string>>({})
   const [purchaseTimeByCandidateId, setPurchaseTimeByCandidateId] = React.useState<Record<string, string>>({})
+  const purchaseTimeDefaultByCandidateId = React.useRef<Record<string, string>>({})
   const [storeByCandidateId, setStoreByCandidateId] = React.useState<Record<string, string>>({})
   const [conditionByCandidateId, setConditionByCandidateId] = React.useState<Record<string, string>>({})
   const [priceByCandidateId, setPriceByCandidateId] = React.useState<Record<string, string>>({})
@@ -309,7 +310,8 @@ export function BookRecognitionResults({
               const duplicate = duplicateByCandidateId[candidate.candidateId]
               const selectedMatch = candidate.metadataMatches[selectedMatchIndex] ?? candidate.metadataMatches[0]
               const metadataSearchRequired = metadataSearchRequiredByCandidateId[candidate.candidateId] === true
-              const defaultTime = purchaseTimeByCandidateId[candidate.candidateId] ?? localDateTimeValue()
+              const defaultTime = purchaseTimeByCandidateId[candidate.candidateId]
+                ?? (purchaseTimeDefaultByCandidateId.current[candidate.candidateId] ??= localDateTimeValue())
               const purchaseResponse = purchaseResponseByCandidateId[candidate.candidateId]
                 ?? (persisted?.purchase ? { ...persisted.purchase, isReplay: true } : undefined)
               const persistedDuplicateMessage = persisted?.duplicateMessage
@@ -359,9 +361,34 @@ export function BookRecognitionResults({
                       <ul className="mt-3 grid gap-2">
                         {candidate.metadataMatches.map(metadata => (
                           <li key={`${candidate.candidateId}-${metadata.source}-${metadata.sourceId}`} className="text-sm text-[var(--text-secondary)]">
-                            <span className="font-medium text-[var(--text-primary)]">{metadata.title}</span>
-                            {metadata.authors.length > 0 ? ` · ${metadata.authors.join(', ')}` : null}
-                            {metadata.publishedDate ? ` · ${metadata.publishedDate}` : null}
+                            <div className="flex gap-3">
+                              {metadata.thumbnailUrl ? (
+                                <img
+                                  src={metadata.thumbnailUrl}
+                                  alt={`Cover of ${metadata.title}`}
+                                  className="h-20 w-14 rounded object-cover"
+                                />
+                              ) : null}
+                              <div className="grid gap-1">
+                                <span className="font-medium text-[var(--text-primary)]">{metadata.title}</span>
+                                {metadata.subtitle ? <span>{metadata.subtitle}</span> : null}
+                                {metadata.authors.length > 0 ? <span>Author: {metadata.authors.join(', ')}</span> : null}
+                                {metadata.publisher ? <span>Publisher: {metadata.publisher}</span> : null}
+                                {metadata.publishedDate ? <span>Published: {metadata.publishedDate}</span> : null}
+                                {metadata.isbn10 ? <span>ISBN-10: {metadata.isbn10}</span> : null}
+                                {metadata.isbn13 ? <span>ISBN-13: {metadata.isbn13}</span> : null}
+                                {metadata.infoUrl ? (
+                                  <a
+                                    href={metadata.infoUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-[var(--accent)] underline"
+                                  >
+                                    Open metadata source for {metadata.title}
+                                  </a>
+                                ) : null}
+                              </div>
+                            </div>
                           </li>
                         ))}
                       </ul>

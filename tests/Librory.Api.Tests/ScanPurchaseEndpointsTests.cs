@@ -1,5 +1,6 @@
-using System.Net;
+using System.Data;
 using System.Data.Common;
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Librory.Api.Contracts;
@@ -392,6 +393,35 @@ public sealed class ScanPurchaseEndpointsTests
         var edition = await response.Content.ReadFromJsonAsync<BookEditionResponse>();
         Assert.NotNull(edition);
         Assert.False(edition!.IsProvisional);
+    }
+
+    [Fact]
+    public async Task Version_confirmation_checks_active_member_inside_the_serializable_transaction()
+    {
+        var interceptor = new ActiveMemberTransactionInterceptor();
+        await using var factory = await ApiFactory.CreateAsync(interceptor);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        await LoginAsync(client, "Edition Authorization Transaction Family", "Purchaser");
+
+        var session = await CreateSessionAsync(client, "Dune");
+        var candidate = Assert.Single(session.Candidates);
+        var purchaseResponse = await client.PostAsJsonAsync(
+            $"/api/family/current/scan-sessions/{session.ScanSessionId}/candidates/{candidate.Id}/purchase",
+            new ConfirmScanPurchaseRequest(
+                Guid.NewGuid(),
+                session.TargetMemberId!.Value,
+                DuplicateResolution: Librory.Application.Intake.DuplicateResolution.NewWork,
+                ManualTitle: "Dune"));
+        var purchase = await purchaseResponse.Content.ReadFromJsonAsync<ScanPurchaseResponse>();
+        Assert.NotNull(purchase);
+
+        interceptor.Clear();
+        var response = await client.PutAsJsonAsync(
+            $"/api/family/current/book-editions/{purchase!.BookEditionId}/version",
+            new UpdateBookEditionVersionRequest(null, "Paperback", 1965));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(IsolationLevel.Serializable, interceptor.ActiveMemberQueryIsolationLevel);
     }
 
     [Fact]
@@ -1417,6 +1447,43 @@ public sealed class ScanPurchaseEndpointsTests
             lock (_commands)
             {
                 _commands.Add(command.CommandText);
+            }
+        }
+    }
+
+    private sealed class ActiveMemberTransactionInterceptor : DbCommandInterceptor
+    {
+        public IsolationLevel? ActiveMemberQueryIsolationLevel { get; private set; }
+
+        public void Clear()
+        {
+            ActiveMemberQueryIsolationLevel = null;
+        }
+
+        public override InterceptionResult<DbDataReader> ReaderExecuting(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result)
+        {
+            Record(command);
+            return result;
+        }
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result,
+            CancellationToken cancellationToken = default)
+        {
+            Record(command);
+            return ValueTask.FromResult(result);
+        }
+
+        private void Record(DbCommand command)
+        {
+            if (command.CommandText.Contains("FROM librory.members", StringComparison.OrdinalIgnoreCase))
+            {
+                ActiveMemberQueryIsolationLevel = command.Transaction?.IsolationLevel;
             }
         }
     }

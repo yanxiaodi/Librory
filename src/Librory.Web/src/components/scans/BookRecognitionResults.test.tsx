@@ -1,7 +1,7 @@
 import * as React from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { BookRecognitionResults, shouldApplyMetadataSearchState } from './BookRecognitionResults'
 import type { BookRecognitionJobResponse } from '@/lib/bookRecognitionApi'
 import type { ScanCandidateResponse } from '@/lib/scansApi'
@@ -106,6 +106,10 @@ const pendingCandidate: ScanCandidateResponse = {
 
 const members = [{ memberId: 'member-1', displayName: 'Alice', role: 'Member', preferredLanguage: 0, isActive: true, hasAccount: true, hasRecommendationProfile: true, recommendationProfileVisibility: 0, canUseForFamilyRecommendations: true }]
 
+afterEach(() => {
+  vi.useRealTimers()
+})
+
 describe('BookRecognitionResults', () => {
   it('does not apply an older metadata search error to a newer request', () => {
     expect(shouldApplyMetadataSearchState(2, 1)).toBe(false)
@@ -126,6 +130,26 @@ describe('BookRecognitionResults', () => {
     expect(screen.getByText('Recognition rank: 940')).toBeVisible()
     expect(screen.getByText('Confirm version details')).toBeVisible()
     expect(screen.getByText(/Added copy copy-1/)).toBeVisible()
+  })
+
+  it('shows edition details and the provider link for metadata matches', () => {
+    const detailedMetadata = {
+      ...metadata,
+      thumbnailUrl: 'https://example.com/dune.jpg',
+      infoUrl: 'https://example.com/dune',
+    }
+    const detailedJob = {
+      ...pendingJob,
+      candidates: [{ ...pendingJob.candidates[0], metadataMatches: [detailedMetadata] }],
+    }
+
+    render(<BookRecognitionResults job={detailedJob} candidates={detailedJob.candidates} />)
+
+    expect(screen.getByText('Publisher: Ace')).toBeVisible()
+    expect(screen.getByText('ISBN-10: 0441013597')).toBeVisible()
+    expect(screen.getByText('ISBN-13: 9780441013593')).toBeVisible()
+    expect(screen.getByRole('img', { name: 'Cover of Dune' })).toHaveAttribute('src', detailedMetadata.thumbnailUrl)
+    expect(screen.getByRole('link', { name: 'Open metadata source for Dune' })).toHaveAttribute('href', detailedMetadata.infoUrl)
   })
 
   it('sends optional intake fields when buying a pending candidate', async () => {
@@ -165,6 +189,29 @@ describe('BookRecognitionResults', () => {
       shelfLocation: 'A-3',
       intakeNotes: 'Gift',
     })
+  })
+
+  it('keeps the initial purchase time stable while other intake fields change', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-18T00:00:00Z'))
+
+    render(
+      <BookRecognitionResults
+        job={pendingJob}
+        candidates={pendingJob.candidates}
+        scanSessionId="scan-1"
+        persistedCandidates={[pendingCandidate]}
+        members={members}
+        scanTargetMemberId="member-1"
+      />,
+    )
+
+    const purchaseTime = screen.getByLabelText(/purchase time/i) as HTMLInputElement
+    const initialValue = purchaseTime.value
+    vi.setSystemTime(new Date('2026-09-18T00:05:00Z'))
+    fireEvent.change(screen.getByLabelText(/store \(optional\)/i), { target: { value: 'Unity Books' } })
+
+    expect(purchaseTime.value).toBe(initialValue)
   })
 
   it('shows persisted duplicate warnings before the purchase request', () => {

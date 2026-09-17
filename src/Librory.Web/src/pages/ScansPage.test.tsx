@@ -320,7 +320,7 @@ describe('ScansPage', () => {
 
     expect(await screen.findByText(/recognition complete/i)).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Dune' })).toBeVisible()
-    expect(screen.getByText(/Frank Herbert/i, { selector: 'li' })).toBeVisible()
+    expect(screen.getByText(/Author: Frank Herbert/i)).toBeVisible()
   })
 
   it('lets the user remove a candidate and edit its search text', async () => {
