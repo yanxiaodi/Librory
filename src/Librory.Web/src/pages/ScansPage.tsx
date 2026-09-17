@@ -404,7 +404,12 @@ export function ScansPage() {
 
     void getLatestScanSession()
       .then(session => {
-        if (!session || !shouldApplyContinuation(cancelled, continuationGeneration, scanGenerationRef.current, activeJobIdRef.current)) return
+        if (!shouldApplyContinuation(cancelled, continuationGeneration, scanGenerationRef.current, activeJobIdRef.current)) return
+        if (!session) {
+          setUploadError('The latest scan session has expired or is no longer available.')
+          setState('error')
+          return
+        }
 
         const resumedJob: BookRecognitionJobResponse = {
           jobId: `session-${session.scanSessionId}`,

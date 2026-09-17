@@ -88,6 +88,47 @@ public sealed class ScanPurchaseEndpointsTests
     }
 
     [Fact]
+    public async Task Purchase_does_not_load_every_edition_in_the_family_catalog()
+    {
+        var interceptor = new RecordingDbCommandInterceptor();
+        await using var factory = await ApiFactory.CreateAsync(interceptor);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        var login = await LoginAsync(client, "Purchase Query Family", "Purchaser");
+        await using (var setupScope = factory.Services.CreateAsyncScope())
+        {
+            var db = setupScope.ServiceProvider.GetRequiredService<LibroryDbContext>();
+            var family = await db.Families
+                .Include(item => item.Members)
+                .SingleAsync(item => item.Name == "Purchase Query Family");
+            var work = BookWork.Create("Existing catalog work");
+            var edition = work.AddEdition("9780000000002", "Paperback", 2026);
+            work.AddEdition("9780000000003", "Hardcover", 2025);
+            family.AddBookCopy(edition, family.Members.Single(item => item.Id == login.MemberId));
+            db.BookWorks.Add(work);
+            await db.SaveChangesAsync();
+        }
+
+        var session = await CreateSessionAsync(client, "Dune");
+        var candidate = Assert.Single(session.Candidates);
+        interceptor.Clear();
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/family/current/scan-sessions/{session.ScanSessionId}/candidates/{candidate.Id}/purchase",
+            new ConfirmScanPurchaseRequest(
+                Guid.NewGuid(),
+                session.TargetMemberId!.Value,
+                DuplicateResolution: Librory.Application.Intake.DuplicateResolution.NewWork,
+                ManualTitle: "Dune"));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.DoesNotContain(
+            interceptor.Commands,
+            command => command.Contains("book_copies", StringComparison.OrdinalIgnoreCase)
+                && command.Contains("book_works", StringComparison.OrdinalIgnoreCase)
+                && command.Split("book_editions", StringSplitOptions.None).Length > 2);
+    }
+
+    [Fact]
     public async Task Purchase_rejects_reusing_a_request_id_for_another_candidate()
     {
         await using var factory = await ApiFactory.CreateAsync();
@@ -1325,6 +1366,57 @@ public sealed class ScanPurchaseEndpointsTests
                     Volatile.Write(ref _armed, 0);
                 }
                 throw new PostgresException("Serialization failure", "ERROR", "ERROR", "40001");
+            }
+        }
+    }
+
+    private sealed class RecordingDbCommandInterceptor : DbCommandInterceptor
+    {
+        private readonly List<string> _commands = [];
+
+        public IReadOnlyList<string> Commands
+        {
+            get
+            {
+                lock (_commands)
+                {
+                    return _commands.ToArray();
+                }
+            }
+        }
+
+        public void Clear()
+        {
+            lock (_commands)
+            {
+                _commands.Clear();
+            }
+        }
+
+        public override InterceptionResult<DbDataReader> ReaderExecuting(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result)
+        {
+            Record(command);
+            return result;
+        }
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result,
+            CancellationToken cancellationToken = default)
+        {
+            Record(command);
+            return ValueTask.FromResult(result);
+        }
+
+        private void Record(DbCommand command)
+        {
+            lock (_commands)
+            {
+                _commands.Add(command.CommandText);
             }
         }
     }

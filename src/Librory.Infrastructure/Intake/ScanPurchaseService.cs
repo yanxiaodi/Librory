@@ -118,6 +118,7 @@ public sealed class ScanPurchaseService : IScanPurchaseService
                 throw new InvalidOperationException("The purchased book copy could not be restored.");
             }
 
+            await LoadWorkEditionsAsync(db, previousCopy.BookEdition.BookWorkId, cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return new ScanPurchaseResult(
                 previousCopy,
@@ -163,6 +164,7 @@ public sealed class ScanPurchaseService : IScanPurchaseService
                 "This purchase request id has already been used for another scan candidate.",
                 exception);
         }
+        await LoadWorkEditionsAsync(db, edition.BookWorkId, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
         return new ScanPurchaseResult(intake.Copy, edition.BookWork, edition, intake.DuplicateDetection, false);
@@ -324,8 +326,17 @@ public sealed class ScanPurchaseService : IScanPurchaseService
             .Include(family => family.BookCopies)
                 .ThenInclude(copy => copy.BookEdition)
                     .ThenInclude(edition => edition.BookWork)
-                        .ThenInclude(work => work.Editions)
             .SingleOrDefaultAsync(family => family.Id == familyId, cancellationToken);
+    }
+
+    private static Task LoadWorkEditionsAsync(
+        LibroryDbContext db,
+        Guid bookWorkId,
+        CancellationToken cancellationToken)
+    {
+        return db.BookEditions
+            .Where(edition => edition.BookWorkId == bookWorkId)
+            .LoadAsync(cancellationToken);
     }
 
     private static void ValidateRequest(ScanPurchaseRequest request)

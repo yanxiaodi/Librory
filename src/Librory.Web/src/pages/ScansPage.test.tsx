@@ -640,4 +640,25 @@ describe('ScansPage', () => {
     expect(await screen.findByText(/^recognition failed$/i)).toBeVisible()
     expect(screen.getByText(/latest scan session lookup failed/i)).toBeVisible()
   })
+
+  it('surfaces an expired continuation session instead of staying idle', async () => {
+    window.history.pushState({}, '', '?continue=1')
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === '/api/family/current/members') {
+        return new Response(JSON.stringify([]), { status: 200 })
+      }
+
+      if (String(input) === '/api/family/current/scan-sessions/latest') {
+        return new Response(null, { status: 404 })
+      }
+
+      throw new Error(`Unexpected fetch request: ${String(input)}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<ScansPage />)
+
+    expect(await screen.findByText(/^recognition failed$/i)).toBeVisible()
+    expect(screen.getByText(/latest scan session has expired or is no longer available/i)).toBeVisible()
+  })
 })
