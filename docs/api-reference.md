@@ -422,6 +422,36 @@ Returns:
 - `401 Unauthorized` when the caller is not an active family member.
 - `404 Not Found` when the session, candidate, owner, or selected canonical resource is outside the current family scope.
 
+### `PUT /api/family/current/book-editions/{bookEditionId}/version`
+
+Confirms the version metadata for a provisional edition created by a purchase.
+
+Request body:
+
+```json
+{
+  "isbn": "9780441013593",
+  "format": "Paperback",
+  "publicationYear": 1965
+}
+```
+
+Behavior:
+
+- Requires an authenticated active member of the current family.
+- The edition must still be provisional and linked to a purchased scan candidate owned by the current family.
+- At least one version field is required when the provisional edition has no existing version data.
+- `isbn` is limited to 32 characters, `format` to 64 characters, and `publicationYear` must be between 1000 and 9999.
+- A serializable transaction protects the one-time provisional-to-confirmed update.
+
+Returns:
+
+- `200 OK` with the updated edition payload and `isProvisional: false`.
+- `400 Bad Request` when the request or version fields are invalid.
+- `401 Unauthorized` when the caller is not an active family member.
+- `404 Not Found` when the edition is missing, already confirmed, outside the current family's purchased scan flow, or shared with another family.
+- `409 Conflict` when concurrent version confirmation loses a serialization or concurrency race.
+
 ### `POST /api/family/current/scan-sessions/{scanSessionId}/candidates/{candidateId}/resolve`
 
 Promotes a scan candidate into canonical book catalog data.

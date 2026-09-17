@@ -135,6 +135,12 @@ function toDetectedLanguage(language: string | null) {
   return undefined
 }
 
+function recognitionConfidenceLabel(rank: number): string {
+  if (rank >= 800) return 'High'
+  if (rank >= 600) return 'Medium'
+  return 'Low'
+}
+
 function languageLabel(language: number | null) {
   if (language === 0) return 'English'
   if (language === 1) return 'Chinese'
@@ -321,7 +327,7 @@ export function ScansPage() {
         targetMemberId: activeTargetMemberIdRef.current,
         candidates: candidatesToPersist.map(candidate => ({
           displayTitle: candidate.displayTitle,
-          confidenceLabel: candidate.evidenceText,
+          confidenceLabel: recognitionConfidenceLabel(candidate.rank),
           author: candidate.metadataMatches[0]?.authors[0],
           detectedLanguage: toDetectedLanguage(candidate.metadataMatches[0]?.language ?? null),
           recognitionEvidence: candidate.evidenceText,
@@ -520,7 +526,7 @@ export function ScansPage() {
     try {
       const updated = await updateScanCandidate(scanSession.scanSessionId, persisted.id, {
         displayTitle: currentCandidate.displayTitle,
-        confidenceLabel: currentCandidate.evidenceText,
+        confidenceLabel: recognitionConfidenceLabel(currentCandidate.rank),
         author: matches[0]?.authors[0],
         recognitionRank: currentCandidate.rank,
         recognitionEvidence: currentCandidate.evidenceText,

@@ -131,6 +131,7 @@ describe('ScansPage', () => {
 
   it('persists the selected target and renders the returned recommendation context', async () => {
     const user = userEvent.setup()
+    const longEvidence = 'E'.repeat(4000)
     let sessionPayload: Record<string, unknown> | undefined
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
@@ -144,7 +145,7 @@ describe('ScansPage', () => {
         return new Response(JSON.stringify({
           jobId: 'job-2', familyId: 'family-1', status: 2,
           sourcePhotoPath: '/tmp/Librory/scan-uploads/shelf.jpg', candidates: [{
-            candidateId: 'candidate-1', displayTitle: 'Dune', evidenceText: 'DUNE', rank: 940,
+            candidateId: 'candidate-1', displayTitle: 'Dune', evidenceText: longEvidence, rank: 940,
             metadataMatches: [{ source: 'google-books', sourceId: 'source-1', title: 'Dune', subtitle: null, authors: ['Frank Herbert'], publisher: null, publishedDate: null, language: 'en', description: null, isbn10: null, isbn13: null, thumbnailUrl: null, infoUrl: null }],
           }], warnings: [], failureMessage: null, createdAt: '2026-08-07T00:00:00Z', updatedAt: '2026-08-07T00:00:00Z',
         }), { status: 202 })
@@ -180,7 +181,7 @@ describe('ScansPage', () => {
     })
     expect(sessionPayload).toMatchObject({
       targetMemberId: 'member-2',
-      candidates: [{ displayTitle: 'Dune', confidenceLabel: 'DUNE', author: 'Frank Herbert', detectedLanguage: 0 }],
+      candidates: [{ displayTitle: 'Dune', confidenceLabel: 'High', author: 'Frank Herbert', detectedLanguage: 0, recognitionEvidence: longEvidence }],
     })
     expect((sessionPayload?.candidates as Array<Record<string, unknown>>)[0]).not.toHaveProperty('recommendationScore')
   })
@@ -442,6 +443,7 @@ describe('ScansPage', () => {
 
   it('keeps metadata correction failures out of the scan-session retry flow', async () => {
     const user = userEvent.setup()
+    const longEvidence = 'E'.repeat(4000)
     let correctionAttempts = 0
     const metadata = {
       source: 'google-books', sourceId: 'source-1', title: 'Dune', subtitle: null, authors: ['Frank Herbert'],
@@ -466,7 +468,7 @@ describe('ScansPage', () => {
       if (url === '/api/book-recognition-jobs' && init?.method === 'POST') {
         return new Response(JSON.stringify({
           jobId: 'job-1', familyId: 'family-1', status: 2, sourcePhotoPath: '/tmp/Librory/scan-uploads/shelf.jpg',
-          candidates: [{ candidateId: 'candidate-1', displayTitle: 'Dune', evidenceText: 'DUNE', rank: 940, metadataMatches: [] }],
+           candidates: [{ candidateId: 'candidate-1', displayTitle: 'Dune', evidenceText: longEvidence, rank: 940, metadataMatches: [] }],
           warnings: [], failureMessage: null, createdAt: '2026-08-03T00:00:00Z', updatedAt: '2026-08-03T00:00:00Z',
         }), { status: 202 })
       }
@@ -496,6 +498,14 @@ describe('ScansPage', () => {
     await user.click(screen.getByRole('button', { name: /re-search metadata/i }))
     await waitFor(() => expect(correctionAttempts).toBe(2))
     expect(screen.queryByText(/could not be saved/i)).not.toBeInTheDocument()
+
+    const correctionCall = fetchMock.mock.calls.find(([input, init]) =>
+      String(input).includes('/api/family/current/scan-sessions/scan-1/candidates/candidate-1') && init?.method === 'PUT')
+    expect(correctionCall).toBeDefined()
+    expect(JSON.parse(correctionCall![1]?.body as string)).toMatchObject({
+      confidenceLabel: 'High',
+      recognitionEvidence: longEvidence,
+    })
   })
 
   it('shows an error when the recognition upload fails', async () => {
