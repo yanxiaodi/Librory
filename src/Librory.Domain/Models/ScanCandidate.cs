@@ -90,6 +90,15 @@ public sealed class ScanCandidate
         }
     }
 
+    public void ApplyPurchaseMetadata(string displayTitle, string? author)
+    {
+        EnsurePending();
+        ArgumentException.ThrowIfNullOrWhiteSpace(displayTitle);
+
+        DisplayTitle = displayTitle.Trim();
+        Author = Normalize(author);
+    }
+
     public void MarkPurchased(Guid bookCopyId, Guid purchaseRequestId, DateTimeOffset purchasedAt)
     {
         EnsurePending();

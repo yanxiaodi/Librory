@@ -38,6 +38,17 @@ function localDateTimeValue(date = new Date()): string {
   return local.toISOString().slice(0, 16)
 }
 
+function isSafeMetadataUrl(value: string | null): value is string {
+  if (!value) return false
+
+  try {
+    const url = new URL(value)
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 export function BookRecognitionResults({
   job,
   candidates,
@@ -362,7 +373,7 @@ export function BookRecognitionResults({
                         {candidate.metadataMatches.map(metadata => (
                           <li key={`${candidate.candidateId}-${metadata.source}-${metadata.sourceId}`} className="text-sm text-[var(--text-secondary)]">
                             <div className="flex gap-3">
-                              {metadata.thumbnailUrl ? (
+                              {isSafeMetadataUrl(metadata.thumbnailUrl) ? (
                                 <img
                                   src={metadata.thumbnailUrl}
                                   alt={`Cover of ${metadata.title}`}
@@ -377,7 +388,7 @@ export function BookRecognitionResults({
                                 {metadata.publishedDate ? <span>Published: {metadata.publishedDate}</span> : null}
                                 {metadata.isbn10 ? <span>ISBN-10: {metadata.isbn10}</span> : null}
                                 {metadata.isbn13 ? <span>ISBN-13: {metadata.isbn13}</span> : null}
-                                {metadata.infoUrl ? (
+                                {isSafeMetadataUrl(metadata.infoUrl) ? (
                                   <a
                                     href={metadata.infoUrl}
                                     target="_blank"

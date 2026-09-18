@@ -152,6 +152,23 @@ describe('BookRecognitionResults', () => {
     expect(screen.getByRole('link', { name: 'Open metadata source for Dune' })).toHaveAttribute('href', detailedMetadata.infoUrl)
   })
 
+  it('does not render metadata URLs with unsafe schemes', () => {
+    const unsafeMetadata = {
+      ...metadata,
+      thumbnailUrl: 'javascript:alert(1)',
+      infoUrl: 'javascript:alert(2)',
+    }
+    const unsafeJob = {
+      ...pendingJob,
+      candidates: [{ ...pendingJob.candidates[0], metadataMatches: [unsafeMetadata] }],
+    }
+
+    render(<BookRecognitionResults job={unsafeJob} candidates={unsafeJob.candidates} />)
+
+    expect(screen.queryByRole('img', { name: 'Cover of Dune' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Open metadata source for Dune' })).not.toBeInTheDocument()
+  })
+
   it('sends optional intake fields when buying a pending candidate', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {

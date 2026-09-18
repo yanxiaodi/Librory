@@ -89,6 +89,125 @@ public sealed class ScanPurchaseEndpointsTests
     }
 
     [Fact]
+    public async Task Purchase_persists_the_selected_metadata_for_session_reload()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        await LoginAsync(client, "Purchase Selected Metadata Snapshot Family", "Purchaser");
+
+        var createResponse = await client.PostAsJsonAsync(
+            "/api/family/current/scan-sessions",
+            new CreateScanSessionRequest(
+                "shelf.jpg",
+                Candidates:
+                [
+                    new CreateScanCandidateRequest(
+                        "Dune",
+                        "High",
+                        MetadataMatches:
+                        [
+                            new BookMetadataImportCandidateRequest(
+                                "GoogleBooks",
+                                "volume-1",
+                                "Dune",
+                                null,
+                                ["Frank Herbert"],
+                                null,
+                                "1965",
+                                "en",
+                                null,
+                                null,
+                                null,
+                                null,
+                                null),
+                            new BookMetadataImportCandidateRequest(
+                                "OpenLibrary",
+                                "work-2",
+                                "Dune Messiah",
+                                null,
+                                ["Frank Herbert"],
+                                null,
+                                "1969",
+                                "en",
+                                null,
+                                null,
+                                null,
+                                null,
+                                null),
+                        ])]));
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+        var session = await createResponse.Content.ReadFromJsonAsync<ScanSessionResponse>();
+        Assert.NotNull(session);
+        var candidate = Assert.Single(session!.Candidates);
+
+        var selectedMetadata = new BookMetadataImportCandidateRequest(
+            "OpenLibrary",
+            "work-2",
+            "Dune Messiah",
+            null,
+            ["Frank Herbert"],
+            null,
+            "1969",
+            "en",
+            null,
+            null,
+            null,
+            null,
+            null);
+        var purchaseResponse = await client.PostAsJsonAsync(
+            $"/api/family/current/scan-sessions/{session.ScanSessionId}/candidates/{candidate.Id}/purchase",
+            new ConfirmScanPurchaseRequest(
+                Guid.NewGuid(),
+                session.TargetMemberId!.Value,
+                SelectedMetadata: selectedMetadata,
+                DuplicateResolution: Librory.Application.Intake.DuplicateResolution.NewWork));
+
+        Assert.Equal(HttpStatusCode.Created, purchaseResponse.StatusCode);
+
+        var reload = await client.GetAsync($"/api/family/current/scan-sessions/{session.ScanSessionId}");
+        Assert.Equal(HttpStatusCode.OK, reload.StatusCode);
+        var reloaded = await reload.Content.ReadFromJsonAsync<ScanSessionResponse>();
+        Assert.NotNull(reloaded);
+        var reloadedCandidate = Assert.Single(reloaded!.Candidates);
+        Assert.Equal("Dune Messiah", reloadedCandidate.DisplayTitle);
+        Assert.Equal("Frank Herbert", reloadedCandidate.Author);
+        var persistedMetadata = Assert.Single(reloadedCandidate.MetadataSnapshot!.Matches);
+        Assert.Equal("work-2", persistedMetadata.SourceId);
+        Assert.Equal("Dune Messiah", persistedMetadata.Title);
+    }
+
+    [Fact]
+    public async Task Purchase_persists_manual_title_and_author_for_session_reload()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        await LoginAsync(client, "Purchase Manual Snapshot Family", "Purchaser");
+
+        var session = await CreateSessionAsync(client, "Dune");
+        var candidate = Assert.Single(session.Candidates);
+        var purchaseResponse = await client.PostAsJsonAsync(
+            $"/api/family/current/scan-sessions/{session.ScanSessionId}/candidates/{candidate.Id}/purchase",
+            new ConfirmScanPurchaseRequest(
+                Guid.NewGuid(),
+                session.TargetMemberId!.Value,
+                DuplicateResolution: Librory.Application.Intake.DuplicateResolution.NewWork,
+                ManualTitle: "Dune Messiah",
+                ManualAuthor: "Frank Herbert"));
+
+        Assert.Equal(HttpStatusCode.Created, purchaseResponse.StatusCode);
+
+        var reload = await client.GetAsync($"/api/family/current/scan-sessions/{session.ScanSessionId}");
+        Assert.Equal(HttpStatusCode.OK, reload.StatusCode);
+        var reloaded = await reload.Content.ReadFromJsonAsync<ScanSessionResponse>();
+        Assert.NotNull(reloaded);
+        var reloadedCandidate = Assert.Single(reloaded!.Candidates);
+        Assert.Equal("Dune Messiah", reloadedCandidate.DisplayTitle);
+        Assert.Equal("Frank Herbert", reloadedCandidate.Author);
+        Assert.NotNull(reloadedCandidate.MetadataSnapshot);
+        Assert.Empty(reloadedCandidate.MetadataSnapshot!.Matches);
+    }
+
+    [Fact]
     public async Task Purchase_does_not_load_every_edition_in_the_family_catalog()
     {
         var interceptor = new RecordingDbCommandInterceptor();
@@ -286,6 +405,44 @@ public sealed class ScanPurchaseEndpointsTests
                                 null,
                                 null,
                                 null),
+                        ]),
+                ]));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Scan_session_rejects_metadata_urls_with_non_http_schemes()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        await LoginAsync(client, "Scan Metadata Url Family", "Owner");
+
+        var response = await client.PostAsJsonAsync(
+            "/api/family/current/scan-sessions",
+            new CreateScanSessionRequest(
+                "shelf.jpg",
+                Candidates:
+                [
+                    new CreateScanCandidateRequest(
+                        "Dune",
+                        "High",
+                        MetadataMatches:
+                        [
+                            new BookMetadataImportCandidateRequest(
+                                "GoogleBooks",
+                                "volume-1",
+                                "Dune",
+                                null,
+                                ["Frank Herbert"],
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                "javascript:alert(1)",
+                                "javascript:alert(2)"),
                         ]),
                 ]));
 

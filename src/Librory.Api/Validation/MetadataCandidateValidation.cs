@@ -41,6 +41,8 @@ internal static class MetadataCandidateValidation
         AddMaxLength(errors, $"{keyPrefix}.isbn13", candidate.Isbn13, MaxIsbnLength);
         AddMaxLength(errors, $"{keyPrefix}.thumbnailUrl", candidate.ThumbnailUrl, MaxUrlLength);
         AddMaxLength(errors, $"{keyPrefix}.infoUrl", candidate.InfoUrl, MaxUrlLength);
+        AddHttpUrlScheme(errors, $"{keyPrefix}.thumbnailUrl", candidate.ThumbnailUrl);
+        AddHttpUrlScheme(errors, $"{keyPrefix}.infoUrl", candidate.InfoUrl);
 
         if (candidate.Authors is { Count: > MaxAuthorCount })
         {
@@ -103,6 +105,24 @@ internal static class MetadataCandidateValidation
         if (value is not null && value.Trim().Length > maxLength)
         {
             Add(errors, key, $"Value must be {maxLength} characters or fewer.");
+        }
+    }
+
+    private static void AddHttpUrlScheme(
+        IDictionary<string, List<string>> errors,
+        string key,
+        string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
+        if (!Uri.TryCreate(value.Trim(), UriKind.Absolute, out var uri)
+            || (!string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)))
+        {
+            Add(errors, key, "URL must use the http or https scheme.");
         }
     }
 

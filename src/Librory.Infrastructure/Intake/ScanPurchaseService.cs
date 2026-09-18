@@ -2,6 +2,7 @@ using System.Data;
 using Librory.Application.Families;
 using Librory.Application.Intake;
 using Librory.Application.Metadata;
+using Librory.Application.Scanning;
 using Librory.Domain.Models;
 using Librory.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -134,7 +135,9 @@ public sealed class ScanPurchaseService : IScanPurchaseService
             throw new KeyNotFoundException("Owner member not found in the current family.");
         }
 
-        var edition = await ResolveEditionAsync(db, importer, request, cancellationToken);
+        var purchaseMetadata = request.SelectedMetadata
+            ?? (string.IsNullOrWhiteSpace(request.ManualTitle) ? null : CreateManualMetadata(request));
+        var edition = await ResolveEditionAsync(db, importer, request, purchaseMetadata, cancellationToken);
         var duplicateDetection = family.DetectPotentialDuplicate(edition);
         ValidateSelectedResolution(request, duplicateDetection);
         var duplicateStatus = ResolveDuplicateStatus(request, duplicateDetection);
@@ -152,6 +155,18 @@ public sealed class ScanPurchaseService : IScanPurchaseService
                 purchasedAt,
                 request.IntakeNotes,
                 purchaser));
+
+        if (purchaseMetadata is not null)
+        {
+            var existingSnapshot = ScanCandidateMetadataSnapshotSerializer.Deserialize(candidate.MetadataMatchesJson);
+            IReadOnlyList<BookMetadataCandidate> persistedMatches = request.SelectedMetadata is null
+                ? []
+                : [purchaseMetadata];
+            candidate.ApplyPurchaseMetadata(purchaseMetadata.Title, purchaseMetadata.Authors.FirstOrDefault());
+            candidate.ReplaceMetadataMatches(
+                ScanCandidateMetadataSnapshotSerializer.Serialize(persistedMatches, existingSnapshot?.EvidenceText),
+                resetReviewState: false);
+        }
 
         candidate.MarkPurchased(intake.Copy.Id, request.PurchaseRequestId, purchasedAt);
         try
@@ -174,6 +189,7 @@ public sealed class ScanPurchaseService : IScanPurchaseService
         LibroryDbContext db,
         IBookMetadataImportService importer,
         ScanPurchaseRequest request,
+        BookMetadataCandidate? purchaseMetadata,
         CancellationToken cancellationToken)
     {
         ValidateResolutionShape(request);
@@ -198,7 +214,7 @@ public sealed class ScanPurchaseService : IScanPurchaseService
                 throw new KeyNotFoundException("Selected book work not found.");
             }
 
-            var targetMetadata = request.SelectedMetadata ?? CreateManualMetadata(request);
+            var targetMetadata = purchaseMetadata ?? CreateManualMetadata(request);
             var targetImportResult = await importer.ImportAsync(
                 targetMetadata,
                 cancellationToken,
@@ -213,7 +229,7 @@ public sealed class ScanPurchaseService : IScanPurchaseService
                 ?? throw new InvalidOperationException("Metadata import did not create a book edition.");
         }
 
-        var metadata = request.SelectedMetadata ?? CreateManualMetadata(request);
+        var metadata = purchaseMetadata ?? CreateManualMetadata(request);
         var importResult = await importer.ImportAsync(
             metadata,
             cancellationToken,
