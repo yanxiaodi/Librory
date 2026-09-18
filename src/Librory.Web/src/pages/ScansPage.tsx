@@ -13,10 +13,88 @@ import {
   isRecognitionJobComplete,
   type BookRecognitionJobResponse,
 } from '@/lib/bookRecognitionApi'
-import { createScanSession, type ScanSessionResponse } from '@/lib/scansApi'
+import { createScanSession, getLatestScanSession, updateScanCandidate, type ScanPurchaseResponse, type ScanSessionResponse } from '@/lib/scansApi'
 
 type ScanState = 'idle' | 'compressing' | 'uploading' | 'polling' | 'ready' | 'error'
 type PersistenceState = 'idle' | 'saving' | 'saved' | 'error'
+
+export function mergeScanSessionWithCurrentPurchases(
+  current: ScanSessionResponse,
+  updated: ScanSessionResponse,
+): ScanSessionResponse {
+  const currentCandidates = new Map(current.candidates.map(candidate => [candidate.id, candidate]))
+
+  return {
+    ...updated,
+    candidates: updated.candidates.map(candidate => {
+      const previous = currentCandidates.get(candidate.id)
+      if (!previous || previous.purchaseStatus !== 1 || candidate.purchaseStatus === 1) {
+        return candidate
+      }
+
+      return {
+        ...candidate,
+        purchaseStatus: previous.purchaseStatus,
+        purchasedBookCopyId: previous.purchasedBookCopyId,
+        purchaseRequestId: previous.purchaseRequestId,
+        purchasedAt: previous.purchasedAt,
+        purchase: previous.purchase ?? candidate.purchase,
+      }
+    }),
+  }
+}
+
+export function mergeScanSessionCandidate(
+  current: ScanSessionResponse,
+  expectedSessionId: string,
+  updated: ScanSessionResponse,
+  candidateId: string,
+): ScanSessionResponse {
+  if (current.scanSessionId !== expectedSessionId) return current
+
+  const updatedCandidate = updated.candidates.find(candidate => candidate.id === candidateId)
+  if (!updatedCandidate) return current
+
+  const currentCandidate = current.candidates.find(candidate => candidate.id === candidateId)
+  const mergedCandidate = currentCandidate?.purchaseStatus === 1 && updatedCandidate.purchaseStatus !== 1
+    ? {
+        ...updatedCandidate,
+        purchaseStatus: currentCandidate.purchaseStatus,
+        purchasedBookCopyId: currentCandidate.purchasedBookCopyId,
+        purchaseRequestId: currentCandidate.purchaseRequestId,
+        purchasedAt: currentCandidate.purchasedAt,
+        purchase: currentCandidate.purchase ?? updatedCandidate.purchase,
+      }
+    : updatedCandidate
+
+  return {
+    ...current,
+    candidates: current.candidates.map(candidate => candidate.id === candidateId ? mergedCandidate : candidate),
+  }
+}
+
+export function mergeScanSessionIfCurrent(
+  current: ScanSessionResponse,
+  expectedSessionId: string,
+  updated: ScanSessionResponse,
+): ScanSessionResponse {
+  return current.scanSessionId === expectedSessionId
+    ? mergeScanSessionWithCurrentPurchases(current, updated)
+    : current
+}
+
+export function shouldApplyContinuation(
+  cancelled: boolean,
+  requestGeneration: number,
+  currentGeneration: number,
+  activeJobId: string | null,
+): boolean {
+  return !cancelled && requestGeneration === currentGeneration && !activeJobId
+}
+
+export function shouldApplyScanGeneration(requestGeneration: number, currentGeneration: number): boolean {
+  return requestGeneration === currentGeneration
+}
 
 const stateCopy: Record<ScanState, { title: string; description: string; tone: string }> = {
   idle: {
@@ -55,6 +133,12 @@ function toDetectedLanguage(language: string | null) {
   if (language?.toLowerCase() === 'en') return 0
   if (language?.toLowerCase() === 'zh') return 1
   return undefined
+}
+
+function recognitionConfidenceLabel(rank: number): string {
+  if (rank >= 800) return 'High'
+  if (rank >= 600) return 'Medium'
+  return 'Low'
 }
 
 function languageLabel(language: number | null) {
@@ -179,6 +263,7 @@ export function ScansPage() {
   const [state, setState] = React.useState<ScanState>('idle')
   const [fileName, setFileName] = React.useState<string | null>(null)
   const [job, setJob] = React.useState<BookRecognitionJobResponse | null>(null)
+  const [allMembers, setAllMembers] = React.useState<FamilyMember[]>([])
   const [members, setMembers] = React.useState<FamilyMember[]>([])
   const [selectedMemberId, setSelectedMemberId] = React.useState(family?.memberId ?? '')
   const [memberError, setMemberError] = React.useState<string | null>(null)
@@ -192,28 +277,31 @@ export function ScansPage() {
   const pollTimerRef = React.useRef<number | null>(null)
   const activeJobIdRef = React.useRef<string | null>(null)
   const activeTargetMemberIdRef = React.useRef<string | undefined>(undefined)
+  const scanGenerationRef = React.useRef(0)
 
   const currentMemberId = family?.memberId
+  const isAdmin = user?.role?.toLowerCase() === 'admin'
 
   React.useEffect(() => {
     void listMembers()
       .then(result => {
+        setAllMembers(result)
         const eligible = result.filter(member =>
-          member.memberId === currentMemberId || (member.isActive && member.canUseForFamilyRecommendations === true),
+          member.isActive && (member.memberId === currentMemberId || isAdmin || member.canUseForFamilyRecommendations === true),
         )
         setMembers(eligible)
         setSelectedMemberId(previous => {
           if (eligible.some(member => member.memberId === previous)) return previous
           if (currentMemberId && eligible.some(member => member.memberId === currentMemberId)) return currentMemberId
-          return eligible[0]?.memberId ?? currentMemberId ?? ''
+          return eligible[0]?.memberId ?? ''
         })
         setMemberError(null)
       })
       .catch(() => {
         setMemberError('Family members could not be loaded. Scanning will use the current member.')
-        if (currentMemberId) setSelectedMemberId(currentMemberId)
+        setSelectedMemberId('')
       })
-  }, [currentMemberId])
+  }, [currentMemberId, isAdmin])
 
   const clearPollTimer = React.useCallback(() => {
     if (pollTimerRef.current !== null) {
@@ -222,27 +310,37 @@ export function ScansPage() {
     }
   }, [])
 
-  const persistScanSession = React.useCallback(async (completedJob: BookRecognitionJobResponse) => {
+  const persistScanSession = React.useCallback(async (
+    completedJob: BookRecognitionJobResponse,
+    initialCandidates?: BookRecognitionJobResponse['candidates'],
+  ) => {
     if (activeJobIdRef.current !== completedJob.jobId) return
 
     setPersistenceState('saving')
     setPersistenceError(null)
 
     try {
-      const candidatesToPersist = reviewedCandidatesInitialized ? reviewedCandidates : completedJob.candidates
+      const candidatesToPersist = initialCandidates
+        ?? (reviewedCandidatesInitialized ? reviewedCandidates : completedJob.candidates)
       const response = await createScanSession({
         shelfPhotoPath: completedJob.sourcePhotoPath,
         targetMemberId: activeTargetMemberIdRef.current,
         candidates: candidatesToPersist.map(candidate => ({
           displayTitle: candidate.displayTitle,
-          confidenceLabel: candidate.evidenceText,
+          confidenceLabel: recognitionConfidenceLabel(candidate.rank),
           author: candidate.metadataMatches[0]?.authors[0],
-          recommendationScore: Math.min(Math.max(candidate.rank / 1000, 0), 1),
           detectedLanguage: toDetectedLanguage(candidate.metadataMatches[0]?.language ?? null),
+          recognitionEvidence: candidate.evidenceText,
+          recognitionRank: candidate.rank,
+          metadataMatches: candidate.metadataMatches,
         })),
       })
       if (activeJobIdRef.current !== completedJob.jobId) return
       setScanSession(response)
+      setReviewedCandidates(current => current.map((candidate, index) => {
+        const persisted = response.candidates[index]
+        return persisted ? { ...candidate, candidateId: persisted.id } : candidate
+      }))
       setPersistenceState('saved')
     } catch {
       if (activeJobIdRef.current !== completedJob.jobId) return
@@ -266,7 +364,7 @@ export function ScansPage() {
         setReviewedCandidatesInitialized(true)
         clearPollTimer()
         writePendingJob(null)
-        if (current.status === 2) void persistScanSession(current)
+        if (current.status === 2) void persistScanSession(current, current.candidates)
         return
       }
 
@@ -298,6 +396,55 @@ export function ScansPage() {
     // Resume once on mount only; schedulePoll itself keeps polling after this.
   }, [])
 
+  React.useEffect(() => {
+    if (!window.location.search.includes('continue=1')) return
+
+    let cancelled = false
+    const continuationGeneration = scanGenerationRef.current
+
+    void getLatestScanSession()
+      .then(session => {
+        if (!shouldApplyContinuation(cancelled, continuationGeneration, scanGenerationRef.current, activeJobIdRef.current)) return
+        if (!session) {
+          setUploadError('The latest scan session has expired or is no longer available.')
+          setState('error')
+          return
+        }
+
+        const resumedJob: BookRecognitionJobResponse = {
+          jobId: `session-${session.scanSessionId}`,
+          familyId: session.familyId,
+          status: 2,
+          sourcePhotoPath: session.shelfPhotoPath,
+          candidates: session.candidates.map(candidate => ({
+            candidateId: candidate.id,
+            displayTitle: candidate.displayTitle,
+            evidenceText: candidate.metadataSnapshot?.evidenceText ?? candidate.confidenceLabel,
+            rank: candidate.recognitionRank,
+            metadataMatches: candidate.metadataSnapshot?.matches ?? [],
+          })),
+          warnings: [],
+          failureMessage: null,
+          createdAt: session.expiresAt,
+          updatedAt: session.expiresAt,
+        }
+        setScanSession(session)
+        setJob(resumedJob)
+        setReviewedCandidates(resumedJob.candidates)
+        setReviewedCandidatesInitialized(true)
+        setState('ready')
+      })
+      .catch(error => {
+        if (cancelled) return
+        setUploadError(error instanceof Error ? error.message : 'The latest scan could not be loaded.')
+        setState('error')
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     event.target.value = ''
@@ -315,6 +462,8 @@ export function ScansPage() {
   }
 
   async function processSelectedFile(file: File) {
+    const generation = scanGenerationRef.current + 1
+    scanGenerationRef.current = generation
     setFileName(file.name)
     setJob(null)
     setReviewedCandidates([])
@@ -325,16 +474,24 @@ export function ScansPage() {
     activeJobIdRef.current = null
     activeTargetMemberIdRef.current = selectedMemberId || undefined
     writePendingJob(null)
+    clearPollTimer()
     setState('compressing')
 
     // Best-effort: keep the screen (and tab) awake while compressing/uploading so
     // mobile OSes are less likely to suspend or discard the tab mid-transfer.
-    const wakeLock = await requestWakeLock()
+    let wakeLock: WakeLockSentinel | null = null
 
     try {
+      wakeLock = await requestWakeLock()
+      if (!shouldApplyScanGeneration(generation, scanGenerationRef.current)) return
+
       const uploadFile = await compressImageToJpeg(file)
+      if (!shouldApplyScanGeneration(generation, scanGenerationRef.current)) return
+
       setState('uploading')
       const response = await createBookRecognitionJob(uploadFile)
+      if (!shouldApplyScanGeneration(generation, scanGenerationRef.current)) return
+
       setJob(response)
       activeJobIdRef.current = response.jobId
 
@@ -342,15 +499,17 @@ export function ScansPage() {
         setState(response.status === 3 ? 'error' : 'ready')
         setReviewedCandidates(response.candidates)
         setReviewedCandidatesInitialized(true)
-        if (response.status === 2) void persistScanSession(response)
+        if (response.status === 2) void persistScanSession(response, response.candidates)
         return
       }
 
+      if (!shouldApplyScanGeneration(generation, scanGenerationRef.current)) return
       writePendingJob({ jobId: response.jobId, targetMemberId: activeTargetMemberIdRef.current })
       setState('polling')
       clearPollTimer()
       void schedulePoll(response.jobId)
     } catch (error) {
+      if (!shouldApplyScanGeneration(generation, scanGenerationRef.current)) return
       setUploadError(error instanceof Error ? error.message : 'Book recognition upload failed.')
       setState('error')
     } finally {
@@ -361,6 +520,45 @@ export function ScansPage() {
   const retryPersistence = () => {
     if (job?.status === 2) void persistScanSession(job)
   }
+
+  const handleMetadataMatchesChange = React.useCallback(async (recognitionCandidateId: string, matches: BookRecognitionJobResponse['candidates'][number]['metadataMatches']) => {
+    if (!scanSession) throw new Error('The scan session is not ready to save metadata.')
+    const sessionId = scanSession.scanSessionId
+    const persisted = scanSession.candidates.find(candidate => candidate.id === recognitionCandidateId)
+    const currentCandidate = reviewedCandidates.find(candidate => candidate.candidateId === recognitionCandidateId)
+    if (!persisted || !currentCandidate) throw new Error('The scan candidate could not be found.')
+
+    try {
+      const updated = await updateScanCandidate(scanSession.scanSessionId, persisted.id, {
+        displayTitle: currentCandidate.displayTitle,
+        confidenceLabel: recognitionConfidenceLabel(currentCandidate.rank),
+        author: matches[0]?.authors[0],
+        recognitionRank: currentCandidate.rank,
+        recognitionEvidence: currentCandidate.evidenceText,
+        metadataMatches: matches,
+      })
+      setScanSession(current => current ? mergeScanSessionCandidate(current, sessionId, updated, persisted.id) : current)
+    } catch {
+      throw new Error('Metadata matches were found, but the corrected candidate could not be saved.')
+    }
+  }, [reviewedCandidates, scanSession])
+
+  const handlePurchaseComplete = React.useCallback((candidateId: string, response: ScanPurchaseResponse) => {
+    setScanSession(current => current
+      ? {
+          ...current,
+          candidates: current.candidates.map(candidate => candidate.id === candidateId
+            ? {
+                ...candidate,
+                purchaseStatus: 1,
+                purchasedBookCopyId: response.copy.bookCopyId,
+                purchasedAt: response.copy.purchasedAt,
+                purchaseRequestId: candidate.purchaseRequestId,
+              }
+            : candidate),
+        }
+      : current)
+  }, [])
 
   React.useEffect(() => {
     return () => {
@@ -400,7 +598,6 @@ export function ScansPage() {
                 disabled={state === 'compressing' || state === 'uploading' || state === 'polling' || persistenceState === 'saving' || persistenceState === 'error' || members.length === 0}
                 className="h-12 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-3 text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-[var(--accent-subtle)]"
               >
-                {members.length === 0 && currentMemberId ? <option value={currentMemberId}>{user?.displayName ?? 'Current member'}</option> : null}
                 {members.map(member => <option key={member.memberId} value={member.memberId}>{member.displayName}</option>)}
               </select>
               {memberError ? <p className="text-sm leading-6 text-[var(--text-secondary)]">{memberError}</p> : null}
@@ -501,7 +698,7 @@ export function ScansPage() {
         {scanSession ? (
           <Card>
             <CardHeader>
-              <CardTitle>Recommendation context</CardTitle>
+            <CardTitle>Recommendation context</CardTitle>
               <CardDescription>Scan prepared for {scanSession.targetMemberDisplayName || 'the current member'}.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-2 text-sm leading-6 text-[var(--text-secondary)]">
@@ -512,7 +709,20 @@ export function ScansPage() {
           </Card>
         ) : null}
 
-        {job && state !== 'compressing' && state !== 'uploading' ? <BookRecognitionResults job={job} candidates={reviewedCandidates} onCandidatesChange={setReviewedCandidates} /> : null}
+        {job && state !== 'compressing' && state !== 'uploading' ? (
+          <BookRecognitionResults
+            job={job}
+            candidates={reviewedCandidates}
+            onCandidatesChange={setReviewedCandidates}
+            scanSessionId={scanSession?.scanSessionId}
+            persistedCandidates={scanSession?.candidates}
+            members={allMembers}
+            scanTargetMemberId={scanSession?.targetMemberId ?? selectedMemberId}
+            persistencePending={persistenceState === 'saving'}
+            onMetadataMatchesChange={handleMetadataMatchesChange}
+            onPurchaseComplete={handlePurchaseComplete}
+          />
+        ) : null}
         {job && state === 'polling' ? (
           <Card>
             <CardContent className="grid gap-2">

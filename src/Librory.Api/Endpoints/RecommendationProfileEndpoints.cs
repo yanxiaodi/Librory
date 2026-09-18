@@ -86,13 +86,14 @@ internal static class RecommendationProfileEndpoints
         var profile = await LoadProfileAsync(db, current.FamilyId, memberId, ct);
         if (profile is null) return Results.NotFound();
 
+        var isOwner = current.MemberId == memberId;
         var isOwnerOrAdmin = await CanEditMemberAsync(db, current, memberId, ct);
         if (!isOwnerOrAdmin && profile.ProfileVisibility == ProfileVisibility.Private)
         {
             return Results.Forbid();
         }
 
-        return Results.Ok(RecommendationProfileResponseFactory.Create(profile, isOwnerOrAdmin));
+        return Results.Ok(RecommendationProfileResponseFactory.Create(profile, isOwner));
     }
 
     private static async Task<IResult> UpsertCurrentRecommendationProfileAsync(
@@ -132,6 +133,7 @@ internal static class RecommendationProfileEndpoints
         var member = await LoadActiveMemberAsync(db, current.FamilyId, memberId, ct);
         if (member is null) return Results.NotFound();
         if (!await CanEditMemberAsync(db, current, memberId, ct)) return Results.Forbid();
+        if (current.MemberId != memberId && request.HasPrivatePreferenceFields) return Results.Forbid();
 
         try
         {
@@ -151,7 +153,9 @@ internal static class RecommendationProfileEndpoints
 
             await db.SaveChangesAsync(ct);
 
-            return Results.Ok(RecommendationProfileResponseFactory.Create(profile, includePrivateNotes: true));
+            return Results.Ok(RecommendationProfileResponseFactory.Create(
+                profile,
+                includePrivateNotes: current.MemberId == memberId));
         }
         catch (Exception exception) when (exception is JsonException or InvalidOperationException or ArgumentOutOfRangeException or ArgumentException)
         {

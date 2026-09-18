@@ -88,4 +88,33 @@ public class ScanOutputMappingTests
         Assert.False(dto.IsAlreadyOwned);
         Assert.Null(dto.DuplicateMessage);
     }
+
+    [Fact]
+    public void Scan_candidate_dto_factory_does_not_match_a_candidate_to_its_own_purchased_copy()
+    {
+        var family = Family.Create("The Yans");
+        var member = family.AddMember("Alice");
+        var work = BookWork.Create("Dune");
+        var edition = work.AddEdition("9780441013593");
+        var copy = family.AddBookCopy(edition, member);
+        var candidate = ScanCandidate.Create("Dune", "High");
+        candidate.MarkPurchased(copy.Id, Guid.NewGuid(), DateTimeOffset.UtcNow);
+
+        var dto = ScanCandidateDtoFactory.Create(family, candidate);
+
+        Assert.Equal(PurchaseStatus.Purchased, dto.PurchaseStatus);
+        Assert.False(dto.IsAlreadyOwned);
+        Assert.Null(dto.DuplicateMessage);
+    }
+
+    [Fact]
+    public void Scan_candidate_dto_factory_does_not_expose_recommendation_scores_in_this_slice()
+    {
+        var family = Family.Create("The Yans");
+        var candidate = ScanCandidate.Create("Dune", "High", recommendationScore: 0.94m);
+
+        var dto = ScanCandidateDtoFactory.Create(family, candidate);
+
+        Assert.Null(dto.RecommendationScore);
+    }
 }

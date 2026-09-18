@@ -1,23 +1,106 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AuthSessionProvider } from '@/auth/AuthSessionContext'
-import { PENDING_JOB_STORAGE_KEY, ScansPage } from './ScansPage'
+import { mergeScanSessionCandidate, mergeScanSessionIfCurrent, mergeScanSessionWithCurrentPurchases, PENDING_JOB_STORAGE_KEY, ScansPage, shouldApplyContinuation, shouldApplyScanGeneration } from './ScansPage'
+import type { ScanSessionResponse } from '@/lib/scansApi'
 
 afterEach(() => {
   vi.useRealTimers()
   vi.unstubAllGlobals()
   sessionStorage.clear()
+  window.history.pushState({}, '', '/')
 })
 
 describe('ScansPage', () => {
-  it('defaults the scan target to the current member and allows an eligible member', async () => {
+  it('preserves locally purchased candidates when a metadata response is stale', () => {
+    const current: ScanSessionResponse = {
+      scanSessionId: 'scan-1', familyId: 'family-1', shelfPhotoPath: 'shelf.jpg', expiresAt: '2026-09-17T00:00:00Z',
+      targetMemberId: 'member-1', targetMemberDisplayName: 'Alice', targetProfileAvailable: false, targetProfileUsed: false,
+      inferredLanguage: null, hasMixedLanguages: false,
+      candidates: [{
+        id: 'candidate-1', displayTitle: 'Dune', author: null, recommendationScore: null, isAlreadyOwned: false,
+        duplicateMessage: null, confidenceLabel: 'High', detectedLanguage: null, recognitionRank: 940, metadataSnapshot: null,
+        purchaseStatus: 1, purchasedBookCopyId: 'copy-1', purchaseRequestId: 'request-1', purchasedAt: '2026-09-16T00:00:00Z', purchase: null,
+      }],
+    }
+    const stale: ScanSessionResponse = {
+      ...current,
+      candidates: [{ ...current.candidates[0], purchaseStatus: 0, purchasedBookCopyId: null, purchaseRequestId: null, purchasedAt: null }],
+    }
+
+    const merged = mergeScanSessionWithCurrentPurchases(current, stale)
+
+    expect(merged.candidates[0]).toMatchObject({
+      purchaseStatus: 1,
+      purchasedBookCopyId: 'copy-1',
+      purchaseRequestId: 'request-1',
+      purchasedAt: '2026-09-16T00:00:00Z',
+    })
+  })
+
+  it('ignores a metadata response from an older scan session', () => {
+    const current: ScanSessionResponse = {
+      scanSessionId: 'scan-2', familyId: 'family-1', shelfPhotoPath: 'new.jpg', expiresAt: '2026-09-17T00:00:00Z',
+      targetMemberId: 'member-1', targetMemberDisplayName: 'Alice', targetProfileAvailable: false, targetProfileUsed: false,
+      inferredLanguage: null, hasMixedLanguages: false, candidates: [],
+    }
+    const oldResponse = { ...current, scanSessionId: 'scan-1', shelfPhotoPath: 'old.jpg' }
+
+    expect(mergeScanSessionIfCurrent(current, 'scan-1', oldResponse)).toBe(current)
+  })
+
+  it('merges a metadata response into only the corrected candidate', () => {
+    const current: ScanSessionResponse = {
+      scanSessionId: 'scan-1', familyId: 'family-1', shelfPhotoPath: 'shelf.jpg', expiresAt: '2026-09-17T00:00:00Z',
+      targetMemberId: 'member-1', targetMemberDisplayName: 'Alice', targetProfileAvailable: false, targetProfileUsed: false,
+      inferredLanguage: null, hasMixedLanguages: false,
+      candidates: [
+        {
+          id: 'candidate-1', displayTitle: 'Dune', author: 'Frank Herbert', recommendationScore: null, isAlreadyOwned: false,
+          duplicateMessage: null, confidenceLabel: 'High', detectedLanguage: null, recognitionRank: 940, metadataSnapshot: { schemaVersion: 1, evidenceText: 'DUNE', matches: [] },
+          purchaseStatus: 0, purchasedBookCopyId: null, purchaseRequestId: null, purchasedAt: null, purchase: null,
+        },
+        {
+          id: 'candidate-2', displayTitle: 'Matilda', author: 'Roald Dahl', recommendationScore: null, isAlreadyOwned: false,
+          duplicateMessage: null, confidenceLabel: 'High', detectedLanguage: null, recognitionRank: 900, metadataSnapshot: { schemaVersion: 1, evidenceText: 'MATILDA', matches: [] },
+          purchaseStatus: 0, purchasedBookCopyId: null, purchaseRequestId: null, purchasedAt: null, purchase: null,
+        },
+      ],
+    }
+    const updated = {
+      ...current,
+      candidates: [
+        { ...current.candidates[0], author: 'Updated Author', metadataSnapshot: { schemaVersion: 1, evidenceText: 'DUNE', matches: [] } },
+        { ...current.candidates[1], author: 'Stale Author', metadataSnapshot: { schemaVersion: 1, evidenceText: 'MATILDA', matches: [] } },
+      ],
+    }
+
+    const merged = mergeScanSessionCandidate(current, 'scan-1', updated, 'candidate-1')
+
+    expect(merged.candidates[0].author).toBe('Updated Author')
+    expect(merged.candidates[1]).toBe(current.candidates[1])
+  })
+
+  it('does not apply an older scan operation after a newer scan starts', () => {
+    expect(shouldApplyScanGeneration(1, 2)).toBe(false)
+    expect(shouldApplyScanGeneration(2, 2)).toBe(true)
+  })
+
+  it('does not apply continuation results after a new scan starts', () => {
+    expect(shouldApplyContinuation(false, 1, 2, null)).toBe(false)
+    expect(shouldApplyContinuation(false, 2, 2, null)).toBe(true)
+    expect(shouldApplyContinuation(false, 2, 2, 'job-2')).toBe(false)
+    expect(shouldApplyContinuation(true, 2, 2, null)).toBe(false)
+  })
+
+  it('allows an admin to target an active member without recommendation consent', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       if (String(input) === '/api/family/current/members') {
         return new Response(JSON.stringify([
           { memberId: 'member-1', displayName: 'Alice', role: 'Admin', preferredLanguage: 0, isActive: false, hasAccount: true, canUseForFamilyRecommendations: false },
-          { memberId: 'member-2', displayName: 'Bob', role: 'Member', preferredLanguage: 0, isActive: true, hasAccount: false, canUseForFamilyRecommendations: true },
+          { memberId: 'member-2', displayName: 'Bob', role: 'Member', preferredLanguage: 0, isActive: true, hasAccount: false, canUseForFamilyRecommendations: false },
           { memberId: 'member-3', displayName: 'Inactive', role: 'Member', preferredLanguage: 0, isActive: false, hasAccount: false, canUseForFamilyRecommendations: true },
         ]), { status: 200 })
       }
@@ -37,8 +120,8 @@ describe('ScansPage', () => {
     )
 
     const target = await screen.findByLabelText(/scan for member/i)
-    expect(target).toHaveValue('member-1')
-    expect(screen.getByRole('option', { name: 'Alice' })).toBeVisible()
+    expect(target).toHaveValue('member-2')
+    expect(screen.queryByRole('option', { name: 'Alice' })).not.toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'Bob' })).toBeVisible()
     expect(screen.queryByRole('option', { name: 'Inactive' })).not.toBeInTheDocument()
 
@@ -48,6 +131,7 @@ describe('ScansPage', () => {
 
   it('persists the selected target and renders the returned recommendation context', async () => {
     const user = userEvent.setup()
+    const longEvidence = 'E'.repeat(4000)
     let sessionPayload: Record<string, unknown> | undefined
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
@@ -61,7 +145,7 @@ describe('ScansPage', () => {
         return new Response(JSON.stringify({
           jobId: 'job-2', familyId: 'family-1', status: 2,
           sourcePhotoPath: '/tmp/Librory/scan-uploads/shelf.jpg', candidates: [{
-            candidateId: 'candidate-1', displayTitle: 'Dune', evidenceText: 'DUNE', rank: 940,
+            candidateId: 'candidate-1', displayTitle: 'Dune', evidenceText: longEvidence, rank: 940,
             metadataMatches: [{ source: 'google-books', sourceId: 'source-1', title: 'Dune', subtitle: null, authors: ['Frank Herbert'], publisher: null, publishedDate: null, language: 'en', description: null, isbn10: null, isbn13: null, thumbnailUrl: null, infoUrl: null }],
           }], warnings: [], failureMessage: null, createdAt: '2026-08-07T00:00:00Z', updatedAt: '2026-08-07T00:00:00Z',
         }), { status: 202 })
@@ -97,8 +181,9 @@ describe('ScansPage', () => {
     })
     expect(sessionPayload).toMatchObject({
       targetMemberId: 'member-2',
-      candidates: [{ displayTitle: 'Dune', confidenceLabel: 'DUNE', author: 'Frank Herbert', detectedLanguage: 0 }],
+      candidates: [{ displayTitle: 'Dune', confidenceLabel: 'High', author: 'Frank Herbert', detectedLanguage: 0, recognitionEvidence: longEvidence }],
     })
+    expect((sessionPayload?.candidates as Array<Record<string, unknown>>)[0]).not.toHaveProperty('recommendationScore')
   })
 
   it('uploads a shelf photo and renders recognized candidates after polling', async () => {
@@ -235,7 +320,7 @@ describe('ScansPage', () => {
 
     expect(await screen.findByText(/recognition complete/i)).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Dune' })).toBeVisible()
-    expect(screen.getByText(/Frank Herbert/i, { selector: 'li' })).toBeVisible()
+    expect(screen.getByText(/Author: Frank Herbert/i)).toBeVisible()
   })
 
   it('lets the user remove a candidate and edit its search text', async () => {
@@ -356,6 +441,73 @@ describe('ScansPage', () => {
     expect(screen.getByText(/language context: english/i)).toBeVisible()
   })
 
+  it('keeps metadata correction failures out of the scan-session retry flow', async () => {
+    const user = userEvent.setup()
+    const longEvidence = 'E'.repeat(4000)
+    let correctionAttempts = 0
+    const metadata = {
+      source: 'google-books', sourceId: 'source-1', title: 'Dune', subtitle: null, authors: ['Frank Herbert'],
+      publisher: null, publishedDate: '1965', language: 'en', description: null, isbn10: null, isbn13: null,
+      thumbnailUrl: null, infoUrl: null,
+    }
+    const session = {
+      scanSessionId: 'scan-1', familyId: 'family-1', shelfPhotoPath: '/tmp/Librory/scan-uploads/shelf.jpg',
+      candidates: [{
+        id: 'candidate-1', displayTitle: 'Dune', author: null, recommendationScore: null, isAlreadyOwned: false,
+        duplicateMessage: null, confidenceLabel: 'DUNE', detectedLanguage: null, recognitionRank: 940,
+        metadataSnapshot: null, purchaseStatus: 0, purchasedBookCopyId: null, purchaseRequestId: null, purchasedAt: null, purchase: null,
+      }],
+      expiresAt: '2026-08-08T00:00:00Z', targetMemberId: 'member-1', targetMemberDisplayName: 'Alice',
+      targetProfileAvailable: false, targetProfileUsed: false, inferredLanguage: 0, hasMixedLanguages: false,
+    }
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/family/current/members') {
+        return new Response(JSON.stringify([{ memberId: 'member-1', displayName: 'Alice', role: 'Admin', preferredLanguage: 0, isActive: true, hasAccount: true, canUseForFamilyRecommendations: true }]), { status: 200 })
+      }
+      if (url === '/api/book-recognition-jobs' && init?.method === 'POST') {
+        return new Response(JSON.stringify({
+          jobId: 'job-1', familyId: 'family-1', status: 2, sourcePhotoPath: '/tmp/Librory/scan-uploads/shelf.jpg',
+           candidates: [{ candidateId: 'candidate-1', displayTitle: 'Dune', evidenceText: longEvidence, rank: 940, metadataMatches: [] }],
+          warnings: [], failureMessage: null, createdAt: '2026-08-03T00:00:00Z', updatedAt: '2026-08-03T00:00:00Z',
+        }), { status: 202 })
+      }
+      if (url === '/api/family/current/scan-sessions' && init?.method === 'POST') {
+        return new Response(JSON.stringify(session), { status: 201 })
+      }
+      if (url === '/api/book-metadata/search?title=Dune') {
+        return new Response(JSON.stringify({ candidates: [metadata] }), { status: 200 })
+      }
+      if (url === '/api/family/current/scan-sessions/scan-1/candidates/candidate-1' && init?.method === 'PUT') {
+        correctionAttempts += 1
+        if (correctionAttempts === 1) return new Response('save failed', { status: 500 })
+        return new Response(JSON.stringify(session), { status: 200 })
+      }
+      throw new Error(`Unexpected fetch request: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<ScansPage />)
+    await user.upload(screen.getByLabelText(/shelf photo/i), new File(['fake image'], 'shelf.jpg', { type: 'image/jpeg' }))
+    expect(await screen.findByRole('heading', { name: 'Dune' })).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: /re-search metadata/i }))
+    expect(await screen.findByText(/could not be saved/i)).toBeVisible()
+    expect(screen.queryByRole('button', { name: /retry saving context/i })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /re-search metadata/i }))
+    await waitFor(() => expect(correctionAttempts).toBe(2))
+    expect(screen.queryByText(/could not be saved/i)).not.toBeInTheDocument()
+
+    const correctionCall = fetchMock.mock.calls.find(([input, init]) =>
+      String(input).includes('/api/family/current/scan-sessions/scan-1/candidates/candidate-1') && init?.method === 'PUT')
+    expect(correctionCall).toBeDefined()
+    expect(JSON.parse(correctionCall![1]?.body as string)).toMatchObject({
+      confidenceLabel: 'High',
+      recognitionEvidence: longEvidence,
+    })
+  })
+
   it('shows an error when the recognition upload fails', async () => {
     const user = userEvent.setup()
 
@@ -466,5 +618,47 @@ describe('ScansPage', () => {
       expect.objectContaining({ credentials: 'include' }),
     )
     expect(sessionStorage.getItem(PENDING_JOB_STORAGE_KEY)).toBeNull()
+  })
+
+  it('surfaces a continuation lookup failure instead of staying idle', async () => {
+    window.history.pushState({}, '', '?continue=1')
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === '/api/family/current/members') {
+        return new Response(JSON.stringify([]), { status: 200 })
+      }
+
+      if (String(input) === '/api/family/current/scan-sessions/latest') {
+        return new Response('nope', { status: 500 })
+      }
+
+      throw new Error(`Unexpected fetch request: ${String(input)}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<ScansPage />)
+
+    expect(await screen.findByText(/^recognition failed$/i)).toBeVisible()
+    expect(screen.getByText(/latest scan session lookup failed/i)).toBeVisible()
+  })
+
+  it('surfaces an expired continuation session instead of staying idle', async () => {
+    window.history.pushState({}, '', '?continue=1')
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === '/api/family/current/members') {
+        return new Response(JSON.stringify([]), { status: 200 })
+      }
+
+      if (String(input) === '/api/family/current/scan-sessions/latest') {
+        return new Response(null, { status: 404 })
+      }
+
+      throw new Error(`Unexpected fetch request: ${String(input)}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<ScansPage />)
+
+    expect(await screen.findByText(/^recognition failed$/i)).toBeVisible()
+    expect(screen.getByText(/latest scan session has expired or is no longer available/i)).toBeVisible()
   })
 })

@@ -13,7 +13,8 @@ public sealed class ManualBookIntakeRequest
         decimal? purchasePrice = null,
         string? shelfLocation = null,
         DateTimeOffset? purchasedAt = null,
-        string? intakeNotes = null)
+        string? intakeNotes = null,
+        Member? purchasedByMember = null)
     {
         ArgumentNullException.ThrowIfNull(edition);
         ArgumentNullException.ThrowIfNull(owningMember);
@@ -27,6 +28,7 @@ public sealed class ManualBookIntakeRequest
         PurchasedAt = purchasedAt;
         DuplicateStatus = duplicateStatus;
         IntakeNotes = Normalize(intakeNotes);
+        PurchasedByMember = purchasedByMember ?? owningMember;
     }
 
     public BookEdition Edition { get; }
@@ -46,6 +48,8 @@ public sealed class ManualBookIntakeRequest
     public BookCopyDuplicateStatus DuplicateStatus { get; }
 
     public string? IntakeNotes { get; }
+
+    public Member PurchasedByMember { get; }
 
     private static string? Normalize(string? value)
     {

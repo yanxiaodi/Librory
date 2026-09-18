@@ -26,4 +26,6 @@ public sealed class RecommendationProfileChanges
     public ProfileVisibility ProfileVisibility { get; init; }
     public bool UseInFamilyRecommendationsSpecified { get; init; }
     public bool UseInFamilyRecommendations { get; init; }
+    public bool UsePrivateNotesInFamilyRecommendationsSpecified { get; init; }
+    public bool UsePrivateNotesInFamilyRecommendations { get; init; }
 }

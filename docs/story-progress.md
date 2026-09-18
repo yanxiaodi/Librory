@@ -28,6 +28,7 @@
 | 11 | PostgreSQL Test Infrastructure | Done | PostgreSQL-backed test infrastructure is present |
 | 12 | External Metadata Providers and Canonical Import | Done | External metadata import flow and tests are present |
 | 14 | Family Membership and Invitations | Done | Family management, invitations, and acceptance are present |
+| 19 | Scan-to-Purchase Flow | Done | JSONB metadata snapshots, provisional editions, atomic/idempotent purchase API, duplicate resolution, owner/purchaser tracking, continuation UI, and PostgreSQL-backed integration tests are present |
 
 ## How To Use
 

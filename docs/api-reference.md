@@ -14,6 +14,7 @@ For front-end integration planning, see `[docs/frontend-integration-guide.md](/D
 - Recommendations: current member profile read and update
 - Wishlist: paged list, create, and fetch
 - Recognition: async book recognition job create and fetch
+- Scan purchase: candidate metadata review, duplicate confirmation, and family-library copy creation
 
 ## Docs And Auth
 
@@ -392,6 +393,64 @@ Returns:
 - `400 Bad Request` when the correction data is invalid.
 - `401 Unauthorized` when the caller is not signed in.
 - `404 Not Found` when the session or candidate does not exist for the current family.
+
+### `POST /api/family/current/scan-sessions/{scanSessionId}/candidates/{candidateId}/purchase`
+
+Purchases one pending candidate into the current family's library.
+
+Request highlights:
+
+- `purchaseRequestId` is a client-generated stable idempotency key.
+- `ownerMemberId` may be any member of the current family, including a deactivated member.
+- `selectedMetadata` contains the normalized provider/manual match; manual fallback may use `manualTitle` and `manualAuthor`.
+- `duplicateResolution` is `1 = existing edition`, `2 = same work/new edition`, or `3 = new work/edition`.
+- `duplicateStatus` must be `2 = ConfirmedDuplicate` when the server reports a duplicate. A no-duplicate result is automatically saved as `1 = ConfirmedUnique`.
+- Purchase time defaults to the current UTC time and optional store, price, condition, shelf location, and intake notes are accepted. Purchase location is not part of this endpoint.
+
+Behavior:
+
+- The authenticated active member is recorded as `purchasedByMemberId`; the client cannot supply it.
+- Metadata import, duplicate evaluation, copy creation, and candidate purchase-state update share one PostgreSQL transaction.
+- A candidate moves from `Pending` to `Purchased` once and remains read-only in the session. A different request for an already purchased candidate is rejected; replaying the same request returns the existing copy.
+- Missing version information creates an explicit provisional edition rather than an editionless copy.
+
+Returns:
+
+- `201 Created` with the copy, canonical work, edition, duplicate status, provisional flag, and replay flag.
+- `409 Conflict` with duplicate matches when an explicit duplicate decision is required.
+- `400 Bad Request` for an already purchased candidate, invalid metadata, or invalid resolution data.
+- `401 Unauthorized` when the caller is not an active family member.
+- `404 Not Found` when the session, candidate, owner, or selected canonical resource is outside the current family scope.
+
+### `PUT /api/family/current/book-editions/{bookEditionId}/version`
+
+Confirms the version metadata for a provisional edition created by a purchase.
+
+Request body:
+
+```json
+{
+  "isbn": "9780441013593",
+  "format": "Paperback",
+  "publicationYear": 1965
+}
+```
+
+Behavior:
+
+- Requires an authenticated active member of the current family.
+- The edition must still be provisional and linked to a purchased scan candidate owned by the current family.
+- At least one version field is required when the provisional edition has no existing version data.
+- `isbn` is limited to 32 characters, `format` to 64 characters, and `publicationYear` must be between 1000 and 9999.
+- A serializable transaction protects the one-time provisional-to-confirmed update.
+
+Returns:
+
+- `200 OK` with the updated edition payload and `isProvisional: false`.
+- `400 Bad Request` when the request or version fields are invalid.
+- `401 Unauthorized` when the caller is not an active family member.
+- `404 Not Found` when the edition is missing, already confirmed, outside the current family's purchased scan flow, or shared with another family.
+- `409 Conflict` when concurrent version confirmation loses a serialization or concurrency race.
 
 ### `POST /api/family/current/scan-sessions/{scanSessionId}/candidates/{candidateId}/resolve`
 

@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Librory.Api.Contracts;
@@ -270,6 +271,52 @@ public sealed class ApiIntegrationTests
     }
 
     [Fact]
+    public async Task Scan_session_rejects_overlong_candidate_fields()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var bootstrapResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        await AssertSuccessAsync(bootstrapResponse);
+
+        var response = await client.PostAsJsonAsync(
+            "/api/family/current/scan-sessions",
+            new CreateScanSessionRequest(
+                "shelf-photo.jpg",
+                Candidates: [new CreateScanCandidateRequest(
+                    new string('D', 301),
+                    "High",
+                    new string('A', 301),
+                    DuplicateMessage: new string('M', 1001),
+                    RecognitionEvidence: new string('E', 4001))]));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Scan_session_rejects_overlong_recognition_evidence()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        var bootstrapResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        await AssertSuccessAsync(bootstrapResponse);
+
+        var response = await client.PostAsJsonAsync(
+            "/api/family/current/scan-sessions",
+            new CreateScanSessionRequest(
+                "shelf-photo.jpg",
+                Candidates: [new CreateScanCandidateRequest(
+                    "Dune",
+                    "High",
+                    RecognitionEvidence: new string('E', 4001))]));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Scan_session_candidate_can_be_corrected_in_place()
     {
         await using var factory = await ApiFactory.CreateAsync();
@@ -327,13 +374,66 @@ public sealed class ApiIntegrationTests
         Assert.Equal("The Spider and the Pig", correctedCandidate.DisplayTitle);
         Assert.Equal("Medium", correctedCandidate.ConfidenceLabel);
         Assert.Equal("E. B. White", correctedCandidate.Author);
-        Assert.Equal(0.87m, correctedCandidate.RecommendationScore);
+        Assert.Null(correctedCandidate.RecommendationScore);
         Assert.False(correctedCandidate.IsAlreadyOwned);
         Assert.Equal("Recheck duplicate after correction", correctedCandidate.DuplicateMessage);
 
         var untouchedCandidate = corrected.Candidates.Single(candidate => candidate.Id != candidateId);
         Assert.Equal("Matilda", untouchedCandidate.DisplayTitle);
         Assert.Equal("Medium", untouchedCandidate.ConfidenceLabel);
+    }
+
+    [Fact]
+    public async Task Scan_session_candidate_correction_rejects_overlong_fields()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var bootstrapResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        await AssertSuccessAsync(bootstrapResponse);
+
+        var createResponse = await client.PostAsJsonAsync(
+            "/api/family/current/scan-sessions",
+            new CreateScanSessionRequest("shelf-photo.jpg", Candidates: [new CreateScanCandidateRequest("Dune", "High")]));
+        var created = await createResponse.Content.ReadFromJsonAsync<ScanSessionResponse>();
+        Assert.NotNull(created);
+
+        var candidateId = Assert.Single(created!.Candidates).Id;
+        var response = await client.PutAsJsonAsync(
+            $"/api/family/current/scan-sessions/{created.ScanSessionId}/candidates/{candidateId}",
+            new UpdateScanCandidateRequest(
+                new string('D', 301),
+                "High",
+                Author: new string('A', 301),
+                DuplicateMessage: new string('M', 1001),
+                RecognitionEvidence: new string('E', 4001)));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Scan_session_candidate_correction_rejects_overlong_recognition_evidence()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        var bootstrapResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        await AssertSuccessAsync(bootstrapResponse);
+
+        var createResponse = await client.PostAsJsonAsync(
+            "/api/family/current/scan-sessions",
+            new CreateScanSessionRequest("shelf-photo.jpg", Candidates: [new CreateScanCandidateRequest("Dune", "High")]));
+        var created = await createResponse.Content.ReadFromJsonAsync<ScanSessionResponse>();
+        Assert.NotNull(created);
+
+        var candidateId = Assert.Single(created!.Candidates).Id;
+        var response = await client.PutAsJsonAsync(
+            $"/api/family/current/scan-sessions/{created.ScanSessionId}/candidates/{candidateId}",
+            new UpdateScanCandidateRequest("Dune revised", "High", RecognitionEvidence: new string('E', 4001)));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
@@ -686,6 +786,44 @@ public sealed class ApiIntegrationTests
         Assert.Equal(intake.Copy.BookEditionId, fetched.BookEditionId);
         Assert.Equal(intake.Copy.DuplicateStatus, fetched.DuplicateStatus);
         Assert.Equal(intake.Copy.Condition, fetched.Condition);
+    }
+
+    [Fact]
+    public async Task Manual_intake_rejects_a_deactivated_current_member()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true,
+        });
+
+        var loginResponse = await client.PostAsync("/dev/bootstrap", content: null);
+        await AssertSuccessAsync(loginResponse);
+
+        var login = await loginResponse.Content.ReadFromJsonAsync<DevLoginResponse>();
+        Assert.NotNull(login);
+
+        var workResponse = await client.PostAsJsonAsync(
+            "/api/book-works",
+            new CreateBookWorkRequest("Charlotte's Web", "E. B. White", "978-0-06-112495-2", "Hardcover", 2006));
+        await AssertSuccessAsync(workResponse);
+
+        var work = await workResponse.Content.ReadFromJsonAsync<BookWorkResponse>();
+        Assert.NotNull(work);
+
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<LibroryDbContext>();
+            await db.Members
+                .Where(item => item.Id == login!.MemberId)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.IsActive, false));
+        }
+
+        var response = await client.PostAsJsonAsync(
+            "/api/family/current/book-copies",
+            new CreateBookCopyRequest(work!.Editions[0].BookEditionId));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]

@@ -13,4 +13,5 @@ public sealed record BookCopyResponse(
     decimal? PurchasePrice,
     string? ShelfLocation,
     DateTimeOffset? PurchasedAt,
-    string? IntakeNotes);
+    string? IntakeNotes,
+    Guid? PurchasedByMemberId = null);

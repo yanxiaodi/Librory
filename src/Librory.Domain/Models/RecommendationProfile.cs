@@ -16,6 +16,7 @@ public sealed class RecommendationProfile
     public string? PreferenceNotes { get; private set; }
     public ProfileVisibility ProfileVisibility { get; private set; } = ProfileVisibility.Family;
     public bool UseInFamilyRecommendations { get; private set; } = true;
+    public bool UsePrivateNotesInFamilyRecommendations { get; private set; }
     public Member Member { get; private set; } = null!;
 
     public void UpdatePreferences(
@@ -71,6 +72,10 @@ public sealed class RecommendationProfile
 
         if (changes.ProfileVisibilitySpecified) ProfileVisibility = changes.ProfileVisibility;
         if (changes.UseInFamilyRecommendationsSpecified) UseInFamilyRecommendations = changes.UseInFamilyRecommendations;
+        if (changes.UsePrivateNotesInFamilyRecommendationsSpecified)
+        {
+            UsePrivateNotesInFamilyRecommendations = changes.UsePrivateNotesInFamilyRecommendations;
+        }
     }
 
     public static RecommendationProfile Create(

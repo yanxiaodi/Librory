@@ -2,6 +2,9 @@ using Librory.Api.Contracts;
 using Librory.Api.Validation;
 using Librory.Application.Metadata;
 using Librory.Domain.Models;
+using Librory.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using System.Text.Json;
 
 namespace Librory.Api.Endpoints;
@@ -33,6 +36,7 @@ internal static class BookMetadataEndpoints
             .WithDescription("Imports a normalized metadata candidate into the canonical catalog as a book work with an optional first edition.")
             .Produces<BookWorkResponse>(StatusCodes.Status201Created)
             .Produces<BookWorkResponse>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status409Conflict)
             .ProducesValidationProblem();
 
         return app;
@@ -41,6 +45,7 @@ internal static class BookMetadataEndpoints
     private static async Task<IResult> ImportAsync(
         BookMetadataImportRequest? request,
         IBookMetadataImportService importService,
+        LibroryDbContext db,
         CancellationToken cancellationToken)
     {
         if (request?.Candidate is null)
@@ -51,21 +56,10 @@ internal static class BookMetadataEndpoints
             });
         }
 
-        if (ApiValidation.Required(
-                new ValidationField("candidate.source", request.Candidate.Source, "Source is required."),
-                new ValidationField("candidate.sourceId", request.Candidate.SourceId, "Source id is required."),
-                new ValidationField("candidate.title", request.Candidate.Title, "Title is required."))
-            is IResult validationProblem)
+        var metadataErrors = MetadataCandidateValidation.Validate(request.Candidate, "candidate");
+        if (metadataErrors.Count > 0)
         {
-            return validationProblem;
-        }
-
-        if (request.Candidate.Authors?.Any(string.IsNullOrWhiteSpace) == true)
-        {
-            return Results.ValidationProblem(new Dictionary<string, string[]>
-            {
-                ["candidate.authors"] = ["Author entries must not be blank."],
-            });
+            return Results.ValidationProblem(metadataErrors);
         }
 
         var candidate = new BookMetadataCandidate(
@@ -83,12 +77,24 @@ internal static class BookMetadataEndpoints
             TrimToNull(request.Candidate.ThumbnailUrl),
             TrimToNull(request.Candidate.InfoUrl));
 
-        var result = await importService.ImportAsync(candidate, cancellationToken);
-        var payload = BookWorkResponseFactory.Create(result.Work);
+        try
+        {
+            await using var transaction = await db.Database.BeginTransactionAsync(
+                System.Data.IsolationLevel.Serializable,
+                cancellationToken);
+            var result = await importService.ImportAsync(candidate, cancellationToken);
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            var payload = BookWorkResponseFactory.Create(result.Work);
 
-        return result.CreatedNew
-            ? Results.Created($"/api/book-works/{result.Work.Id}", payload)
-            : Results.Ok(payload);
+            return result.CreatedNew
+                ? Results.Created($"/api/book-works/{result.Work.Id}", payload)
+                : Results.Ok(payload);
+        }
+        catch (Exception exception) when (IsSerializationFailure(exception))
+        {
+            return Results.Conflict();
+        }
     }
 
     private static async Task<IResult> SearchByTitleAsync(
@@ -157,5 +163,18 @@ internal static class BookMetadataEndpoints
     private static string? TrimToNull(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private static bool IsSerializationFailure(Exception exception)
+    {
+        for (var current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is PostgresException { SqlState: "40001" or "40P01" })
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

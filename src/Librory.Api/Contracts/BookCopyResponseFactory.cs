@@ -19,6 +19,7 @@ public static class BookCopyResponseFactory
             copy.PurchasePrice,
             copy.ShelfLocation,
             copy.PurchasedAt,
-            copy.IntakeNotes);
+            copy.IntakeNotes,
+            copy.PurchasedByMemberId);
     }
 }

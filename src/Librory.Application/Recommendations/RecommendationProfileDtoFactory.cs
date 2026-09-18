@@ -21,6 +21,7 @@ public static class RecommendationProfileDtoFactory
             profile.PreferredBookLanguages.ToList(),
             profile.PreferenceNotes,
             profile.ProfileVisibility,
-            profile.UseInFamilyRecommendations);
+            profile.UseInFamilyRecommendations,
+            profile.UsePrivateNotesInFamilyRecommendations);
     }
 }

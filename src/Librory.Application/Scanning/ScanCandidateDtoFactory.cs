@@ -9,16 +9,25 @@ public static class ScanCandidateDtoFactory
         ArgumentNullException.ThrowIfNull(family);
         ArgumentNullException.ThrowIfNull(candidate);
 
-        var duplicateDetection = family.DetectPotentialDuplicate(candidate.DisplayTitle);
+        var duplicateDetection = candidate.PurchaseStatus == PurchaseStatus.Purchased
+            ? null
+            : family.DetectPotentialDuplicate(candidate.DisplayTitle);
+        var metadataSnapshot = ScanCandidateMetadataSnapshotSerializer.Deserialize(candidate.MetadataMatchesJson);
 
         return new ScanCandidateDto(
             candidate.Id,
             candidate.DisplayTitle,
             candidate.Author,
-            candidate.RecommendationScore,
-            candidate.IsAlreadyOwned || duplicateDetection.HasPotentialDuplicate,
-            candidate.DuplicateMessage ?? duplicateDetection.FollowUpHint,
+            null,
+            candidate.IsAlreadyOwned || duplicateDetection?.HasPotentialDuplicate == true,
+            candidate.DuplicateMessage ?? duplicateDetection?.FollowUpHint,
             candidate.ConfidenceLabel,
-            candidate.DetectedLanguage);
+            candidate.DetectedLanguage,
+            candidate.RecognitionRank,
+            metadataSnapshot,
+            candidate.PurchaseStatus,
+            candidate.PurchasedBookCopyId,
+            candidate.PurchaseRequestId,
+            candidate.PurchasedAt);
     }
 }

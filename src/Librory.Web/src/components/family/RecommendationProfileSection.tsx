@@ -30,6 +30,7 @@ type ProfileFormState = {
   preferenceNotes: string
   profileVisibility: 'Family' | 'Private'
   useInFamilyRecommendations: boolean
+  usePrivateNotesInFamilyRecommendations: boolean
 }
 
 type ProfileAccess = 'loading' | 'ok' | 'missing' | 'forbidden' | 'error'
@@ -47,6 +48,7 @@ const emptyForm: ProfileFormState = {
   preferenceNotes: '',
   profileVisibility: 'Family',
   useInFamilyRecommendations: true,
+  usePrivateNotesInFamilyRecommendations: false,
 }
 
 const inputClassName = 'h-12 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-3 font-normal text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-[var(--accent-subtle)] disabled:cursor-not-allowed disabled:opacity-60'
@@ -82,10 +84,11 @@ function toForm(profile: RecommendationProfile | null): ProfileFormState {
     preferenceNotes: profile.preferenceNotes ?? '',
     profileVisibility: profile.profileVisibility === 1 || profile.profileVisibility === 'Private' ? 'Private' : 'Family',
     useInFamilyRecommendations: profile.useInFamilyRecommendations,
+    usePrivateNotesInFamilyRecommendations: profile.usePrivateNotesInFamilyRecommendations ?? false,
   }
 }
 
-function toPayload(form: ProfileFormState): RecommendationProfileUpdate {
+function toPayload(form: ProfileFormState, includePrivateFields: boolean): RecommendationProfileUpdate {
   const numberOrNull = (value: string) => value.trim() ? Number(value) : null
 
   return {
@@ -98,9 +101,12 @@ function toPayload(form: ProfileFormState): RecommendationProfileUpdate {
     favoriteStyles: splitCommaList(form.favoriteStyles),
     excludedStyles: splitCommaList(form.excludedStyles),
     preferredBookLanguages: form.preferredBookLanguages.map(language => language === 'Chinese' ? 1 : 0),
-    preferenceNotes: form.preferenceNotes.trim() || null,
     profileVisibility: form.profileVisibility === 'Private' ? 1 : 0,
     useInFamilyRecommendations: form.useInFamilyRecommendations,
+    ...(includePrivateFields ? {
+      preferenceNotes: form.preferenceNotes.trim() || null,
+      usePrivateNotesInFamilyRecommendations: form.usePrivateNotesInFamilyRecommendations,
+    } : {}),
   }
 }
 
@@ -224,6 +230,7 @@ export function RecommendationProfileSection({ isAdmin, currentMemberId, refresh
     () => members.find(member => member.memberId === selectedMemberId),
     [members, selectedMemberId],
   )
+  const isProfileOwner = selectedMemberId === currentMemberId
   const canEdit = profileAccess !== 'forbidden' && !readOnly && (isAdmin || selectedMemberId === currentMemberId)
   const updateField = <K extends keyof ProfileFormState>(key: K, value: ProfileFormState[K]) => {
     setForm(previous => ({ ...previous, [key]: value }))
@@ -248,7 +255,7 @@ export function RecommendationProfileSection({ isAdmin, currentMemberId, refresh
     setSaved(false)
     setError(null)
     try {
-      const profile = await updateMemberRecommendationProfile(selectedMemberId, toPayload(form))
+      const profile = await updateMemberRecommendationProfile(selectedMemberId, toPayload(form, isProfileOwner))
       setForm(toForm(profile))
       setSaved(true)
     } catch {
@@ -299,7 +306,7 @@ export function RecommendationProfileSection({ isAdmin, currentMemberId, refresh
                   <label className="flex items-center gap-2 text-sm text-[var(--text-primary)]"><input type="checkbox" checked={form.preferredBookLanguages.includes('English')} disabled={!canEdit || loadingProfile} onChange={() => toggleLanguage('English')} /> English</label>
                   <label className="flex items-center gap-2 text-sm text-[var(--text-primary)]"><input type="checkbox" checked={form.preferredBookLanguages.includes('Chinese')} disabled={!canEdit || loadingProfile} onChange={() => toggleLanguage('Chinese')} /> Chinese</label>
                 </fieldset>
-                <Field label="Preference notes" id="preference-notes" value={form.preferenceNotes} disabled={!canEdit || loadingProfile} onChange={value => updateField('preferenceNotes', value)} multiline />
+                {isProfileOwner ? <Field label="Preference notes" id="preference-notes" value={form.preferenceNotes} disabled={!canEdit || loadingProfile} onChange={value => updateField('preferenceNotes', value)} multiline /> : null}
                 <label className={labelClassName} htmlFor="profile-visibility">
                   Profile visibility
                   <select id="profile-visibility" aria-label="Profile visibility" value={form.profileVisibility} disabled={!canEdit || loadingProfile} onChange={event => updateField('profileVisibility', event.target.value as ProfileFormState['profileVisibility'])} className={inputClassName}>
@@ -308,6 +315,7 @@ export function RecommendationProfileSection({ isAdmin, currentMemberId, refresh
                   </select>
                 </label>
                 <label className="flex items-center gap-2 text-sm text-[var(--text-primary)]"><input type="checkbox" checked={form.useInFamilyRecommendations} disabled={!canEdit || loadingProfile} onChange={event => updateField('useInFamilyRecommendations', event.target.checked)} /> Use in family recommendations</label>
+                {isProfileOwner ? <label className="flex items-center gap-2 text-sm text-[var(--text-primary)]"><input type="checkbox" checked={form.usePrivateNotesInFamilyRecommendations} disabled={!canEdit || loadingProfile} onChange={event => updateField('usePrivateNotesInFamilyRecommendations', event.target.checked)} /> Use private notes in family recommendations</label> : null}
                 {canEdit ? <Button type="submit" disabled={saving || loadingProfile}>{saving ? 'Saving…' : 'Save preferences'}</Button> : <p className="text-sm text-[var(--text-secondary)]">Only the member or a family administrator can edit this profile.</p>}
               </>
             ) : null}

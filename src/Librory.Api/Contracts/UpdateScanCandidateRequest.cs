@@ -1,9 +1,14 @@
+using Librory.Application.Metadata;
+
 namespace Librory.Api.Contracts;
 
 public sealed record UpdateScanCandidateRequest(
     string DisplayTitle,
     string ConfidenceLabel,
     string? Author = null,
-    decimal RecommendationScore = 0m,
+    decimal? RecommendationScore = null,
     bool IsAlreadyOwned = false,
-    string? DuplicateMessage = null);
+    string? DuplicateMessage = null,
+    string? RecognitionEvidence = null,
+    int? RecognitionRank = null,
+    IReadOnlyList<BookMetadataImportCandidateRequest>? MetadataMatches = null);

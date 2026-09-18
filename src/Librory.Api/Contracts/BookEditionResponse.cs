@@ -4,4 +4,5 @@ public sealed record BookEditionResponse(
     Guid BookEditionId,
     string? Isbn,
     string? Format,
-    int? PublicationYear);
+    int? PublicationYear,
+    bool IsProvisional = false);

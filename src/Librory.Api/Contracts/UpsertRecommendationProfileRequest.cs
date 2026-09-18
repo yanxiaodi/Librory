@@ -18,6 +18,7 @@ public sealed class UpsertRecommendationProfileRequest
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public JsonElement PreferenceNotes { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public JsonElement ProfileVisibility { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public JsonElement UseInFamilyRecommendations { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public JsonElement UsePrivateNotesInFamilyRecommendations { get; init; }
 
     public UpsertRecommendationProfileRequest()
     {
@@ -35,7 +36,8 @@ public sealed class UpsertRecommendationProfileRequest
         IReadOnlyList<PreferredLanguage>? preferredBookLanguages = null,
         string? preferenceNotes = null,
         ProfileVisibility? profileVisibility = null,
-        bool? useInFamilyRecommendations = null)
+        bool? useInFamilyRecommendations = null,
+        bool? usePrivateNotesInFamilyRecommendations = null)
     {
         MinimumAge = ToElement(minimumAge);
         MaximumAge = ToElement(maximumAge);
@@ -49,6 +51,7 @@ public sealed class UpsertRecommendationProfileRequest
         PreferenceNotes = ToElement(preferenceNotes);
         ProfileVisibility = ToElement(profileVisibility);
         UseInFamilyRecommendations = ToElement(useInFamilyRecommendations);
+        UsePrivateNotesInFamilyRecommendations = ToElement(usePrivateNotesInFamilyRecommendations);
     }
 
     public RecommendationProfileChanges ToChanges() => new()
@@ -77,7 +80,12 @@ public sealed class UpsertRecommendationProfileRequest
         ProfileVisibility = ReadValue(ProfileVisibility, default(ProfileVisibility)),
         UseInFamilyRecommendationsSpecified = IsNonNullSpecified(UseInFamilyRecommendations),
         UseInFamilyRecommendations = ReadValue(UseInFamilyRecommendations, true),
+        UsePrivateNotesInFamilyRecommendationsSpecified = IsNonNullSpecified(UsePrivateNotesInFamilyRecommendations),
+        UsePrivateNotesInFamilyRecommendations = ReadValue(UsePrivateNotesInFamilyRecommendations, false),
     };
+
+    public bool HasPrivatePreferenceFields =>
+        IsSpecified(PreferenceNotes) || IsNonNullSpecified(UsePrivateNotesInFamilyRecommendations);
 
     private static bool IsSpecified(JsonElement element) => element.ValueKind != JsonValueKind.Undefined;
 
