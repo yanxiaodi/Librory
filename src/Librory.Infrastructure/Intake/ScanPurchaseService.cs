@@ -138,9 +138,14 @@ public sealed class ScanPurchaseService : IScanPurchaseService
         var purchaseMetadata = request.SelectedMetadata
             ?? (string.IsNullOrWhiteSpace(request.ManualTitle) ? null : CreateManualMetadata(request));
         var edition = await ResolveEditionAsync(db, importer, request, purchaseMetadata, cancellationToken);
-        var duplicateDetection = request.DuplicateResolution == DuplicateResolution.ExistingEdition
-            ? family.DetectPotentialDuplicate(purchaseMetadata?.Title ?? candidate.DisplayTitle)
-            : family.DetectPotentialDuplicate(edition);
+        var duplicateDetection = family.DetectPotentialDuplicate(edition);
+        if (request.DuplicateResolution == DuplicateResolution.ExistingEdition
+            && !MatchesExistingEditionTitle(family, candidate, purchaseMetadata, edition.Id))
+        {
+            throw new ArgumentException(
+                "The selected edition does not match the scan candidate title.",
+                nameof(request.ExistingBookEditionId));
+        }
         ValidateSelectedResolution(request, duplicateDetection);
         var duplicateStatus = ResolveDuplicateStatus(request, duplicateDetection);
         var purchasedAt = request.PurchasedAt ?? DateTimeOffset.UtcNow;
@@ -331,6 +336,23 @@ public sealed class ScanPurchaseService : IScanPurchaseService
         {
             throw new ArgumentException("The selected work is not one of the detected duplicate matches.", nameof(request));
         }
+    }
+
+    private static bool MatchesExistingEditionTitle(
+        Family family,
+        ScanCandidate candidate,
+        BookMetadataCandidate? purchaseMetadata,
+        Guid bookEditionId)
+    {
+        if (family.DetectPotentialDuplicate(candidate.DisplayTitle)
+            .Matches.Any(match => match.BookEditionId == bookEditionId))
+        {
+            return true;
+        }
+
+        return purchaseMetadata is not null
+            && family.DetectPotentialDuplicate(purchaseMetadata.Title)
+                .Matches.Any(match => match.BookEditionId == bookEditionId);
     }
 
     private static async Task<Family?> LoadFamilyAsync(

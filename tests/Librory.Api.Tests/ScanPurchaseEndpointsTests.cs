@@ -1032,6 +1032,54 @@ public sealed class ScanPurchaseEndpointsTests
     }
 
     [Fact]
+    public async Task Existing_edition_accepts_selected_metadata_with_a_provider_title_variant()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        await LoginAsync(client, "Existing Edition Provider Title Family", "Purchaser");
+
+        var existingSession = await CreateSessionAsync(client, "Dune");
+        var existingCandidate = Assert.Single(existingSession.Candidates);
+        var existingPurchase = await client.PostAsJsonAsync(
+            $"/api/family/current/scan-sessions/{existingSession.ScanSessionId}/candidates/{existingCandidate.Id}/purchase",
+            new ConfirmScanPurchaseRequest(
+                Guid.NewGuid(),
+                existingSession.TargetMemberId!.Value,
+                DuplicateResolution: Librory.Application.Intake.DuplicateResolution.NewWork,
+                ManualTitle: "Dune"));
+        Assert.Equal(HttpStatusCode.Created, existingPurchase.StatusCode);
+        var existing = await existingPurchase.Content.ReadFromJsonAsync<ScanPurchaseResponse>();
+        Assert.NotNull(existing);
+
+        var candidateSession = await CreateSessionAsync(client, "Dune");
+        var candidate = Assert.Single(candidateSession.Candidates);
+        var response = await client.PostAsJsonAsync(
+            $"/api/family/current/scan-sessions/{candidateSession.ScanSessionId}/candidates/{candidate.Id}/purchase",
+            new ConfirmScanPurchaseRequest(
+                Guid.NewGuid(),
+                candidateSession.TargetMemberId!.Value,
+                SelectedMetadata: new BookMetadataImportCandidateRequest(
+                    "GoogleBooks",
+                    "dune-provider",
+                    "Dune: A Novel",
+                    null,
+                    ["Frank Herbert"],
+                    null,
+                    "1965",
+                    "en",
+                    null,
+                    null,
+                    null,
+                    null,
+                    null),
+                DuplicateResolution: Librory.Application.Intake.DuplicateResolution.ExistingEdition,
+                DuplicateStatus: BookCopyDuplicateStatus.ConfirmedDuplicate,
+                ExistingBookEditionId: existing!.BookEditionId));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Purchase_rejects_missing_or_unknown_duplicate_resolution_ids()
     {
         await using var factory = await ApiFactory.CreateAsync();
