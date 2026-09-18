@@ -998,6 +998,40 @@ public sealed class ScanPurchaseEndpointsTests
     }
 
     [Fact]
+    public async Task Existing_edition_must_match_the_scan_candidate_title()
+    {
+        await using var factory = await ApiFactory.CreateAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        await LoginAsync(client, "Existing Edition Candidate Title Family", "Purchaser");
+
+        var unrelatedSession = await CreateSessionAsync(client, "Matilda");
+        var unrelatedCandidate = Assert.Single(unrelatedSession.Candidates);
+        var unrelatedPurchase = await client.PostAsJsonAsync(
+            $"/api/family/current/scan-sessions/{unrelatedSession.ScanSessionId}/candidates/{unrelatedCandidate.Id}/purchase",
+            new ConfirmScanPurchaseRequest(
+                Guid.NewGuid(),
+                unrelatedSession.TargetMemberId!.Value,
+                DuplicateResolution: Librory.Application.Intake.DuplicateResolution.NewWork,
+                ManualTitle: "Matilda"));
+        Assert.Equal(HttpStatusCode.Created, unrelatedPurchase.StatusCode);
+        var unrelated = await unrelatedPurchase.Content.ReadFromJsonAsync<ScanPurchaseResponse>();
+        Assert.NotNull(unrelated);
+
+        var candidateSession = await CreateSessionAsync(client, "Dune");
+        var candidate = Assert.Single(candidateSession.Candidates);
+        var response = await client.PostAsJsonAsync(
+            $"/api/family/current/scan-sessions/{candidateSession.ScanSessionId}/candidates/{candidate.Id}/purchase",
+            new ConfirmScanPurchaseRequest(
+                Guid.NewGuid(),
+                candidateSession.TargetMemberId!.Value,
+                DuplicateResolution: Librory.Application.Intake.DuplicateResolution.ExistingEdition,
+                DuplicateStatus: BookCopyDuplicateStatus.ConfirmedDuplicate,
+                ExistingBookEditionId: unrelated!.BookEditionId));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Purchase_rejects_missing_or_unknown_duplicate_resolution_ids()
     {
         await using var factory = await ApiFactory.CreateAsync();

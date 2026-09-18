@@ -138,7 +138,9 @@ public sealed class ScanPurchaseService : IScanPurchaseService
         var purchaseMetadata = request.SelectedMetadata
             ?? (string.IsNullOrWhiteSpace(request.ManualTitle) ? null : CreateManualMetadata(request));
         var edition = await ResolveEditionAsync(db, importer, request, purchaseMetadata, cancellationToken);
-        var duplicateDetection = family.DetectPotentialDuplicate(edition);
+        var duplicateDetection = request.DuplicateResolution == DuplicateResolution.ExistingEdition
+            ? family.DetectPotentialDuplicate(purchaseMetadata?.Title ?? candidate.DisplayTitle)
+            : family.DetectPotentialDuplicate(edition);
         ValidateSelectedResolution(request, duplicateDetection);
         var duplicateStatus = ResolveDuplicateStatus(request, duplicateDetection);
         var purchasedAt = request.PurchasedAt ?? DateTimeOffset.UtcNow;
